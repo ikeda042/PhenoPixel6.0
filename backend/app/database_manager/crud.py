@@ -429,6 +429,49 @@ def _normalize_grayscale_to_uint8(image: np.ndarray) -> np.ndarray:
     return np.clip(normalized, 0, 255).astype(np.uint8)
 
 
+def _subtract_background(gray_img: np.ndarray, kernel_size: int = 21) -> np.ndarray:
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE, (kernel_size, kernel_size)
+    )
+    background = cv2.morphologyEx(gray_img, cv2.MORPH_OPEN, kernel)
+    return cv2.subtract(gray_img, background)
+
+
+def _flip_image_if_needed(image: np.ndarray) -> np.ndarray:
+    if image.ndim == 3:
+        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        image_gray = image
+    height, width = image_gray.shape
+    if width < 2:
+        return image
+    left_half = image_gray[:, : width // 2]
+    right_half = image_gray[:, width // 2 :]
+    if float(np.mean(right_half)) > float(np.mean(left_half)):
+        return cv2.flip(image, 1)
+    return image
+
+
+def _build_arc_length_lookup(
+    coefficients: np.ndarray,
+    min_x: float,
+    max_x: float,
+    steps: int = 2048,
+) -> tuple[np.ndarray, np.ndarray]:
+    if not np.isfinite(min_x) or not np.isfinite(max_x) or max_x <= min_x:
+        return np.array([min_x, max_x], dtype=float), np.array([0.0, 0.0], dtype=float)
+    poly = np.poly1d(coefficients)
+    poly_der = np.polyder(poly)
+    xs = np.linspace(min_x, max_x, steps)
+    slopes = poly_der(xs)
+    integrand = np.sqrt(1.0 + slopes * slopes)
+    cumulative = np.zeros_like(xs)
+    if xs.size > 1:
+        dx = np.diff(xs)
+        cumulative[1:] = np.cumsum((integrand[1:] + integrand[:-1]) * 0.5 * dx)
+    return xs, cumulative
+
+
 def _find_minimum_distance_point(
     coefficients: np.ndarray,
     x_q: float,
@@ -955,6 +998,103 @@ def _generate_heatmap_image(path: Sequence[Sequence[float]]) -> bytes:
     return buf.getvalue()
 
 
+def _generate_map256_image(
+    image_fluo_raw: bytes,
+    contour_raw: bytes,
+    degree: int,
+) -> bytes:
+    image_fluo = cv2.imdecode(np.frombuffer(image_fluo_raw, np.uint8), cv2.IMREAD_COLOR)
+    if image_fluo is None:
+        raise ValueError("Failed to decode image")
+    image_fluo_gray = cv2.cvtColor(image_fluo, cv2.COLOR_BGR2GRAY)
+    image_fluo_gray = _subtract_background(image_fluo_gray)
+
+    contour = pickle.loads(contour_raw)
+    contour_array = np.asarray(contour)
+    if contour_array.ndim == 3 and contour_array.shape[1] == 1:
+        contour_points = contour_array[:, 0, :].tolist()
+        contour_for_mask = contour_array.astype(np.int32)
+    elif contour_array.ndim == 2 and contour_array.shape[1] == 2:
+        contour_points = contour_array.tolist()
+        contour_for_mask = contour_array.reshape(-1, 1, 2).astype(np.int32)
+    else:
+        raise ValueError("Invalid contour format")
+
+    mask = np.zeros_like(image_fluo_gray)
+    cv2.fillPoly(mask, [contour_for_mask], 255)
+    coords_inside_cell = np.column_stack(np.where(mask))
+    if coords_inside_cell.size == 0:
+        raise ValueError("No points inside contour")
+    points_inside_cell = image_fluo_gray[
+        coords_inside_cell[:, 0], coords_inside_cell[:, 1]
+    ]
+
+    X = np.array(
+        [
+            [i[1] for i in coords_inside_cell],
+            [i[0] for i in coords_inside_cell],
+        ]
+    )
+    (
+        u1,
+        u2,
+        _u1_contour,
+        _u2_contour,
+        min_u1,
+        max_u1,
+        _u1_c,
+        _u2_c,
+        U,
+        _contour_U,
+    ) = _basis_conversion(
+        contour_points,
+        X,
+        image_fluo.shape[0] / 2,
+        image_fluo.shape[1] / 2,
+        coords_inside_cell.tolist(),
+    )
+
+    theta = _poly_fit(U, degree=degree)
+    xs, arc_lengths = _build_arc_length_lookup(theta, float(min_u1), float(max_u1))
+
+    raw_points: list[tuple[float, float, float]] = []
+    for u1_val, u2_val, intensity in zip(u1, u2, points_inside_cell):
+        dist, min_point = _find_minimum_distance_point(
+            theta, float(u1_val), float(u2_val), float(min_u1), float(max_u1)
+        )
+        sign = 1 if float(u2_val) > float(min_point[1]) else -1
+        arc_length = float(np.interp(min_point[0], xs, arc_lengths))
+        raw_points.append((arc_length, dist * sign, float(intensity)))
+
+    if not raw_points:
+        raise ValueError("No points inside contour")
+
+    ps = np.array([point[0] for point in raw_points], dtype=float)
+    dists = np.array([point[1] for point in raw_points], dtype=float)
+    gs = np.array([point[2] for point in raw_points], dtype=float)
+
+    min_p, max_p = float(ps.min()), float(ps.max())
+    min_dist, max_dist = float(dists.min()), float(dists.max())
+
+    width = max(1, int(np.ceil(max_p - min_p)) + 1)
+    height = max(1, int(np.ceil(max_dist - min_dist)) + 1)
+
+    lowest_intensity = int(np.min(points_inside_cell))
+    high_res_image = np.full((height, width), lowest_intensity, dtype=np.uint8)
+
+    for p_val, dist_val, g_val in zip(ps, dists, gs):
+        x = int(p_val - min_p) if width > 1 else 0
+        y = int(dist_val - min_dist) if height > 1 else 0
+        x = max(0, min(width - 1, x))
+        y = max(0, min(height - 1, y))
+        cv2.circle(high_res_image, (x, y), 1, int(np.clip(g_val, 0, 255)), -1)
+
+    resized = cv2.resize(high_res_image, (1024, 256), interpolation=cv2.INTER_NEAREST)
+    resized = _flip_image_if_needed(resized)
+    normalized = _normalize_grayscale_to_uint8(resized)
+    return _encode_image(normalized)
+
+
 def get_cell_image(
     db_name: str,
     cell_id: str,
@@ -1237,6 +1377,45 @@ def get_cell_heatmap(
         contour_raw = bytes(row[1])
         path = _find_path_vector(image_bytes, contour_raw, degree)
         return _generate_heatmap_image(path)
+    finally:
+        session.close()
+
+
+def get_cell_map256(
+    db_name: str,
+    cell_id: str,
+    image_type: Literal["fluo1", "fluo2"] = "fluo1",
+    degree: int = 4,
+) -> bytes:
+    if degree < 1:
+        raise ValueError("degree must be >= 1")
+    session = get_database_session(db_name)
+    try:
+        bind = session.get_bind()
+        if bind is None:
+            raise RuntimeError("Database session is not bound")
+        metadata = MetaData()
+        cells = Table("cells", metadata, autoload_with=bind)
+        column_map = {
+            "fluo1": "img_fluo1",
+            "fluo2": "img_fluo2",
+        }
+        column_name = column_map.get(image_type)
+        if column_name is None:
+            raise ValueError("Invalid image_type")
+        stmt = (
+            select(cells.c[column_name], cells.c.contour)
+            .where(cells.c.cell_id == cell_id)
+            .limit(1)
+        )
+        row = session.execute(stmt).first()
+        if row is None or row[0] is None:
+            raise LookupError("Cell image not found")
+        if row[1] is None:
+            raise LookupError("Cell contour not found")
+        image_bytes = bytes(row[0])
+        contour_raw = bytes(row[1])
+        return _generate_map256_image(image_bytes, contour_raw, degree)
     finally:
         session.close()
 
