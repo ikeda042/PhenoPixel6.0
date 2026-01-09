@@ -1685,7 +1685,8 @@ export default function CellsPage() {
                         height="100%"
                         p="2"
                         display="grid"
-                        gridTemplateColumns="repeat(2, minmax(0, 1fr))"
+                        gridTemplateColumns="minmax(0, 1fr)"
+                        gridTemplateRows="repeat(2, minmax(0, 1fr))"
                         gap="2"
                       >
                         <Box
