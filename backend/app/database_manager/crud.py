@@ -998,11 +998,11 @@ def _generate_heatmap_image(path: Sequence[Sequence[float]]) -> bytes:
     return buf.getvalue()
 
 
-def _generate_map256_image(
+def _build_map256_normalized(
     image_fluo_raw: bytes,
     contour_raw: bytes,
     degree: int,
-) -> bytes:
+) -> np.ndarray:
     image_fluo = cv2.imdecode(np.frombuffer(image_fluo_raw, np.uint8), cv2.IMREAD_COLOR)
     if image_fluo is None:
         raise ValueError("Failed to decode image")
@@ -1092,7 +1092,26 @@ def _generate_map256_image(
     resized = cv2.resize(high_res_image, (1024, 256), interpolation=cv2.INTER_NEAREST)
     resized = _flip_image_if_needed(resized)
     normalized = _normalize_grayscale_to_uint8(resized)
+    return normalized
+
+
+def _generate_map256_image(
+    image_fluo_raw: bytes,
+    contour_raw: bytes,
+    degree: int,
+) -> bytes:
+    normalized = _build_map256_normalized(image_fluo_raw, contour_raw, degree)
     return _encode_image(normalized)
+
+
+def _generate_map256_jet_image(
+    image_fluo_raw: bytes,
+    contour_raw: bytes,
+    degree: int,
+) -> bytes:
+    normalized = _build_map256_normalized(image_fluo_raw, contour_raw, degree)
+    jet = cv2.applyColorMap(normalized, cv2.COLORMAP_JET)
+    return _encode_image(jet)
 
 
 def get_cell_image(
@@ -1416,6 +1435,45 @@ def get_cell_map256(
         image_bytes = bytes(row[0])
         contour_raw = bytes(row[1])
         return _generate_map256_image(image_bytes, contour_raw, degree)
+    finally:
+        session.close()
+
+
+def get_cell_map256_jet(
+    db_name: str,
+    cell_id: str,
+    image_type: Literal["fluo1", "fluo2"] = "fluo1",
+    degree: int = 4,
+) -> bytes:
+    if degree < 1:
+        raise ValueError("degree must be >= 1")
+    session = get_database_session(db_name)
+    try:
+        bind = session.get_bind()
+        if bind is None:
+            raise RuntimeError("Database session is not bound")
+        metadata = MetaData()
+        cells = Table("cells", metadata, autoload_with=bind)
+        column_map = {
+            "fluo1": "img_fluo1",
+            "fluo2": "img_fluo2",
+        }
+        column_name = column_map.get(image_type)
+        if column_name is None:
+            raise ValueError("Invalid image_type")
+        stmt = (
+            select(cells.c[column_name], cells.c.contour)
+            .where(cells.c.cell_id == cell_id)
+            .limit(1)
+        )
+        row = session.execute(stmt).first()
+        if row is None or row[0] is None:
+            raise LookupError("Cell image not found")
+        if row[1] is None:
+            raise LookupError("Cell contour not found")
+        image_bytes = bytes(row[0])
+        contour_raw = bytes(row[1])
+        return _generate_map256_jet_image(image_bytes, contour_raw, degree)
     finally:
         session.close()
 
