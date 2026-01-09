@@ -14,6 +14,7 @@ from app.bulk_engine.crud import (
     create_heatmap_abs_plot,
     create_heatmap_rel_plot,
     create_hu_separation_overlay,
+    create_map256_strip,
     create_normalized_median_boxplot,
     get_cell_areas_by_label,
     get_cell_lengths_by_label,
@@ -222,6 +223,34 @@ async def get_hu_separation_overlay_endpoint(
         ),
     )
     return StreamingResponse(io.BytesIO(overlay_bytes), media_type="image/png")
+
+
+@router_bulk_engine.get("/get-map256-strip")
+async def get_map256_strip_endpoint(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+    channel: str = Query("fluo1", description="fluo1 | fluo2"),
+    degree: int = Query(4, ge=1),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        image_bytes = await loop.run_in_executor(
+            heatmap_bulk_executor,
+            create_map256_strip,
+            dbname,
+            label,
+            channel,
+            degree,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(image_bytes), media_type="image/png")
 
 
 @router_bulk_engine.get("/get-cell-lengths", response_model=list[CellLength])
