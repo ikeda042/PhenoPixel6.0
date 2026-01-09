@@ -146,6 +146,10 @@ export default function BulkEnginePage() {
   const [isHuSeparationLoading, setIsHuSeparationLoading] = useState(false)
   const [huSeparationError, setHuSeparationError] = useState<string | null>(null)
   const [huSeparationUrl, setHuSeparationUrl] = useState<string | null>(null)
+  const [isMap256Loading, setIsMap256Loading] = useState(false)
+  const [map256Error, setMap256Error] = useState<string | null>(null)
+  const [map256PlotUrl, setMap256PlotUrl] = useState<string | null>(null)
+  const [hasCalculatedMap256, setHasCalculatedMap256] = useState(false)
   const activeUrlsRef = useRef<Set<string>>(new Set())
   const lengthPlotUrlRef = useRef<string | null>(null)
   const areaPlotUrlRef = useRef<string | null>(null)
@@ -154,6 +158,7 @@ export default function BulkEnginePage() {
   const heatmapPlotUrlRef = useRef<string | null>(null)
   const heatmapRelUrlRef = useRef<string | null>(null)
   const huSeparationUrlRef = useRef<string | null>(null)
+  const map256PlotUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!dbName) {
@@ -285,7 +290,10 @@ export default function BulkEnginePage() {
   }, [analysisLabelOptions, analysisLabel])
 
   useEffect(() => {
-    if (analysisMode === 'heatmap' && analysisChannel === 'ph') {
+    if (
+      (analysisMode === 'heatmap' || analysisMode === 'map256') &&
+      analysisChannel === 'ph'
+    ) {
       setAnalysisChannel('fluo1')
     }
   }, [analysisMode, analysisChannel])
@@ -331,6 +339,10 @@ export default function BulkEnginePage() {
       URL.revokeObjectURL(huSeparationUrlRef.current)
       huSeparationUrlRef.current = null
     }
+    if (map256PlotUrlRef.current) {
+      URL.revokeObjectURL(map256PlotUrlRef.current)
+      map256PlotUrlRef.current = null
+    }
     setLengthPlotUrl(null)
     setLengthError(null)
     setLengthExportError(null)
@@ -358,6 +370,10 @@ export default function BulkEnginePage() {
     setHuSeparationUrl(null)
     setHuSeparationError(null)
     setIsHuSeparationLoading(false)
+    setMap256PlotUrl(null)
+    setMap256Error(null)
+    setIsMap256Loading(false)
+    setHasCalculatedMap256(false)
   }, [analysisMode, analysisLabel, analysisChannel, dbName])
 
   useEffect(() => {
@@ -389,6 +405,10 @@ export default function BulkEnginePage() {
       if (huSeparationUrlRef.current) {
         URL.revokeObjectURL(huSeparationUrlRef.current)
         huSeparationUrlRef.current = null
+      }
+      if (map256PlotUrlRef.current) {
+        URL.revokeObjectURL(map256PlotUrlRef.current)
+        map256PlotUrlRef.current = null
       }
     }
   }, [])
@@ -921,6 +941,43 @@ export default function BulkEnginePage() {
     }
   }
 
+  const handleGenerateMap256 = async () => {
+    if (!dbName || isMap256Loading) return
+    setIsMap256Loading(true)
+    setMap256Error(null)
+    try {
+      const mapChannel = analysisChannel === 'ph' ? 'fluo1' : analysisChannel
+      const params = new URLSearchParams({
+        dbname: dbName,
+        label: analysisLabel,
+        channel: mapChannel,
+      })
+      const res = await fetch(`${apiBase}/get-map256-strip?${params.toString()}`, {
+        headers: { accept: 'image/png' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const blob = await res.blob()
+      if (blob.size === 0) {
+        throw new Error('No map256 data found for this label.')
+      }
+      if (map256PlotUrlRef.current) {
+        URL.revokeObjectURL(map256PlotUrlRef.current)
+      }
+      const url = URL.createObjectURL(blob)
+      map256PlotUrlRef.current = url
+      setMap256PlotUrl(url)
+      setHasCalculatedMap256(true)
+    } catch (err) {
+      setMap256Error(err instanceof Error ? err.message : 'Failed to generate map256')
+      setMap256PlotUrl(null)
+      setHasCalculatedMap256(true)
+    } finally {
+      setIsMap256Loading(false)
+    }
+  }
+
   const handleExportAreaCsv = async () => {
     if (!dbName || isAreaExporting) return
     setIsAreaExporting(true)
@@ -1438,6 +1495,7 @@ export default function BulkEnginePage() {
                         <option value="normalized-median">Normalized median</option>
                         <option value="entropy">Entropy</option>
                         <option value="heatmap">Heatmap</option>
+                        <option value="map256">Map256</option>
                         <option value="raw-data">Raw data</option>
                       </NativeSelect.Field>
                       <NativeSelect.Indicator color="ink.700" />
@@ -2074,6 +2132,119 @@ export default function BulkEnginePage() {
                       <Text fontSize="sm" color="ink.700">
                         CSV rows are u1 and G vectors per cell for heatmap rendering.
                       </Text>
+                    </Stack>
+                  )}
+                  {analysisMode === 'map256' && (
+                    <Stack spacing="3" mt="2">
+                      <Text fontSize="sm" fontWeight="600" color="ink.900">
+                        Map256 strip
+                      </Text>
+                      <HStack spacing="4" align="flex-start" flexWrap="wrap">
+                        <Box maxW="12rem">
+                          <Text fontSize="xs" letterSpacing="0.18em" color="ink.700" mb="1">
+                            Manual label
+                          </Text>
+                          <NativeSelect.Root>
+                            <NativeSelect.Field
+                              value={analysisLabel}
+                              onChange={(event) => setAnalysisLabel(event.target.value)}
+                              bg="sand.50"
+                              border="1px solid"
+                              borderColor="sand.200"
+                              fontSize="sm"
+                              h="2.25rem"
+                              color="ink.900"
+                              _focusVisible={{
+                                borderColor: 'tide.400',
+                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              }}
+                            >
+                              {analysisLabelOptions.map((option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator color="ink.700" />
+                          </NativeSelect.Root>
+                        </Box>
+                        <Box maxW="10rem">
+                          <Text fontSize="xs" letterSpacing="0.18em" color="ink.700" mb="1">
+                            Channel
+                          </Text>
+                          <NativeSelect.Root>
+                            <NativeSelect.Field
+                              value={analysisChannel}
+                              onChange={(event) => setAnalysisChannel(event.target.value)}
+                              bg="sand.50"
+                              border="1px solid"
+                              borderColor="sand.200"
+                              fontSize="sm"
+                              h="2.25rem"
+                              color="ink.900"
+                              _focusVisible={{
+                                borderColor: 'tide.400',
+                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              }}
+                            >
+                              {heatmapChannelOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator color="ink.700" />
+                          </NativeSelect.Root>
+                        </Box>
+                      </HStack>
+                      <Text fontSize="xs" color="ink.700" mt="3">
+                        Execution
+                      </Text>
+                      <HStack spacing="3" flexWrap="wrap">
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="ink.900"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleGenerateMap256}
+                          isDisabled={!dbName || isMap256Loading}
+                        >
+                          {isMap256Loading ? 'Generating...' : 'Generate map256'}
+                        </Button>
+                      </HStack>
+                      <Text fontSize="xs" color="ink.700" mt="3">
+                        Output
+                      </Text>
+                      {map256Error && (
+                        <Text fontSize="xs" color="violet.300">
+                          {map256Error}
+                        </Text>
+                      )}
+                      {!map256Error && hasCalculatedMap256 && !map256PlotUrl && (
+                        <Text fontSize="sm" color="ink.700">
+                          No values found for this label.
+                        </Text>
+                      )}
+                      {map256PlotUrl && (
+                        <Box
+                          bg="sand.50"
+                          border="1px solid"
+                          borderColor="sand.200"
+                          borderRadius="md"
+                          p="2"
+                          mt="2"
+                          overflowX="auto"
+                        >
+                          <Box
+                            as="img"
+                            src={map256PlotUrl}
+                            alt="Map256 strip"
+                            display="block"
+                            maxW="none"
+                            height="auto"
+                          />
+                        </Box>
+                      )}
                     </Stack>
                   )}
                   {analysisMode === 'raw-data' && (

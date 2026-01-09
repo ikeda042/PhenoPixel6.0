@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sqlalchemy import MetaData, String, Table, cast, or_, select
 
-from app.database_manager.crud import get_database_session
+from app.database_manager.crud import get_database_session, _build_map256_normalized
 from app.bulk_engine.heatmap_bulk_core import (
     build_heatmap_vectors_csv,
     calculate_heatmap_path_vector,
@@ -589,6 +589,77 @@ def create_hu_separation_overlay(
         max_to_min_ratio=max_to_min_ratio,
     )
     return buf.getvalue()
+
+
+def create_map256_strip(
+    db_name: str,
+    label: Optional[str] = None,
+    channel: str = "fluo1",
+    degree: int = 4,
+) -> bytes:
+    if degree < 1:
+        raise ValueError("degree must be >= 1")
+    label_str = str(label).strip() if label is not None else ""
+    apply_filter = bool(label_str) and label_str.lower() != "all"
+    column_map = {
+        "fluo1": "img_fluo1",
+        "fluo2": "img_fluo2",
+    }
+    column_name = column_map.get(channel)
+    if column_name is None:
+        raise ValueError("Invalid channel")
+
+    session = get_database_session(db_name)
+    try:
+        bind = session.get_bind()
+        if bind is None:
+            raise RuntimeError("Database session is not bound")
+        metadata = MetaData()
+        cells = Table("cells", metadata, autoload_with=bind)
+
+        stmt = (
+            select(cells.c.cell_id, cells.c[column_name], cells.c.contour, cells.c.manual_label)
+            .where(cells.c[column_name].is_not(None))
+            .where(cells.c.contour.is_not(None))
+            .where(cells.c.cell_id.is_not(None))
+            .order_by(cells.c.cell_id)
+        )
+
+        if apply_filter:
+            filters = [cast(cells.c.manual_label, String) == label_str]
+            if label_str.isdigit():
+                filters.append(cells.c.manual_label == int(label_str))
+            if label_str.upper() == "N/A":
+                filters.append(cells.c.manual_label == "N/A")
+                filters.append(cells.c.manual_label == 1000)
+            stmt = stmt.where(or_(*filters))
+
+        result = session.execute(stmt)
+        rotated_images: list[np.ndarray] = []
+        for _cell_id, image_raw, contour_raw, _ in result.fetchall():
+            if image_raw is None or contour_raw is None:
+                continue
+            try:
+                normalized = _build_map256_normalized(bytes(image_raw), bytes(contour_raw), degree)
+            except Exception:
+                continue
+            rotated = cv2.rotate(normalized, cv2.ROTATE_90_CLOCKWISE)
+            rotated_images.append(rotated)
+
+        if not rotated_images:
+            raise LookupError("No map256 images found for the specified label.")
+
+        combined = (
+            cv2.hconcat(rotated_images)
+            if len(rotated_images) > 1
+            else rotated_images[0]
+        )
+        success, buffer = cv2.imencode(".png", combined)
+        if not success:
+            raise ValueError("Failed to encode image")
+        return buffer.tobytes()
+    finally:
+        session.close()
 
 
 def create_cell_length_boxplot(
