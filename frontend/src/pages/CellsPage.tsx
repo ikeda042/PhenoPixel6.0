@@ -105,7 +105,7 @@ export default function CellsPage() {
     scale: true,
   })
   const [contourMode, setContourMode] = useState<
-    'contour' | 'replot' | 'overlay' | 'heatmap'
+    'contour' | 'replot' | 'overlay' | 'heatmap' | 'distribution'
   >('overlay')
   const [contourData, setContourData] = useState<number[][]>([])
   const [isLoadingContour, setIsLoadingContour] = useState(false)
@@ -120,6 +120,10 @@ export default function CellsPage() {
   const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false)
   const [heatmapError, setHeatmapError] = useState<string | null>(null)
   const [heatmapChannel, setHeatmapChannel] = useState<'fluo1' | 'fluo2'>('fluo1')
+  const [distributionUrl, setDistributionUrl] = useState<string | null>(null)
+  const [isLoadingDistribution, setIsLoadingDistribution] = useState(false)
+  const [distributionError, setDistributionError] = useState<string | null>(null)
+  const [distributionChannel, setDistributionChannel] = useState<ChannelKey>('fluo1')
   const [replotChannel, setReplotChannel] = useState<ChannelKey>('fluo1')
   const [contourRefreshKey, setContourRefreshKey] = useState(0)
   const [modificationMode, setModificationMode] = useState<'elastic' | 'optical-boost'>(
@@ -570,6 +574,62 @@ export default function CellsPage() {
     }
   }, [apiBase, contourMode, currentCellId, dbName, contourRefreshKey])
 
+  useEffect(() => {
+    if (!dbName || !currentCellId || contourMode !== 'distribution') {
+      setDistributionUrl(null)
+      setDistributionError(null)
+      setIsLoadingDistribution(false)
+      return
+    }
+    let isActive = true
+    const loadDistribution = async () => {
+      setIsLoadingDistribution(true)
+      setDistributionError(null)
+      setDistributionUrl(null)
+      try {
+        const params = new URLSearchParams({
+          dbname: dbName,
+          cell_id: currentCellId,
+          image_type: distributionChannel,
+        })
+        const res = await fetch(`${apiBase}/get-cell-distribution?${params.toString()}`, {
+          headers: { accept: 'image/png' },
+        })
+        if (!res.ok) {
+          throw new Error(`Request failed (${res.status})`)
+        }
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        if (isActive) {
+          setDistributionUrl(url)
+        } else {
+          URL.revokeObjectURL(url)
+        }
+      } catch (err) {
+        if (isActive) {
+          setDistributionUrl(null)
+          setDistributionError(
+            err instanceof Error ? err.message : 'Failed to load distribution',
+          )
+        }
+      } finally {
+        if (isActive) setIsLoadingDistribution(false)
+      }
+    }
+
+    void loadDistribution()
+    return () => {
+      isActive = false
+    }
+  }, [
+    apiBase,
+    contourMode,
+    currentCellId,
+    dbName,
+    contourRefreshKey,
+    distributionChannel,
+  ])
+
   const handleApplyModification = async () => {
     if (!dbName || !currentCellId || isApplyingModification) return
     setIsApplyingModification(true)
@@ -624,6 +684,14 @@ export default function CellsPage() {
   }, [heatmapUrl])
 
   useEffect(() => {
+    return () => {
+      if (distributionUrl) {
+        URL.revokeObjectURL(distributionUrl)
+      }
+    }
+  }, [distributionUrl])
+
+  useEffect(() => {
     if (!images.ph) {
       setImageDimensions(null)
       return
@@ -674,12 +742,16 @@ export default function CellsPage() {
         ? overlayError
         : contourMode === 'heatmap'
           ? heatmapError
+          : contourMode === 'distribution'
+            ? distributionError
           : contourError
   const isContourPending =
     contourMode === 'contour' &&
     (isLoadingContour || (contourData.length > 0 && !imageDimensions))
   const isOverlayPending = contourMode === 'overlay' && isLoadingOverlay
   const isHeatmapPending = contourMode === 'heatmap' && isLoadingHeatmap
+  const isDistributionPending =
+    contourMode === 'distribution' && isLoadingDistribution
 
   const contourView = useMemo(() => {
     const points = contourData
@@ -1274,7 +1346,8 @@ export default function CellsPage() {
                               | 'contour'
                               | 'replot'
                               | 'overlay'
-                              | 'heatmap',
+                              | 'heatmap'
+                              | 'distribution',
                           )
                         }
                         bg="sand.50"
@@ -1292,6 +1365,7 @@ export default function CellsPage() {
                         <option value="replot">Replot</option>
                         <option value="overlay">Overlay</option>
                         <option value="heatmap">Heatmap</option>
+                        <option value="distribution">Distribution</option>
                       </NativeSelect.Field>
                       <NativeSelect.Indicator color="ink.700" />
                     </NativeSelect.Root>
@@ -1322,6 +1396,39 @@ export default function CellsPage() {
                       >
                         <option value="fluo1">Fluo1</option>
                         <option value="fluo2">Fluo2</option>
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator color="ink.700" />
+                    </NativeSelect.Root>
+                  </HStack>
+                )}
+                {contourMode === 'distribution' && (
+                  <HStack spacing="2" align="center" flexWrap="nowrap">
+                    <Text fontSize="xs" color="ink.700" whiteSpace="nowrap">
+                      Channel
+                    </Text>
+                    <NativeSelect.Root>
+                      <NativeSelect.Field
+                        value={distributionChannel}
+                        onChange={(event) =>
+                          setDistributionChannel(event.target.value as ChannelKey)
+                        }
+                        bg="sand.50"
+                        border="1px solid"
+                        borderColor="sand.200"
+                        fontSize="xs"
+                        h="2rem"
+                        w="6rem"
+                        color="ink.900"
+                        _focusVisible={{
+                          borderColor: 'tide.400',
+                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                        }}
+                      >
+                        {replotChannelOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </NativeSelect.Field>
                       <NativeSelect.Indicator color="ink.700" />
                     </NativeSelect.Root>
@@ -1416,6 +1523,23 @@ export default function CellsPage() {
                       ) : (
                         <Text fontSize="sm" color="ink.700">
                           Heatmap not available.
+                        </Text>
+                      )
+                    ) : contourMode === 'distribution' ? (
+                      isDistributionPending ? (
+                        <Spinner color="ink.700" />
+                      ) : distributionUrl ? (
+                        <Box
+                          as="img"
+                          src={distributionUrl ?? undefined}
+                          alt={`${currentCellId} distribution`}
+                          width="100%"
+                          height="100%"
+                          objectFit="contain"
+                        />
+                      ) : (
+                        <Text fontSize="sm" color="ink.700">
+                          Distribution not available.
                         </Text>
                       )
                     ) : isContourPending ? (
