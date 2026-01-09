@@ -124,3 +124,69 @@ def notify_slack_database_created(
         logger.warning("Slack notification failed: %s", exc.reason)
     except Exception as exc:
         logger.warning("Slack notification failed: %s", exc)
+
+
+def notify_slack_bulk_engine_completed(
+    db_name: str,
+    *,
+    task: str,
+    label: str | None = None,
+    channel: str | None = None,
+    degree: int | None = None,
+    center_ratio: float | None = None,
+    max_to_min_ratio: float | None = None,
+) -> None:
+    webhook_url = _get_webhook_url()
+    if not webhook_url:
+        return
+
+    base_path = _get_base_path()
+    bulk_url = None
+    if base_path:
+        base_path = base_path.rstrip("/")
+        bulk_url = f"{base_path}/bulk-engine?{urlencode({'dbname': db_name})}"
+
+    task_text = task.strip() if task else "bulkengine task"
+    slack_message = f"bulkengine\u306e{task_text}\u304c\u5b8c\u4e86\u3057\u307e\u3057\u305f\u3002database `{db_name}`"
+    details: list[str] = []
+    label_text = str(label).strip() if label is not None else ""
+    if label_text:
+        details.append(f"label = {label_text}")
+    if channel:
+        details.append(f"channel = {channel}")
+    if degree is not None:
+        details.append(f"degree = {degree}")
+    if center_ratio is not None:
+        details.append(f"center_ratio = {center_ratio}")
+    if max_to_min_ratio is not None:
+        details.append(f"max_to_min_ratio = {max_to_min_ratio}")
+    if bulk_url:
+        details.append(f"URL : {bulk_url}")
+    if details:
+        slack_message = f"{slack_message}\n" + "\n".join(details)
+
+    payload = json.dumps({"text": slack_message}).encode("utf-8")
+    request = Request(
+        webhook_url,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            response.read()
+        logger.info("Slack notified for bulk engine: %s (%s)", db_name, task_text)
+    except HTTPError as exc:
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", "ignore")
+        except Exception:
+            body = ""
+        logger.warning(
+            "Slack notification failed %s: %s",
+            exc.code,
+            body or exc.reason,
+        )
+    except URLError as exc:
+        logger.warning("Slack notification failed: %s", exc.reason)
+    except Exception as exc:
+        logger.warning("Slack notification failed: %s", exc)
