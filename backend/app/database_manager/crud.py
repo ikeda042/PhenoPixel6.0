@@ -1643,3 +1643,112 @@ def get_annotation_zip(
         return buffer.getvalue()
     finally:
         session.close()
+
+
+class DatabaseManagerCrud:
+    DATABASES_DIR = DATABASES_DIR
+    DOWNLOAD_CHUNK_SIZE = DOWNLOAD_CHUNK_SIZE
+    ANNOTATION_DOWNSCALE = ANNOTATION_DOWNSCALE
+    ANNOTATION_CONTOUR_THICKNESS = ANNOTATION_CONTOUR_THICKNESS
+
+    @classmethod
+    def sanitize_db_name(cls, db_name: str) -> str:
+        return sanitize_db_name(db_name)
+
+    @classmethod
+    def resolve_database_path(cls, db_name: str) -> Path:
+        return resolve_database_path(db_name)
+
+    @classmethod
+    def read_database_chunks(
+        cls, path: Path, chunk_size: int = DOWNLOAD_CHUNK_SIZE
+    ) -> AsyncIterator[bytes]:
+        return read_database_chunks(path, chunk_size)
+
+    @classmethod
+    async def delete_database(cls, db_name: str) -> str:
+        return await delete_database(db_name)
+
+    @classmethod
+    def get_database_session(cls, db_name: str) -> Session:
+        return get_database_session(db_name)
+
+    @classmethod
+    def migrate_database(cls, db_name: str) -> None:
+        migrate_database(db_name)
+
+    @classmethod
+    async def list_databases(cls) -> list[str]:
+        return await list_databases()
+
+    @classmethod
+    def get_cell_ids(cls, db_name: str) -> list[str]:
+        return get_cell_ids(db_name)
+
+    @classmethod
+    def get_cell_label(cls, db_name: str, cell_id: str) -> str:
+        return get_cell_label(db_name, cell_id)
+
+    @classmethod
+    def update_cell_label(cls, db_name: str, cell_id: str, label: str) -> str:
+        return update_cell_label(db_name, cell_id, label)
+
+    @classmethod
+    def get_cell_contour(cls, db_name: str, cell_id: str) -> list[list[float]]:
+        return get_cell_contour(db_name, cell_id)
+
+    @classmethod
+    def apply_elastic_contour(
+        cls, db_name: str, cell_id: str, delta: float
+    ) -> list[list[float]]:
+        return apply_elastic_contour(db_name, cell_id, delta)
+
+    @classmethod
+    def get_cell_ids_by_label(cls, db_name: str, label: str) -> list[str]:
+        return get_cell_ids_by_label(db_name, label)
+
+    @classmethod
+    def get_manual_labels(cls, db_name: str) -> list[str]:
+        return get_manual_labels(db_name)
+
+    @classmethod
+    def build_map256_normalized(
+        cls, image_fluo_raw: bytes, contour_raw: bytes, degree: int
+    ) -> np.ndarray:
+        return _build_map256_normalized(image_fluo_raw, contour_raw, degree)
+
+    @classmethod
+    def get_cell_image(cls, *args, **kwargs) -> bytes:
+        return get_cell_image(*args, **kwargs)
+
+    @classmethod
+    def get_cell_image_optical_boost(cls, *args, **kwargs) -> bytes:
+        return get_cell_image_optical_boost(*args, **kwargs)
+
+    @classmethod
+    def get_cell_overlay(cls, *args, **kwargs) -> bytes:
+        return get_cell_overlay(*args, **kwargs)
+
+    @classmethod
+    def get_cell_replot(cls, *args, **kwargs) -> bytes:
+        return get_cell_replot(*args, **kwargs)
+
+    @classmethod
+    def get_cell_heatmap(cls, *args, **kwargs) -> bytes:
+        return get_cell_heatmap(*args, **kwargs)
+
+    @classmethod
+    def get_cell_map256(cls, *args, **kwargs) -> bytes:
+        return get_cell_map256(*args, **kwargs)
+
+    @classmethod
+    def get_cell_map256_jet(cls, *args, **kwargs) -> bytes:
+        return get_cell_map256_jet(*args, **kwargs)
+
+    @classmethod
+    def get_cell_intensity_distribution(cls, *args, **kwargs) -> bytes:
+        return get_cell_intensity_distribution(*args, **kwargs)
+
+    @classmethod
+    def get_annotation_zip(cls, *args, **kwargs) -> bytes:
+        return get_annotation_zip(*args, **kwargs)

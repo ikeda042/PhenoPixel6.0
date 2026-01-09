@@ -7,31 +7,7 @@ import aiofiles
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
-from app.database_manager.crud import (
-    DATABASES_DIR,
-    apply_elastic_contour,
-    delete_database,
-    get_cell_contour,
-    get_cell_ids,
-    get_cell_ids_by_label,
-    get_cell_image,
-    get_cell_image_optical_boost,
-    get_cell_heatmap,
-    get_cell_map256,
-    get_cell_map256_jet,
-    get_cell_intensity_distribution,
-    get_cell_label,
-    get_cell_overlay,
-    get_cell_replot,
-    get_manual_labels,
-    get_annotation_zip,
-    migrate_database,
-    read_database_chunks,
-    resolve_database_path,
-    sanitize_db_name,
-    update_cell_label,
-    list_databases,
-)
+from app.database_manager.crud import DatabaseManagerCrud
 
 
 router_database_manager = APIRouter(tags=["database_manager"])
@@ -42,17 +18,17 @@ UPLOAD_CHUNK_SIZE = 1024 * 1024 * 100
 
 @router_database_manager.get("/get-databases", response_model=list[str])
 async def get_databases() -> list[str]:
-    return await list_databases()
+    return await DatabaseManagerCrud.list_databases()
 
 
 @router_database_manager.post("/database_files")
 async def upload_database(file: UploadFile = File(...)) -> dict:
     try:
-        sanitized = sanitize_db_name(file.filename or "")
+        sanitized = DatabaseManagerCrud.sanitize_db_name(file.filename or "")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    DATABASES_DIR.mkdir(parents=True, exist_ok=True)
-    file_path = DATABASES_DIR / sanitized
+    DatabaseManagerCrud.DATABASES_DIR.mkdir(parents=True, exist_ok=True)
+    file_path = DatabaseManagerCrud.DATABASES_DIR / sanitized
     try:
         async with aiofiles.open(file_path, "wb") as out_file:
             while content := await file.read(UPLOAD_CHUNK_SIZE):
@@ -60,7 +36,7 @@ async def upload_database(file: UploadFile = File(...)) -> dict:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     try:
-        migrate_database(sanitized)
+        DatabaseManagerCrud.migrate_database(sanitized)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     return {"filename": sanitized}
@@ -69,14 +45,14 @@ async def upload_database(file: UploadFile = File(...)) -> dict:
 @router_database_manager.get("/database_files/{dbname}")
 async def download_database_endpoint(dbname: str) -> StreamingResponse:
     try:
-        db_path = resolve_database_path(dbname)
+        db_path = DatabaseManagerCrud.resolve_database_path(dbname)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     if not db_path.is_file():
         raise HTTPException(status_code=404, detail="Database not found")
     headers = {"Content-Disposition": f'attachment; filename="{db_path.name}"'}
     return StreamingResponse(
-        read_database_chunks(db_path),
+        DatabaseManagerCrud.read_database_chunks(db_path),
         media_type="application/octet-stream",
         headers=headers,
     )
@@ -85,7 +61,7 @@ async def download_database_endpoint(dbname: str) -> StreamingResponse:
 @router_database_manager.delete("/database_files/{dbname}")
 async def delete_database_endpoint(dbname: str) -> dict:
     try:
-        deleted = await delete_database(dbname)
+        deleted = await DatabaseManagerCrud.delete_database(dbname)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
@@ -98,7 +74,7 @@ async def delete_database_endpoint(dbname: str) -> dict:
 @router_database_manager.get("/get-cell-ids", response_model=list[str])
 def get_cell_ids_endpoint(dbname: str = Query(...)) -> list[str]:
     try:
-        return get_cell_ids(dbname)
+        return DatabaseManagerCrud.get_cell_ids(dbname)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except ValueError as exc:
@@ -113,7 +89,7 @@ def get_cell_ids_by_label_endpoint(
     label: str = Query(...),
 ) -> list[str]:
     try:
-        return get_cell_ids_by_label(dbname, label)
+        return DatabaseManagerCrud.get_cell_ids_by_label(dbname, label)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except ValueError as exc:
@@ -127,7 +103,7 @@ def get_manual_labels_endpoint(
     dbname: str = Query(...),
 ) -> list[str]:
     try:
-        return get_manual_labels(dbname)
+        return DatabaseManagerCrud.get_manual_labels(dbname)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except ValueError as exc:
@@ -142,7 +118,7 @@ def get_cell_contour_endpoint(
     cell_id: str = Query(...),
 ) -> dict:
     try:
-        contour = get_cell_contour(dbname, cell_id)
+        contour = DatabaseManagerCrud.get_cell_contour(dbname, cell_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except LookupError:
@@ -160,7 +136,7 @@ def get_cell_label_endpoint(
     cell_id: str = Query(...),
 ) -> str:
     try:
-        return get_cell_label(dbname, cell_id)
+        return DatabaseManagerCrud.get_cell_label(dbname, cell_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except LookupError:
@@ -180,7 +156,7 @@ def get_cell_image_endpoint(
     draw_scale_bar: bool = Query(False),
 ) -> StreamingResponse:
     try:
-        image_bytes = get_cell_image(
+        image_bytes = DatabaseManagerCrud.get_cell_image(
             dbname,
             cell_id,
             image_type,
@@ -207,7 +183,7 @@ def get_cell_image_optical_boost_endpoint(
     draw_scale_bar: bool = Query(False),
 ) -> StreamingResponse:
     try:
-        image_bytes = get_cell_image_optical_boost(
+        image_bytes = DatabaseManagerCrud.get_cell_image_optical_boost(
             dbname,
             cell_id,
             image_type,
@@ -231,7 +207,7 @@ def get_cell_overlay_endpoint(
     cell_id: str = Query(...),
 ) -> StreamingResponse:
     try:
-        image_bytes = get_cell_overlay(dbname, cell_id)
+        image_bytes = DatabaseManagerCrud.get_cell_overlay(dbname, cell_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except LookupError:
@@ -250,7 +226,7 @@ def update_cell_label_endpoint(
     label: str = Query(...),
 ) -> dict:
     try:
-        updated = update_cell_label(dbname, cell_id, label)
+        updated = DatabaseManagerCrud.update_cell_label(dbname, cell_id, label)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except LookupError:
@@ -269,7 +245,7 @@ def elastic_contour_endpoint(
     delta: int = Query(0),
 ) -> dict:
     try:
-        contour = apply_elastic_contour(dbname, cell_id, delta)
+        contour = DatabaseManagerCrud.apply_elastic_contour(dbname, cell_id, delta)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except LookupError:
@@ -290,7 +266,7 @@ def get_cell_replot_endpoint(
     dark_mode: bool = Query(False),
 ) -> StreamingResponse:
     try:
-        image_bytes = get_cell_replot(
+        image_bytes = DatabaseManagerCrud.get_cell_replot(
             dbname,
             cell_id,
             image_type=image_type,
@@ -318,7 +294,12 @@ async def get_cell_heatmap_endpoint(
     try:
         loop = asyncio.get_running_loop()
         image_bytes = await loop.run_in_executor(
-            heatmap_executor, get_cell_heatmap, dbname, cell_id, image_type, degree
+            heatmap_executor,
+            DatabaseManagerCrud.get_cell_heatmap,
+            dbname,
+            cell_id,
+            image_type,
+            degree,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -338,7 +319,9 @@ def get_cell_distribution_endpoint(
     image_type: str = Query("fluo1", description="ph | fluo1 | fluo2"),
 ) -> StreamingResponse:
     try:
-        image_bytes = get_cell_intensity_distribution(dbname, cell_id, image_type)
+        image_bytes = DatabaseManagerCrud.get_cell_intensity_distribution(
+            dbname, cell_id, image_type
+        )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except LookupError:
@@ -360,7 +343,12 @@ async def get_cell_map256_endpoint(
     try:
         loop = asyncio.get_running_loop()
         image_bytes = await loop.run_in_executor(
-            heatmap_executor, get_cell_map256, dbname, cell_id, image_type, degree
+            heatmap_executor,
+            DatabaseManagerCrud.get_cell_map256,
+            dbname,
+            cell_id,
+            image_type,
+            degree,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -383,7 +371,12 @@ async def get_cell_map256_jet_endpoint(
     try:
         loop = asyncio.get_running_loop()
         image_bytes = await loop.run_in_executor(
-            heatmap_executor, get_cell_map256_jet, dbname, cell_id, image_type, degree
+            heatmap_executor,
+            DatabaseManagerCrud.get_cell_map256_jet,
+            dbname,
+            cell_id,
+            image_type,
+            degree,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -406,7 +399,12 @@ async def get_annotation_zip_endpoint(
     try:
         loop = asyncio.get_running_loop()
         zip_bytes = await loop.run_in_executor(
-            annotation_executor, get_annotation_zip, dbname, image_type, raw, downscale
+            annotation_executor,
+            DatabaseManagerCrud.get_annotation_zip,
+            dbname,
+            image_type,
+            raw,
+            downscale,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
