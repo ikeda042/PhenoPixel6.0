@@ -1,6 +1,8 @@
 import asyncio
 import io
+import logging
 from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -19,11 +21,36 @@ from app.bulk_engine.crud import (
     get_normalized_medians_by_label,
     get_raw_intensities_by_label,
 )
+from app.slack.notifier import notify_slack_bulk_engine_completed
 
 
 router_bulk_engine = APIRouter(tags=["bulk_engine"])
 bulk_executor = ProcessPoolExecutor()
 heatmap_bulk_executor = ProcessPoolExecutor(max_workers=1)
+logger = logging.getLogger("uvicorn.error")
+
+
+def _notify_bulk_engine_completed(
+    db_name: str,
+    task: str,
+    label: str | None,
+    channel: str | None,
+    degree: int | None,
+    center_ratio: float | None = None,
+    max_to_min_ratio: float | None = None,
+) -> None:
+    try:
+        notify_slack_bulk_engine_completed(
+            db_name,
+            task=task,
+            label=label,
+            channel=channel,
+            degree=degree,
+            center_ratio=center_ratio,
+            max_to_min_ratio=max_to_min_ratio,
+        )
+    except Exception as exc:
+        logger.warning("Slack notification failed: %s", exc)
 
 
 class CellLength(BaseModel):
@@ -99,6 +126,17 @@ async def get_heatmap_abs_plot_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+    loop.run_in_executor(
+        None,
+        partial(
+            _notify_bulk_engine_completed,
+            dbname,
+            "heatmap abs plot",
+            label,
+            channel,
+            degree,
+        ),
+    )
     return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
 
 
@@ -127,6 +165,17 @@ async def get_heatmap_rel_plot_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+    loop.run_in_executor(
+        None,
+        partial(
+            _notify_bulk_engine_completed,
+            dbname,
+            "heatmap rel plot",
+            label,
+            channel,
+            degree,
+        ),
+    )
     return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
 
 
@@ -159,6 +208,19 @@ async def get_hu_separation_overlay_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+    loop.run_in_executor(
+        None,
+        partial(
+            _notify_bulk_engine_completed,
+            dbname,
+            "hu separation overlay",
+            label,
+            channel,
+            degree,
+            center_ratio,
+            max_to_min_ratio,
+        ),
+    )
     return StreamingResponse(io.BytesIO(overlay_bytes), media_type="image/png")
 
 
