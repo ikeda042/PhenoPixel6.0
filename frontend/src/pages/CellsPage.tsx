@@ -105,7 +105,7 @@ export default function CellsPage() {
     scale: true,
   })
   const [contourMode, setContourMode] = useState<
-    'contour' | 'replot' | 'overlay' | 'heatmap' | 'distribution'
+    'contour' | 'replot' | 'overlay' | 'heatmap' | 'distribution' | 'map256'
   >('overlay')
   const [contourData, setContourData] = useState<number[][]>([])
   const [isLoadingContour, setIsLoadingContour] = useState(false)
@@ -120,6 +120,10 @@ export default function CellsPage() {
   const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false)
   const [heatmapError, setHeatmapError] = useState<string | null>(null)
   const [heatmapChannel, setHeatmapChannel] = useState<'fluo1' | 'fluo2'>('fluo1')
+  const [map256Url, setMap256Url] = useState<string | null>(null)
+  const [isLoadingMap256, setIsLoadingMap256] = useState(false)
+  const [map256Error, setMap256Error] = useState<string | null>(null)
+  const [map256Channel, setMap256Channel] = useState<'fluo1' | 'fluo2'>('fluo1')
   const [distributionUrl, setDistributionUrl] = useState<string | null>(null)
   const [isLoadingDistribution, setIsLoadingDistribution] = useState(false)
   const [distributionError, setDistributionError] = useState<string | null>(null)
@@ -575,6 +579,61 @@ export default function CellsPage() {
   }, [apiBase, contourMode, currentCellId, dbName, contourRefreshKey])
 
   useEffect(() => {
+    if (!dbName || !currentCellId || contourMode !== 'map256') {
+      setMap256Url(null)
+      setMap256Error(null)
+      setIsLoadingMap256(false)
+      return
+    }
+    let isActive = true
+    const loadMap256 = async () => {
+      setIsLoadingMap256(true)
+      setMap256Error(null)
+      setMap256Url(null)
+      try {
+        const params = new URLSearchParams({
+          dbname: dbName,
+          cell_id: currentCellId,
+          image_type: map256Channel,
+          degree: '4',
+        })
+        const res = await fetch(`${apiBase}/get-cell-map256?${params.toString()}`, {
+          headers: { accept: 'image/png' },
+        })
+        if (!res.ok) {
+          throw new Error(`Request failed (${res.status})`)
+        }
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        if (isActive) {
+          setMap256Url(url)
+        } else {
+          URL.revokeObjectURL(url)
+        }
+      } catch (err) {
+        if (isActive) {
+          setMap256Url(null)
+          setMap256Error(err instanceof Error ? err.message : 'Failed to load map256')
+        }
+      } finally {
+        if (isActive) setIsLoadingMap256(false)
+      }
+    }
+
+    void loadMap256()
+    return () => {
+      isActive = false
+    }
+  }, [
+    apiBase,
+    contourMode,
+    currentCellId,
+    dbName,
+    contourRefreshKey,
+    map256Channel,
+  ])
+
+  useEffect(() => {
     if (!dbName || !currentCellId || contourMode !== 'distribution') {
       setDistributionUrl(null)
       setDistributionError(null)
@@ -685,6 +744,14 @@ export default function CellsPage() {
 
   useEffect(() => {
     return () => {
+      if (map256Url) {
+        URL.revokeObjectURL(map256Url)
+      }
+    }
+  }, [map256Url])
+
+  useEffect(() => {
+    return () => {
       if (distributionUrl) {
         URL.revokeObjectURL(distributionUrl)
       }
@@ -742,6 +809,8 @@ export default function CellsPage() {
         ? overlayError
         : contourMode === 'heatmap'
           ? heatmapError
+          : contourMode === 'map256'
+            ? map256Error
           : contourMode === 'distribution'
             ? distributionError
           : contourError
@@ -750,6 +819,7 @@ export default function CellsPage() {
     (isLoadingContour || (contourData.length > 0 && !imageDimensions))
   const isOverlayPending = contourMode === 'overlay' && isLoadingOverlay
   const isHeatmapPending = contourMode === 'heatmap' && isLoadingHeatmap
+  const isMap256Pending = contourMode === 'map256' && isLoadingMap256
   const isDistributionPending =
     contourMode === 'distribution' && isLoadingDistribution
 
@@ -1347,6 +1417,7 @@ export default function CellsPage() {
                               | 'replot'
                               | 'overlay'
                               | 'heatmap'
+                              | 'map256'
                               | 'distribution',
                           )
                         }
@@ -1365,6 +1436,7 @@ export default function CellsPage() {
                         <option value="replot">Replot</option>
                         <option value="overlay">Overlay</option>
                         <option value="heatmap">Heatmap</option>
+                        <option value="map256">Map 256</option>
                         <option value="distribution">Distribution</option>
                       </NativeSelect.Field>
                       <NativeSelect.Indicator color="ink.700" />
@@ -1381,6 +1453,36 @@ export default function CellsPage() {
                         value={heatmapChannel}
                         onChange={(event) =>
                           setHeatmapChannel(event.target.value as 'fluo1' | 'fluo2')
+                        }
+                        bg="sand.50"
+                        border="1px solid"
+                        borderColor="sand.200"
+                        fontSize="xs"
+                        h="2rem"
+                        w="6rem"
+                        color="ink.900"
+                        _focusVisible={{
+                          borderColor: 'tide.400',
+                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                        }}
+                      >
+                        <option value="fluo1">Fluo1</option>
+                        <option value="fluo2">Fluo2</option>
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator color="ink.700" />
+                    </NativeSelect.Root>
+                  </HStack>
+                )}
+                {contourMode === 'map256' && (
+                  <HStack spacing="2" align="center" flexWrap="nowrap">
+                    <Text fontSize="xs" color="ink.700" whiteSpace="nowrap">
+                      Channel
+                    </Text>
+                    <NativeSelect.Root>
+                      <NativeSelect.Field
+                        value={map256Channel}
+                        onChange={(event) =>
+                          setMap256Channel(event.target.value as 'fluo1' | 'fluo2')
                         }
                         bg="sand.50"
                         border="1px solid"
@@ -1523,6 +1625,23 @@ export default function CellsPage() {
                       ) : (
                         <Text fontSize="sm" color="ink.700">
                           Heatmap not available.
+                        </Text>
+                      )
+                    ) : contourMode === 'map256' ? (
+                      isMap256Pending ? (
+                        <Spinner color="ink.700" />
+                      ) : map256Url ? (
+                        <Box
+                          as="img"
+                          src={map256Url ?? undefined}
+                          alt={`${currentCellId} map256`}
+                          width="100%"
+                          height="100%"
+                          objectFit="contain"
+                        />
+                      ) : (
+                        <Text fontSize="sm" color="ink.700">
+                          Map 256 not available.
                         </Text>
                       )
                     ) : contourMode === 'distribution' ? (
