@@ -13,9 +13,9 @@ export const getApiBase = () => {
     }
     const { protocol, hostname } = window.location
     if (hostname) {
-      return `${protocol}//${hostname}:8000/api/v1`
+      return `${protocol}//${hostname}:3000/api/v1`
     }
   }
 
-  return 'http://0.0.0.0:8000/api/v1'
+  return 'http://0.0.0.0:3000/api/v1'
 }
