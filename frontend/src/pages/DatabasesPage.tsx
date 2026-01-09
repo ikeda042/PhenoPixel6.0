@@ -255,7 +255,7 @@ export default function DatabasesPage() {
         </HStack>
       </AppHeader>
 
-      <Container maxW="72.5rem" py={{ base: 8, md: 12 }}>
+      <Container maxW="72.5rem" pt={{ base: 4, md: 6 }} pb={{ base: 8, md: 12 }}>
         <Stack spacing="6">
           <Stack
             direction={{ base: 'column', md: 'row' }}
