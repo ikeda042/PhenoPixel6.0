@@ -17,6 +17,7 @@ from app.database_manager.crud import (
     get_cell_image,
     get_cell_image_optical_boost,
     get_cell_heatmap,
+    get_cell_map256,
     get_cell_intensity_distribution,
     get_cell_label,
     get_cell_overlay,
@@ -337,6 +338,29 @@ def get_cell_distribution_endpoint(
 ) -> StreamingResponse:
     try:
         image_bytes = get_cell_intensity_distribution(dbname, cell_id, image_type)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Cell image not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(image_bytes), media_type="image/png")
+
+
+@router_database_manager.get("/get-cell-map256")
+async def get_cell_map256_endpoint(
+    dbname: str = Query(...),
+    cell_id: str = Query(...),
+    image_type: str = Query("fluo1", description="fluo1 | fluo2"),
+    degree: int = Query(4, ge=1),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        image_bytes = await loop.run_in_executor(
+            heatmap_executor, get_cell_map256, dbname, cell_id, image_type, degree
+        )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except LookupError:
