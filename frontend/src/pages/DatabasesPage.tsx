@@ -1,0 +1,500 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ChangeEvent } from 'react'
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  Badge,
+  Box,
+  BreadcrumbCurrentLink,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbRoot,
+  BreadcrumbSeparator,
+  Container,
+  Grid,
+  Heading,
+  HStack,
+  Icon,
+  Input,
+  InputGroup,
+  Stack,
+  Text,
+  Button,
+} from '@chakra-ui/react'
+import { Download, Search, Trash2 } from 'lucide-react'
+import AppHeader from '../components/AppHeader'
+import ReloadButton from '../components/ReloadButton'
+import ThemeToggle from '../components/ThemeToggle'
+import { getApiBase } from '../utils/apiBase'
+
+const SearchGlyph = () => (
+  <Box position="relative" w="16px" h="16px" color="ink.700">
+    <Search size={16} />
+  </Box>
+)
+
+const PAGE_SIZE = 10
+
+export default function DatabasesPage() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const apiBase = useMemo(() => getApiBase(), [])
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [databases, setDatabases] = useState<string[]>([])
+  const [searchText, setSearchText] = useState(() => searchParams.get('search_dbname') ?? '')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [downloadingDatabase, setDownloadingDatabase] = useState<string | null>(null)
+  const [deletingDatabase, setDeletingDatabase] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchDatabases = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`${apiBase}/get-databases`, {
+        headers: { accept: 'application/json' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const data = (await res.json()) as string[]
+      setDatabases(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load databases')
+      setDatabases([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [apiBase])
+
+  useEffect(() => {
+    void fetchDatabases()
+  }, [fetchDatabases])
+
+  useEffect(() => {
+    const nextSearch = searchParams.get('search_dbname') ?? ''
+    setSearchText((prev) => (prev === nextSearch ? prev : nextSearch))
+  }, [searchParams])
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchText])
+
+  const filteredDatabases = useMemo(() => {
+    const query = searchText.trim().toLowerCase()
+    if (!query) return databases
+    return databases.filter((name) => name.toLowerCase().includes(query))
+  }, [databases, searchText])
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredDatabases.length / PAGE_SIZE)),
+    [filteredDatabases.length],
+  )
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages)
+    }
+  }, [page, totalPages])
+
+  const pagedDatabases = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE
+    return filteredDatabases.slice(start, start + PAGE_SIZE)
+  }, [filteredDatabases, page])
+
+  const rangeStart = filteredDatabases.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const rangeEnd = Math.min(page * PAGE_SIZE, filteredDatabases.length)
+  const canGoPrev = page > 1
+  const canGoNext = page < totalPages
+
+  const uploadDatabase = useCallback(
+    async (file: File) => {
+      setIsUploading(true)
+      setError(null)
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await fetch(`${apiBase}/database_files`, {
+          method: 'POST',
+          headers: { accept: 'application/json' },
+          body: formData,
+        })
+        if (!res.ok) {
+          throw new Error(`Upload failed (${res.status})`)
+        }
+        await res.json()
+        await fetchDatabases()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to upload database')
+      } finally {
+        setIsUploading(false)
+      }
+    },
+    [apiBase, fetchDatabases],
+  )
+
+  const handleDownload = useCallback(
+    async (dbName: string) => {
+      if (downloadingDatabase || deletingDatabase) return
+      setDownloadingDatabase(dbName)
+      setError(null)
+      try {
+        const res = await fetch(
+          `${apiBase}/database_files/${encodeURIComponent(dbName)}`,
+          { headers: { accept: 'application/octet-stream' } },
+        )
+        if (!res.ok) {
+          throw new Error(`Download failed (${res.status})`)
+        }
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = dbName
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to download database')
+      } finally {
+        setDownloadingDatabase(null)
+      }
+    },
+    [apiBase, deletingDatabase, downloadingDatabase],
+  )
+
+  const handleDelete = useCallback(
+    async (dbName: string) => {
+      if (downloadingDatabase || deletingDatabase) return
+      const confirmed = window.confirm(`Delete ${dbName}?`)
+      if (!confirmed) return
+      setDeletingDatabase(dbName)
+      setError(null)
+      try {
+        const res = await fetch(
+          `${apiBase}/database_files/${encodeURIComponent(dbName)}`,
+          { method: 'DELETE', headers: { accept: 'application/json' } },
+        )
+        if (!res.ok) {
+          throw new Error(`Delete failed (${res.status})`)
+        }
+        await res.json()
+        await fetchDatabases()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete database')
+      } finally {
+        setDeletingDatabase(null)
+      }
+    },
+    [apiBase, deletingDatabase, downloadingDatabase, fetchDatabases],
+  )
+
+  const handleUploadClick = () => {
+    inputRef.current?.click()
+  }
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.name.toLowerCase().endsWith('.db')) {
+      setError('Only .db files are supported')
+      event.target.value = ''
+      return
+    }
+    void uploadDatabase(file)
+    event.target.value = ''
+  }
+
+  return (
+    <Box minH="100vh" bg="sand.50" color="ink.900">
+      <AppHeader>
+        <HStack spacing="3">
+          <Box
+            as="img"
+            src="/favicon.png"
+            alt="PhenoPixel logo"
+            w="1.25rem"
+            h="1.25rem"
+            objectFit="contain"
+          />
+          <Heading size="md" letterSpacing="0.08em">
+            PhenoPixel 6.0
+          </Heading>
+          <Badge
+            bg="sand.100"
+            color="ink.700"
+            borderRadius="full"
+            px="2"
+            py="1"
+            fontSize="0.6rem"
+            letterSpacing="0.2em"
+            textTransform="uppercase"
+          >
+            Manager
+          </Badge>
+        </HStack>
+        <HStack spacing="4" align="center">
+          <BreadcrumbRoot fontSize="sm" color="ink.700">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink as={RouterLink} to="/">
+                  Dashboard
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator>/</BreadcrumbSeparator>
+              <BreadcrumbItem>
+                <BreadcrumbCurrentLink color="ink.900">Databases</BreadcrumbCurrentLink>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </BreadcrumbRoot>
+          <ReloadButton />
+          <ThemeToggle />
+        </HStack>
+      </AppHeader>
+
+      <Container maxW="72.5rem" py={{ base: 8, md: 12 }}>
+        <Stack spacing="6">
+          <Stack
+            direction={{ base: 'column', md: 'row' }}
+            align={{ base: 'stretch', md: 'center' }}
+            justify="space-between"
+            gap="3"
+          >
+            <InputGroup
+              size="sm"
+              maxW={{ base: '100%', md: '360px' }}
+              startElement={<SearchGlyph />}
+              bg="sand.100"
+              borderRadius="md"
+            >
+              <Input
+                placeholder="Search databases"
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                border="1px solid"
+                borderColor="sand.200"
+                color="ink.900"
+                _placeholder={{ color: 'ink.700' }}
+                _focusVisible={{
+                  borderColor: 'tide.400',
+                  boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                }}
+              />
+            </InputGroup>
+
+            <Button
+              size="sm"
+              bg="tide.500"
+              color="ink.900"
+              _hover={{ bg: 'tide.400' }}
+              onClick={handleUploadClick}
+              loading={isUploading}
+              alignSelf={{ base: 'flex-start', md: 'center' }}
+            >
+              Upload DB
+            </Button>
+          </Stack>
+
+          <HStack justify="space-between" flexWrap="wrap" gap="3">
+            <Text fontSize="xs" color="ink.700">
+              {filteredDatabases.length === 0
+                ? 'No databases'
+                : `Showing ${rangeStart}-${rangeEnd} of ${filteredDatabases.length}`}
+            </Text>
+            <HStack spacing="2" align="center">
+              <Button
+                size="xs"
+                variant="outline"
+                borderColor="sand.200"
+                color="ink.700"
+                _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                disabled={!canGoPrev}
+              >
+                Prev
+              </Button>
+              <Text fontSize="xs" color="ink.700">
+                Page {page} / {totalPages}
+              </Text>
+              <Button
+                size="xs"
+                variant="outline"
+                borderColor="sand.200"
+                color="ink.700"
+                _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={!canGoNext}
+              >
+                Next
+              </Button>
+            </HStack>
+          </HStack>
+
+          <Box
+            bg="sand.100"
+            border="1px solid"
+            borderColor="sand.200"
+            borderRadius="xl"
+            overflow="hidden"
+            overflowY="auto"
+            maxH={{ base: '60vh', md: 'calc(100vh - 260px)' }}
+          >
+            <Grid
+              templateColumns={{ base: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 26rem' }}
+              px="4"
+              py="3"
+              bg="sand.200"
+              borderBottom="1px solid"
+              borderColor="sand.200"
+              position="sticky"
+              top="0"
+              zIndex="1"
+            >
+              <Box />
+              <Text
+                fontSize="xs"
+                color="ink.700"
+                letterSpacing="0.18em"
+                textAlign={{ base: 'left', md: 'center' }}
+              >
+                Actions
+              </Text>
+            </Grid>
+
+            {isLoading && (
+              <Box px="4" py="5">
+                <Text fontSize="sm" color="ink.700">
+                  Loading databases...
+                </Text>
+              </Box>
+            )}
+
+            {!isLoading && error && (
+              <Box px="4" py="5">
+                <Text fontSize="sm" color="violet.300">
+                  {error}
+                </Text>
+              </Box>
+            )}
+
+            {!isLoading && !error && databases.length === 0 && (
+              <Box px="4" py="5">
+                <Text fontSize="sm" color="ink.700">
+                  No databases found.
+                </Text>
+              </Box>
+            )}
+
+            {!isLoading &&
+              !error &&
+              databases.length > 0 &&
+              filteredDatabases.length === 0 && (
+                <Box px="4" py="5">
+                  <Text fontSize="sm" color="ink.700">
+                    No matching databases.
+                  </Text>
+                </Box>
+              )}
+
+            {!isLoading &&
+              !error &&
+              pagedDatabases.map((name, index) => (
+                <Grid
+                  key={name}
+                  templateColumns={{ base: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 26rem' }}
+                  px="4"
+                  py="3"
+                  borderBottom={index === pagedDatabases.length - 1 ? 'none' : '1px solid'}
+                  borderColor="sand.200"
+                  _hover={{ bg: 'sand.200' }}
+                  transition="background 0.2s ease"
+                >
+                  <Text fontSize="sm" fontWeight="500">
+                    {name}
+                  </Text>
+                  <HStack
+                    spacing="2"
+                    justify={{ base: 'flex-start', md: 'flex-end' }}
+                    flexWrap={{ base: 'wrap', md: 'nowrap' }}
+                  >
+                    <Button
+                      size="xs"
+                      bg="tide.500"
+                      color="ink.900"
+                      _hover={{ bg: 'tide.400' }}
+                      onClick={() =>
+                        navigate(`/cells?db=${encodeURIComponent(name)}`)
+                      }
+                    >
+                      Access
+                    </Button>
+                    <Button
+                      size="xs"
+                      bg="tide.500"
+                      color="ink.900"
+                      _hover={{ bg: 'tide.400' }}
+                      onClick={() =>
+                        navigate(`/annotation?dbname=${encodeURIComponent(name)}`)
+                      }
+                    >
+                      Annotation
+                    </Button>
+                    <Button
+                      size="xs"
+                      bg="tide.500"
+                      color="ink.900"
+                      _hover={{ bg: 'tide.400' }}
+                      onClick={() =>
+                        navigate(`/bulk-engine?dbname=${encodeURIComponent(name)}`)
+                      }
+                    >
+                      Bulk-engine
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      borderColor="sand.200"
+                      color="ink.700"
+                      _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                      onClick={() => handleDownload(name)}
+                      loading={downloadingDatabase === name}
+                    >
+                      <HStack spacing="1">
+                        <Icon as={Download} boxSize={3.5} />
+                        <Box as="span">Download</Box>
+                      </HStack>
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      borderColor="red.400"
+                      color="red.400"
+                      _hover={{ bg: 'red.500/10' }}
+                      onClick={() => handleDelete(name)}
+                      loading={deletingDatabase === name}
+                      aria-label={`Delete ${name}`}
+                      minW="auto"
+                      px="2"
+                    >
+                      <Icon as={Trash2} boxSize={3.5} />
+                    </Button>
+                  </HStack>
+                </Grid>
+              ))}
+          </Box>
+        </Stack>
+      </Container>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".db"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+    </Box>
+  )
+}

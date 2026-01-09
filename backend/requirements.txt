@@ -1,0 +1,11 @@
+fastapi
+nd2reader
+numpy
+opencv-python
+Pillow
+pydantic
+SQLAlchemy
+uvicorn
+aiofiles
+python-multipart
+matplotlib

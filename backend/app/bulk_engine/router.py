@@ -1,0 +1,305 @@
+import asyncio
+import io
+from concurrent.futures import ProcessPoolExecutor
+
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+
+from app.bulk_engine.crud import (
+    create_cell_area_boxplot,
+    create_cell_length_boxplot,
+    create_heatmap_abs_plot,
+    create_heatmap_rel_plot,
+    create_hu_separation_overlay,
+    create_normalized_median_boxplot,
+    get_cell_areas_by_label,
+    get_cell_lengths_by_label,
+    get_heatmap_vectors_csv,
+    get_normalized_medians_by_label,
+    get_raw_intensities_by_label,
+)
+
+
+router_bulk_engine = APIRouter(tags=["bulk_engine"])
+bulk_executor = ProcessPoolExecutor()
+heatmap_bulk_executor = ProcessPoolExecutor(max_workers=1)
+
+
+class CellLength(BaseModel):
+    cell_id: str
+    length: float
+
+
+class CellArea(BaseModel):
+    cell_id: str
+    area: float
+
+
+class NormalizedMedian(BaseModel):
+    cell_id: str
+    normalized_median: float
+
+
+class RawIntensity(BaseModel):
+    cell_id: str
+    intensities: list[int]
+
+
+@router_bulk_engine.get("/get-heatmap-vectors-csv")
+async def get_heatmap_vectors_csv_endpoint(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+    channel: str = Query("fluo1", description="fluo1 | fluo2"),
+    degree: int = Query(4, ge=1),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        csv_bytes = await loop.run_in_executor(
+            heatmap_bulk_executor,
+            get_heatmap_vectors_csv,
+            dbname,
+            label,
+            channel,
+            degree,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(csv_bytes), media_type="text/csv")
+
+
+@router_bulk_engine.get("/get-heatmap-abs-plot")
+async def get_heatmap_abs_plot_endpoint(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+    channel: str = Query("fluo1", description="fluo1 | fluo2"),
+    degree: int = Query(4, ge=1),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        plot_bytes = await loop.run_in_executor(
+            heatmap_bulk_executor,
+            create_heatmap_abs_plot,
+            dbname,
+            label,
+            channel,
+            degree,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
+
+
+@router_bulk_engine.get("/get-heatmap-rel-plot")
+async def get_heatmap_rel_plot_endpoint(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+    channel: str = Query("fluo1", description="fluo1 | fluo2"),
+    degree: int = Query(4, ge=1),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        plot_bytes = await loop.run_in_executor(
+            heatmap_bulk_executor,
+            create_heatmap_rel_plot,
+            dbname,
+            label,
+            channel,
+            degree,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
+
+
+@router_bulk_engine.get("/get-hu-separation-overlay")
+async def get_hu_separation_overlay_endpoint(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+    channel: str = Query("fluo1", description="fluo1 | fluo2"),
+    degree: int = Query(4, ge=1),
+    center_ratio: float = Query(0.15, ge=0.0, le=1.0),
+    max_to_min_ratio: float = Query(0.9, ge=0.0),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        overlay_bytes = await loop.run_in_executor(
+            heatmap_bulk_executor,
+            create_hu_separation_overlay,
+            dbname,
+            label,
+            channel,
+            degree,
+            center_ratio,
+            max_to_min_ratio,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(overlay_bytes), media_type="image/png")
+
+
+@router_bulk_engine.get("/get-cell-lengths", response_model=list[CellLength])
+async def get_cell_lengths(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+) -> list[CellLength]:
+    try:
+        loop = asyncio.get_running_loop()
+        lengths = await loop.run_in_executor(bulk_executor, get_cell_lengths_by_label, dbname, label)
+        return [CellLength(cell_id=cell_id, length=length) for cell_id, length in lengths]
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router_bulk_engine.get("/get-cell-lengths-plot")
+async def get_cell_lengths_plot(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        plot_bytes = await loop.run_in_executor(
+            bulk_executor, create_cell_length_boxplot, dbname, label
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
+
+
+@router_bulk_engine.get("/get-cell-areas", response_model=list[CellArea])
+def get_cell_areas(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+) -> list[CellArea]:
+    try:
+        areas = get_cell_areas_by_label(dbname, label)
+        return [CellArea(cell_id=cell_id, area=area) for cell_id, area in areas]
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router_bulk_engine.get("/get-cell-areas-plot")
+async def get_cell_areas_plot(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        plot_bytes = await loop.run_in_executor(
+            bulk_executor, create_cell_area_boxplot, dbname, label
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
+
+
+@router_bulk_engine.get("/get-normalized-medians", response_model=list[NormalizedMedian])
+async def get_normalized_medians(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+    channel: str = Query("ph", description="ph | fluo1 | fluo2"),
+) -> list[NormalizedMedian]:
+    try:
+        loop = asyncio.get_running_loop()
+        medians = await loop.run_in_executor(
+            bulk_executor, get_normalized_medians_by_label, dbname, label, channel
+        )
+        return [
+            NormalizedMedian(cell_id=cell_id, normalized_median=median)
+            for cell_id, median in medians
+        ]
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router_bulk_engine.get("/get-normalized-medians-plot")
+async def get_normalized_medians_plot(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+    channel: str = Query("ph", description="ph | fluo1 | fluo2"),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        plot_bytes = await loop.run_in_executor(
+            bulk_executor, create_normalized_median_boxplot, dbname, label, channel
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
+
+
+@router_bulk_engine.get("/get-raw-intensities", response_model=list[RawIntensity])
+async def get_raw_intensities(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+    channel: str = Query("ph", description="ph | fluo1 | fluo2"),
+) -> list[RawIntensity]:
+    try:
+        loop = asyncio.get_running_loop()
+        raw_rows = await loop.run_in_executor(
+            bulk_executor, get_raw_intensities_by_label, dbname, label, channel
+        )
+        return [
+            RawIntensity(cell_id=cell_id, intensities=intensities)
+            for cell_id, intensities in raw_rows
+        ]
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
