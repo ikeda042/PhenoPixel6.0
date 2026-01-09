@@ -124,6 +124,8 @@ export default function CellsPage() {
   const [isLoadingMap256, setIsLoadingMap256] = useState(false)
   const [map256Error, setMap256Error] = useState<string | null>(null)
   const [map256Channel, setMap256Channel] = useState<'fluo1' | 'fluo2'>('fluo1')
+  const [map256JetUrl, setMap256JetUrl] = useState<string | null>(null)
+  const [map256JetError, setMap256JetError] = useState<string | null>(null)
   const [distributionUrl, setDistributionUrl] = useState<string | null>(null)
   const [isLoadingDistribution, setIsLoadingDistribution] = useState(false)
   const [distributionError, setDistributionError] = useState<string | null>(null)
@@ -581,7 +583,9 @@ export default function CellsPage() {
   useEffect(() => {
     if (!dbName || !currentCellId || contourMode !== 'map256') {
       setMap256Url(null)
+      setMap256JetUrl(null)
       setMap256Error(null)
+      setMap256JetError(null)
       setIsLoadingMap256(false)
       return
     }
@@ -589,7 +593,9 @@ export default function CellsPage() {
     const loadMap256 = async () => {
       setIsLoadingMap256(true)
       setMap256Error(null)
+      setMap256JetError(null)
       setMap256Url(null)
+      setMap256JetUrl(null)
       try {
         const params = new URLSearchParams({
           dbname: dbName,
@@ -597,23 +603,55 @@ export default function CellsPage() {
           image_type: map256Channel,
           degree: '4',
         })
-        const res = await fetch(`${apiBase}/get-cell-map256?${params.toString()}`, {
-          headers: { accept: 'image/png' },
-        })
-        if (!res.ok) {
-          throw new Error(`Request failed (${res.status})`)
+        const fetchMap = async (endpoint: string) => {
+          const res = await fetch(`${apiBase}/${endpoint}?${params.toString()}`, {
+            headers: { accept: 'image/png' },
+          })
+          if (!res.ok) {
+            throw new Error(`Request failed (${res.status})`)
+          }
+          const blob = await res.blob()
+          return URL.createObjectURL(blob)
         }
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        if (isActive) {
-          setMap256Url(url)
+        const [rawResult, jetResult] = await Promise.allSettled([
+          fetchMap('get-cell-map256'),
+          fetchMap('get-cell-map256-jet'),
+        ])
+        if (!isActive) {
+          if (rawResult.status === 'fulfilled') {
+            URL.revokeObjectURL(rawResult.value)
+          }
+          if (jetResult.status === 'fulfilled') {
+            URL.revokeObjectURL(jetResult.value)
+          }
+          return
+        }
+        if (rawResult.status === 'fulfilled') {
+          setMap256Url(rawResult.value)
         } else {
-          URL.revokeObjectURL(url)
+          setMap256Error(
+            rawResult.reason instanceof Error
+              ? rawResult.reason.message
+              : 'Failed to load map256',
+          )
+        }
+        if (jetResult.status === 'fulfilled') {
+          setMap256JetUrl(jetResult.value)
+        } else {
+          setMap256JetError(
+            jetResult.reason instanceof Error
+              ? jetResult.reason.message
+              : 'Failed to load map256 jet',
+          )
         }
       } catch (err) {
         if (isActive) {
+          const message =
+            err instanceof Error ? err.message : 'Failed to load map256'
           setMap256Url(null)
-          setMap256Error(err instanceof Error ? err.message : 'Failed to load map256')
+          setMap256JetUrl(null)
+          setMap256Error(message)
+          setMap256JetError(message)
         }
       } finally {
         if (isActive) setIsLoadingMap256(false)
@@ -752,6 +790,14 @@ export default function CellsPage() {
 
   useEffect(() => {
     return () => {
+      if (map256JetUrl) {
+        URL.revokeObjectURL(map256JetUrl)
+      }
+    }
+  }, [map256JetUrl])
+
+  useEffect(() => {
+    return () => {
       if (distributionUrl) {
         URL.revokeObjectURL(distributionUrl)
       }
@@ -810,7 +856,7 @@ export default function CellsPage() {
         : contourMode === 'heatmap'
           ? heatmapError
           : contourMode === 'map256'
-            ? map256Error
+            ? map256Error || map256JetError
           : contourMode === 'distribution'
             ? distributionError
           : contourError
@@ -1575,7 +1621,13 @@ export default function CellsPage() {
                   borderRadius="lg"
                   overflow="hidden"
                 >
-                  <Box display="flex" alignItems="center" justifyContent="center">
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    width="100%"
+                    height="100%"
+                  >
                     {contourMode === 'replot' ? (
                       isLoadingReplot ? (
                         <Spinner color="ink.700" />
@@ -1628,22 +1680,85 @@ export default function CellsPage() {
                         </Text>
                       )
                     ) : contourMode === 'map256' ? (
-                      isMap256Pending ? (
-                        <Spinner color="ink.700" />
-                      ) : map256Url ? (
+                      <Box
+                        width="100%"
+                        height="100%"
+                        p="2"
+                        display="grid"
+                        gridTemplateColumns="repeat(2, minmax(0, 1fr))"
+                        gap="2"
+                      >
                         <Box
-                          as="img"
-                          src={map256Url ?? undefined}
-                          alt={`${currentCellId} map256`}
-                          width="100%"
-                          height="100%"
-                          objectFit="contain"
-                        />
-                      ) : (
-                        <Text fontSize="sm" color="ink.700">
-                          Map 256 not available.
-                        </Text>
-                      )
+                          display="flex"
+                          flexDirection="column"
+                          alignItems="center"
+                          justifyContent="center"
+                          minW="0"
+                        >
+                          <Text fontSize="xs" color="ink.700">
+                            Map 256
+                          </Text>
+                          <Box
+                            flex="1"
+                            width="100%"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                          >
+                            {map256Url ? (
+                              <Box
+                                as="img"
+                                src={map256Url ?? undefined}
+                                alt={`${currentCellId} map256`}
+                                width="100%"
+                                height="100%"
+                                objectFit="contain"
+                              />
+                            ) : isMap256Pending ? (
+                              <Spinner color="ink.700" />
+                            ) : (
+                              <Text fontSize="xs" color="ink.700">
+                                Map 256 not available.
+                              </Text>
+                            )}
+                          </Box>
+                        </Box>
+                        <Box
+                          display="flex"
+                          flexDirection="column"
+                          alignItems="center"
+                          justifyContent="center"
+                          minW="0"
+                        >
+                          <Text fontSize="xs" color="ink.700">
+                            Jet
+                          </Text>
+                          <Box
+                            flex="1"
+                            width="100%"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                          >
+                            {map256JetUrl ? (
+                              <Box
+                                as="img"
+                                src={map256JetUrl ?? undefined}
+                                alt={`${currentCellId} map256 jet`}
+                                width="100%"
+                                height="100%"
+                                objectFit="contain"
+                              />
+                            ) : isMap256Pending ? (
+                              <Spinner color="ink.700" />
+                            ) : (
+                              <Text fontSize="xs" color="ink.700">
+                                Jet not available.
+                              </Text>
+                            )}
+                          </Box>
+                        </Box>
+                      </Box>
                     ) : contourMode === 'distribution' ? (
                       isDistributionPending ? (
                         <Spinner color="ink.700" />
