@@ -1241,6 +1241,78 @@ def get_cell_heatmap(
         session.close()
 
 
+def get_cell_intensity_distribution(
+    db_name: str,
+    cell_id: str,
+    image_type: Literal["ph", "fluo1", "fluo2"] = "fluo1",
+) -> bytes:
+    session = get_database_session(db_name)
+    try:
+        bind = session.get_bind()
+        if bind is None:
+            raise RuntimeError("Database session is not bound")
+        metadata = MetaData()
+        cells = Table("cells", metadata, autoload_with=bind)
+        column_map = {
+            "ph": "img_ph",
+            "fluo1": "img_fluo1",
+            "fluo2": "img_fluo2",
+        }
+        column_name = column_map.get(image_type)
+        if column_name is None:
+            raise ValueError("Invalid image_type")
+        stmt = (
+            select(cells.c[column_name], cells.c.contour)
+            .where(cells.c.cell_id == cell_id)
+            .limit(1)
+        )
+        row = session.execute(stmt).first()
+        if row is None or row[0] is None:
+            raise LookupError("Cell image not found")
+        if row[1] is None:
+            raise LookupError("Cell contour not found")
+        image = cv2.imdecode(np.frombuffer(bytes(row[0]), np.uint8), cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError("Failed to decode image")
+        if image.ndim == 2:
+            image_gray = image
+        else:
+            image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        contour_raw = bytes(row[1])
+        contour = pickle.loads(contour_raw)
+        contour_array = np.asarray(contour)
+        if contour_array.ndim == 3 and contour_array.shape[1] == 1:
+            contour_np = contour_array.astype(np.int32)
+        elif contour_array.ndim == 2 and contour_array.shape[1] == 2:
+            contour_np = contour_array.reshape(-1, 1, 2).astype(np.int32)
+        else:
+            raise ValueError("Invalid contour format")
+        mask = np.zeros(image_gray.shape, dtype=np.uint8)
+        cv2.fillPoly(mask, [contour_np], 255)
+        points = image_gray[mask.astype(bool)]
+        if points.size == 0:
+            raise ValueError("No pixels inside contour")
+        values = np.clip(points, 0, 255).astype(np.uint8)
+        counts, _ = np.histogram(values, bins=np.arange(257))
+
+        fig, ax = plt.subplots(figsize=(5.6, 3.6), dpi=100)
+        ax.bar(np.arange(256), counts, width=1.0, color="#4a5568")
+        ax.set_xlim(-0.5, 255.5)
+        ax.set_ylim(bottom=0)
+        ax.set_xlabel("fluo intensity")
+        ax.set_ylabel("count")
+        ax.set_xticks([0, 64, 128, 192, 255])
+        ax.grid(axis="y", linestyle="--", alpha=0.2)
+        fig.tight_layout()
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png")
+        plt.close(fig)
+        buf.seek(0)
+        return buf.getvalue()
+    finally:
+        session.close()
+
+
 def get_annotation_zip(
     db_name: str,
     image_type: Literal["ph", "fluo1", "fluo2"] = "ph",
