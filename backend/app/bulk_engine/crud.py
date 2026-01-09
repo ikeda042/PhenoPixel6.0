@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sqlalchemy import MetaData, String, Table, cast, or_, select
 
-from app.database_manager.crud import get_database_session, _build_map256_normalized
+from app.database_manager.crud import DatabaseManagerCrud
 from app.bulk_engine.heatmap_bulk_core import (
     build_heatmap_vectors_csv,
     calculate_heatmap_path_vector,
@@ -103,7 +103,7 @@ def get_cell_lengths_by_label(
     label_str = str(label).strip() if label is not None else ""
     apply_filter = bool(label_str) and label_str.lower() != "all"
 
-    session = get_database_session(db_name)
+    session = DatabaseManagerCrud.get_database_session(db_name)
     try:
         bind = session.get_bind()
         if bind is None:
@@ -151,7 +151,7 @@ def get_cell_areas_by_label(
     label_str = str(label).strip() if label is not None else ""
     apply_filter = bool(label_str) and label_str.lower() != "all"
 
-    session = get_database_session(db_name)
+    session = DatabaseManagerCrud.get_database_session(db_name)
     try:
         bind = session.get_bind()
         if bind is None:
@@ -208,7 +208,7 @@ def get_normalized_medians_by_label(
     if column_name is None:
         raise ValueError("Invalid channel")
 
-    session = get_database_session(db_name)
+    session = DatabaseManagerCrud.get_database_session(db_name)
     try:
         bind = session.get_bind()
         if bind is None:
@@ -266,7 +266,7 @@ def get_raw_intensities_by_label(
     if column_name is None:
         raise ValueError("Invalid channel")
 
-    session = get_database_session(db_name)
+    session = DatabaseManagerCrud.get_database_session(db_name)
     try:
         bind = session.get_bind()
         if bind is None:
@@ -322,7 +322,7 @@ def _collect_heatmap_paths(
     if column_name is None:
         raise ValueError("Invalid channel")
 
-    session = get_database_session(db_name)
+    session = DatabaseManagerCrud.get_database_session(db_name)
     try:
         bind = session.get_bind()
         if bind is None:
@@ -609,7 +609,7 @@ def create_map256_strip(
     if column_name is None:
         raise ValueError("Invalid channel")
 
-    session = get_database_session(db_name)
+    session = DatabaseManagerCrud.get_database_session(db_name)
     try:
         bind = session.get_bind()
         if bind is None:
@@ -640,7 +640,11 @@ def create_map256_strip(
             if image_raw is None or contour_raw is None:
                 continue
             try:
-                normalized = _build_map256_normalized(bytes(image_raw), bytes(contour_raw), degree)
+                normalized = DatabaseManagerCrud.build_map256_normalized(
+                    bytes(image_raw),
+                    bytes(contour_raw),
+                    degree,
+                )
             except Exception:
                 continue
             rotated = cv2.rotate(normalized, cv2.ROTATE_90_CLOCKWISE)
@@ -705,6 +709,105 @@ def create_cell_length_boxplot(
     plt.close(fig)
     buf.seek(0)
     return buf.getvalue()
+
+
+class BulkEngineCrud:
+    @classmethod
+    def get_cell_lengths_by_label(
+        cls, db_name: str, label: Optional[str] = None
+    ) -> list[tuple[str, float]]:
+        return get_cell_lengths_by_label(db_name, label)
+
+    @classmethod
+    def get_cell_areas_by_label(
+        cls, db_name: str, label: Optional[str] = None
+    ) -> list[tuple[str, float]]:
+        return get_cell_areas_by_label(db_name, label)
+
+    @classmethod
+    def get_normalized_medians_by_label(
+        cls, db_name: str, label: Optional[str] = None, channel: str = "ph"
+    ) -> list[tuple[str, float]]:
+        return get_normalized_medians_by_label(db_name, label, channel)
+
+    @classmethod
+    def get_raw_intensities_by_label(
+        cls, db_name: str, label: Optional[str] = None, channel: str = "ph"
+    ) -> list[tuple[str, list[int]]]:
+        return get_raw_intensities_by_label(db_name, label, channel)
+
+    @classmethod
+    def get_heatmap_vectors_csv(
+        cls,
+        db_name: str,
+        label: Optional[str] = None,
+        channel: str = "fluo1",
+        degree: int = 4,
+    ) -> bytes:
+        return get_heatmap_vectors_csv(db_name, label=label, channel=channel, degree=degree)
+
+    @classmethod
+    def create_heatmap_abs_plot(
+        cls,
+        db_name: str,
+        label: Optional[str] = None,
+        channel: str = "fluo1",
+        degree: int = 4,
+    ) -> bytes:
+        return create_heatmap_abs_plot(db_name, label=label, channel=channel, degree=degree)
+
+    @classmethod
+    def create_heatmap_rel_plot(
+        cls,
+        db_name: str,
+        label: Optional[str] = None,
+        channel: str = "fluo1",
+        degree: int = 4,
+    ) -> bytes:
+        return create_heatmap_rel_plot(db_name, label=label, channel=channel, degree=degree)
+
+    @classmethod
+    def create_hu_separation_overlay(
+        cls,
+        db_name: str,
+        label: Optional[str] = None,
+        channel: str = "fluo1",
+        degree: int = 4,
+        center_ratio: float = 0.15,
+        max_to_min_ratio: float = 0.9,
+    ) -> bytes:
+        return create_hu_separation_overlay(
+            db_name,
+            label=label,
+            channel=channel,
+            degree=degree,
+            center_ratio=center_ratio,
+            max_to_min_ratio=max_to_min_ratio,
+        )
+
+    @classmethod
+    def create_map256_strip(
+        cls,
+        db_name: str,
+        label: Optional[str] = None,
+        channel: str = "fluo1",
+        degree: int = 4,
+    ) -> bytes:
+        return create_map256_strip(db_name, label=label, channel=channel, degree=degree)
+
+    @classmethod
+    def create_cell_length_boxplot(cls, db_name: str, label: Optional[str] = None) -> bytes:
+        return create_cell_length_boxplot(db_name, label)
+
+    @classmethod
+    def create_cell_area_boxplot(cls, db_name: str, label: Optional[str] = None) -> bytes:
+        return create_cell_area_boxplot(db_name, label)
+
+    @classmethod
+    def create_normalized_median_boxplot(
+        cls, db_name: str, label: Optional[str] = None, channel: str = "ph"
+    ) -> bytes:
+        return create_normalized_median_boxplot(db_name, label, channel)
 
 
 def create_cell_area_boxplot(

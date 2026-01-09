@@ -8,20 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 
-from app.bulk_engine.crud import (
-    create_cell_area_boxplot,
-    create_cell_length_boxplot,
-    create_heatmap_abs_plot,
-    create_heatmap_rel_plot,
-    create_hu_separation_overlay,
-    create_map256_strip,
-    create_normalized_median_boxplot,
-    get_cell_areas_by_label,
-    get_cell_lengths_by_label,
-    get_heatmap_vectors_csv,
-    get_normalized_medians_by_label,
-    get_raw_intensities_by_label,
-)
+from app.bulk_engine.crud import BulkEngineCrud
 from app.slack.notifier import notify_slack_bulk_engine_completed
 
 
@@ -85,7 +72,7 @@ async def get_heatmap_vectors_csv_endpoint(
         loop = asyncio.get_running_loop()
         csv_bytes = await loop.run_in_executor(
             heatmap_bulk_executor,
-            get_heatmap_vectors_csv,
+            BulkEngineCrud.get_heatmap_vectors_csv,
             dbname,
             label,
             channel,
@@ -113,7 +100,7 @@ async def get_heatmap_abs_plot_endpoint(
         loop = asyncio.get_running_loop()
         plot_bytes = await loop.run_in_executor(
             heatmap_bulk_executor,
-            create_heatmap_abs_plot,
+            BulkEngineCrud.create_heatmap_abs_plot,
             dbname,
             label,
             channel,
@@ -152,7 +139,7 @@ async def get_heatmap_rel_plot_endpoint(
         loop = asyncio.get_running_loop()
         plot_bytes = await loop.run_in_executor(
             heatmap_bulk_executor,
-            create_heatmap_rel_plot,
+            BulkEngineCrud.create_heatmap_rel_plot,
             dbname,
             label,
             channel,
@@ -193,7 +180,7 @@ async def get_hu_separation_overlay_endpoint(
         loop = asyncio.get_running_loop()
         overlay_bytes = await loop.run_in_executor(
             heatmap_bulk_executor,
-            create_hu_separation_overlay,
+            BulkEngineCrud.create_hu_separation_overlay,
             dbname,
             label,
             channel,
@@ -236,7 +223,7 @@ async def get_map256_strip_endpoint(
         loop = asyncio.get_running_loop()
         image_bytes = await loop.run_in_executor(
             heatmap_bulk_executor,
-            create_map256_strip,
+            BulkEngineCrud.create_map256_strip,
             dbname,
             label,
             channel,
@@ -260,7 +247,12 @@ async def get_cell_lengths(
 ) -> list[CellLength]:
     try:
         loop = asyncio.get_running_loop()
-        lengths = await loop.run_in_executor(bulk_executor, get_cell_lengths_by_label, dbname, label)
+        lengths = await loop.run_in_executor(
+            bulk_executor,
+            BulkEngineCrud.get_cell_lengths_by_label,
+            dbname,
+            label,
+        )
         return [CellLength(cell_id=cell_id, length=length) for cell_id, length in lengths]
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -278,7 +270,7 @@ async def get_cell_lengths_plot(
     try:
         loop = asyncio.get_running_loop()
         plot_bytes = await loop.run_in_executor(
-            bulk_executor, create_cell_length_boxplot, dbname, label
+            bulk_executor, BulkEngineCrud.create_cell_length_boxplot, dbname, label
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -297,7 +289,7 @@ def get_cell_areas(
     label: str | None = Query(None),
 ) -> list[CellArea]:
     try:
-        areas = get_cell_areas_by_label(dbname, label)
+        areas = BulkEngineCrud.get_cell_areas_by_label(dbname, label)
         return [CellArea(cell_id=cell_id, area=area) for cell_id, area in areas]
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -315,7 +307,7 @@ async def get_cell_areas_plot(
     try:
         loop = asyncio.get_running_loop()
         plot_bytes = await loop.run_in_executor(
-            bulk_executor, create_cell_area_boxplot, dbname, label
+            bulk_executor, BulkEngineCrud.create_cell_area_boxplot, dbname, label
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -337,7 +329,11 @@ async def get_normalized_medians(
     try:
         loop = asyncio.get_running_loop()
         medians = await loop.run_in_executor(
-            bulk_executor, get_normalized_medians_by_label, dbname, label, channel
+            bulk_executor,
+            BulkEngineCrud.get_normalized_medians_by_label,
+            dbname,
+            label,
+            channel,
         )
         return [
             NormalizedMedian(cell_id=cell_id, normalized_median=median)
@@ -360,7 +356,11 @@ async def get_normalized_medians_plot(
     try:
         loop = asyncio.get_running_loop()
         plot_bytes = await loop.run_in_executor(
-            bulk_executor, create_normalized_median_boxplot, dbname, label, channel
+            bulk_executor,
+            BulkEngineCrud.create_normalized_median_boxplot,
+            dbname,
+            label,
+            channel,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -382,7 +382,11 @@ async def get_raw_intensities(
     try:
         loop = asyncio.get_running_loop()
         raw_rows = await loop.run_in_executor(
-            bulk_executor, get_raw_intensities_by_label, dbname, label, channel
+            bulk_executor,
+            BulkEngineCrud.get_raw_intensities_by_label,
+            dbname,
+            label,
+            channel,
         )
         return [
             RawIntensity(cell_id=cell_id, intensities=intensities)

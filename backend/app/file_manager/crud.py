@@ -74,3 +74,40 @@ async def delete_file(filename: str) -> str:
         raise FileNotFoundError("File not found")
     await aioos.remove(file_path)
     return file_path.name
+
+
+class FileManagerCrud:
+    FILES_DIR = FILES_DIR
+    UPLOAD_CHUNK_SIZE = UPLOAD_CHUNK_SIZE
+
+    @classmethod
+    def ensure_files_dir(cls) -> Path:
+        return ensure_files_dir()
+
+    @classmethod
+    def sanitize_filename(cls, filename: str) -> str:
+        return sanitize_filename(filename)
+
+    @classmethod
+    def resolve_file_path(cls, filename: str) -> Path:
+        return resolve_file_path(filename)
+
+    @classmethod
+    async def list_files(cls) -> list[dict[str, object]]:
+        return await list_files()
+
+    @classmethod
+    async def save_upload(
+        cls, filename: str, reader: AsyncIterator[bytes]
+    ) -> dict[str, object]:
+        return await save_upload(filename, reader)
+
+    @classmethod
+    def read_file_chunks(
+        cls, path: Path, chunk_size: int = 1024 * 1024
+    ) -> AsyncIterator[bytes]:
+        return read_file_chunks(path, chunk_size)
+
+    @classmethod
+    async def delete_file(cls, filename: str) -> str:
+        return await delete_file(filename)
