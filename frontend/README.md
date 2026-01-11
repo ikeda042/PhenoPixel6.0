@@ -1,16 +1,65 @@
-# React + Vite
+# PhenoPixel 6.0 Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite UI for PhenoPixel 6.0. The app talks to the backend API under
+`/api/v1` and is built to be served either standalone in dev or by the backend
+in production.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js with npm
+- Backend running for API access (defaults to port 3000)
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```sh
+cd frontend
+npm install
+```
 
-## Expanding the ESLint configuration
+## Development
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```sh
+npm run dev
+```
+
+- Dev server: http://localhost:3001
+- API base default (dev): `http://<host>:3000/api/v1`
+
+### API Base Override
+
+Set `VITE_API_BASE` to point to a different backend. You can include or omit
+`/api/v1`; it is added automatically if missing.
+
+```sh
+VITE_API_BASE=http://localhost:3000 npm run dev
+```
+
+Restart the dev server after changing env vars.
+
+## Build
+
+```sh
+npm run build
+```
+
+Outputs to `frontend/dist`. The backend serves these static assets when the
+folder exists (see `backend/main.py`).
+
+## Preview
+
+```sh
+npm run preview
+```
+
+## Lint
+
+```sh
+npm run lint
+```
+
+## Project Layout
+
+- `frontend/src/pages` routes and page-level views
+- `frontend/src/components` shared UI components
+- `frontend/src/utils/apiBase.ts` API base resolution logic
+- `frontend/src/theme.ts` Chakra theme configuration
