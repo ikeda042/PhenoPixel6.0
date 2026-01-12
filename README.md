@@ -9,3 +9,7 @@ cd ./backend/
 pip install -r ./requirements.txt
 python main.py
 ```
+
+## Docs
+
+- Bulk Engine API: `backend/app/bulk_engine/README.md`
