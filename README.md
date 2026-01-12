@@ -12,5 +12,5 @@ python main.py
 
 ## Docs
 
-- Bulk Engine API: `backend/app/bulk_engine/README.md`
-- Frontend: `frontend/README.md`
+- Bulk Engine API: [backend/app/bulk_engine/README.md](backend/app/bulk_engine/README.md)
+- Frontend: [frontend/README.md](frontend/README.md)
