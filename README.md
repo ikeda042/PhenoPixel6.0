@@ -13,4 +13,5 @@ python main.py
 ## Docs
 
 - Bulk Engine API: [backend/app/bulk_engine/README.md](backend/app/bulk_engine/README.md)
+- Cell Extraction API: [backend/app/cellextraction/README.md](backend/app/cellextraction/README.md)
 - Frontend: [frontend/README.md](frontend/README.md)
