@@ -97,6 +97,7 @@ export default function BulkEnginePage() {
   const dbName = searchParams.get('dbname') ?? ''
   const apiBase = useMemo(() => getApiBase(), [])
   const bulkZoom = 0.75
+  const previewDownscale = 0.5
   const scaledViewportHeight = `calc(100vh / ${bulkZoom})`
 
   const [cells, setCells] = useState<BulkCell[]>([])
@@ -180,6 +181,7 @@ export default function BulkEnginePage() {
         const params = new URLSearchParams({
           dbname: dbName,
           image_type: selectedChannel,
+          downscale: String(previewDownscale),
         })
         const res = await fetch(`${apiBase}/get-annotation-zip?${params.toString()}`, {
           headers: { accept: 'application/zip' },
