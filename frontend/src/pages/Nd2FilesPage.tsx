@@ -21,7 +21,6 @@ import {
   InputGroup,
   Stack,
   Text,
-  Tooltip,
 } from '@chakra-ui/react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
@@ -58,7 +57,6 @@ export default function Nd2FilesPage() {
   const [deletingFile, setDeletingFile] = useState<string | null>(null)
   const [parsingFile, setParsingFile] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const nd2ViewerDisabled = true
 
   const fetchFiles = useCallback(async () => {
     setIsLoading(true)
@@ -531,32 +529,17 @@ export default function Nd2FilesPage() {
                     >
                       Extract cells
                     </Button>
-                    <Tooltip.Root>
-                      <Tooltip.Trigger asChild>
-                        <Box as="span" display="inline-flex" cursor="not-allowed">
-                          <Button
-                            size="xs"
-                            bg="tide.500"
-                            color="ink.900"
-                            _hover={{ bg: 'tide.400' }}
-                            onClick={
-                              nd2ViewerDisabled ? undefined : () => handleParse(file)
-                            }
-                            loading={parsingFile === file}
-                            isDisabled={nd2ViewerDisabled}
-                            pointerEvents="none"
-                          >
-                            ND2 viewer
-                          </Button>
-                        </Box>
-                      </Tooltip.Trigger>
-                      <Tooltip.Positioner>
-                        <Tooltip.Content fontSize="xs">
-                          <Tooltip.Arrow />
-                          Temporarily disabled
-                        </Tooltip.Content>
-                      </Tooltip.Positioner>
-                    </Tooltip.Root>
+                    <Button
+                      size="xs"
+                      bg="tide.500"
+                      color="ink.900"
+                      _hover={{ bg: 'tide.400' }}
+                      onClick={() => handleParse(file)}
+                      loading={parsingFile === file}
+                      isDisabled={isBulkDeleting}
+                    >
+                      ND2 viewer
+                    </Button>
                     <Button
                       size="xs"
                       variant="outline"
