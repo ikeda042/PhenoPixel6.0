@@ -11,6 +11,7 @@ import {
   BreadcrumbRoot,
   BreadcrumbSeparator,
   Button,
+  Checkbox,
   Container,
   Grid,
   Heading,
@@ -32,6 +33,12 @@ type Nd2FilesResponse = {
   files?: string[]
 }
 
+type Nd2BulkDeleteResponse = {
+  deleted?: string[]
+  invalid?: string[]
+  missing?: string[]
+}
+
 const SearchGlyph = () => (
   <Box position="relative" w="16px" h="16px" color="ink.700">
     <Search size={16} />
@@ -44,8 +51,10 @@ export default function Nd2FilesPage() {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [files, setFiles] = useState<string[]>([])
   const [searchText, setSearchText] = useState('')
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [deletingFile, setDeletingFile] = useState<string | null>(null)
   const [parsingFile, setParsingFile] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -99,7 +108,7 @@ export default function Nd2FilesPage() {
 
   const handleDelete = useCallback(
     async (file: string) => {
-      if (deletingFile) return
+      if (deletingFile || isBulkDeleting) return
       const confirmed = window.confirm(`Delete ${file}?`)
       if (!confirmed) return
       setDeletingFile(file)
@@ -120,7 +129,7 @@ export default function Nd2FilesPage() {
         setDeletingFile(null)
       }
     },
-    [apiBase, deletingFile, fetchFiles],
+    [apiBase, deletingFile, fetchFiles, isBulkDeleting],
   )
 
   const handleParse = useCallback(
@@ -155,6 +164,23 @@ export default function Nd2FilesPage() {
     void fetchFiles()
   }, [fetchFiles])
 
+  useEffect(() => {
+    setSelectedFiles((prev) => {
+      if (prev.size === 0) return prev
+      const available = new Set(files)
+      let changed = false
+      const next = new Set<string>()
+      prev.forEach((file) => {
+        if (available.has(file)) {
+          next.add(file)
+        } else {
+          changed = true
+        }
+      })
+      return changed ? next : prev
+    })
+  }, [files])
+
   const handleUploadClick = () => {
     inputRef.current?.click()
   }
@@ -171,6 +197,89 @@ export default function Nd2FilesPage() {
     if (!query) return files
     return files.filter((file) => file.toLowerCase().includes(query))
   }, [files, searchText])
+
+  const selectedCount = selectedFiles.size
+  const filteredSelectedCount = useMemo(() => {
+    if (filteredFiles.length === 0 || selectedFiles.size === 0) return 0
+    let count = 0
+    filteredFiles.forEach((file) => {
+      if (selectedFiles.has(file)) {
+        count += 1
+      }
+    })
+    return count
+  }, [filteredFiles, selectedFiles])
+  const allFilteredSelected =
+    filteredFiles.length > 0 && filteredSelectedCount === filteredFiles.length
+
+  const handleSelectionChange = useCallback((file: string, checked: boolean) => {
+    setSelectedFiles((prev) => {
+      const next = new Set(prev)
+      if (checked) {
+        next.add(file)
+      } else {
+        next.delete(file)
+      }
+      return next
+    })
+  }, [])
+
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (filteredFiles.length === 0) return
+      setSelectedFiles((prev) => {
+        const next = new Set(prev)
+        filteredFiles.forEach((file) => {
+          if (checked) {
+            next.add(file)
+          } else {
+            next.delete(file)
+          }
+        })
+        return next
+      })
+    },
+    [filteredFiles],
+  )
+
+  const handleBulkDelete = useCallback(async () => {
+    if (isBulkDeleting || deletingFile || selectedFiles.size === 0) return
+    const selectedList = Array.from(selectedFiles)
+    const confirmed = window.confirm(`Delete ${selectedList.length} file(s)?`)
+    if (!confirmed) return
+    setIsBulkDeleting(true)
+    setError(null)
+    try {
+      const res = await fetch(`${apiBase}/nd2_files/bulk-delete`, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ filenames: selectedList }),
+      })
+      if (!res.ok) {
+        throw new Error(`Bulk delete failed (${res.status})`)
+      }
+      const data = (await res.json()) as Nd2BulkDeleteResponse
+      await fetchFiles()
+      setSelectedFiles(new Set())
+      const issues: string[] = []
+      if (data.missing?.length) {
+        issues.push(`Missing: ${data.missing.join(', ')}`)
+      }
+      if (data.invalid?.length) {
+        issues.push(`Invalid: ${data.invalid.join(', ')}`)
+      }
+      if (issues.length > 0) {
+        setError(`Some files could not be deleted. ${issues.join(' ')}`)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete files')
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }, [apiBase, deletingFile, fetchFiles, isBulkDeleting, selectedFiles])
 
   return (
     <Box minH="100vh" bg="sand.50" color="ink.900">
@@ -262,6 +371,67 @@ export default function Nd2FilesPage() {
             </Button>
           </Stack>
 
+          <HStack
+            spacing="3"
+            align="center"
+            justify="space-between"
+            flexWrap="wrap"
+          >
+            <HStack spacing="3" align="center" flexWrap="wrap">
+              <Checkbox.Root
+                checked={allFilteredSelected}
+                onCheckedChange={(details) =>
+                  handleSelectAll(details.checked === true)
+                }
+                colorPalette="tide"
+                display="flex"
+                alignItems="center"
+                gap="2"
+              >
+                <Checkbox.HiddenInput />
+                <Checkbox.Control
+                  borderColor="tide.400"
+                  _checked={{
+                    bg: 'tide.500',
+                    borderColor: 'tide.500',
+                    color: 'ink.900',
+                  }}
+                />
+                <Checkbox.Label fontSize="sm" color="ink.700">
+                  Select all
+                </Checkbox.Label>
+              </Checkbox.Root>
+              <Text fontSize="xs" color="ink.700">
+                Selected: {selectedCount}
+              </Text>
+            </HStack>
+            <HStack spacing="2" align="center" flexWrap="wrap">
+              <Button
+                size="xs"
+                variant="outline"
+                borderColor="sand.200"
+                color="ink.700"
+                _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                onClick={() => setSelectedFiles(new Set())}
+                isDisabled={selectedCount === 0}
+              >
+                Clear
+              </Button>
+              <Button
+                size="xs"
+                variant="outline"
+                borderColor="red.400"
+                color="red.400"
+                _hover={{ bg: 'red.500/10' }}
+                onClick={handleBulkDelete}
+                loading={isBulkDeleting}
+                isDisabled={selectedCount === 0 || isBulkDeleting || !!deletingFile}
+              >
+                Delete selected
+              </Button>
+            </HStack>
+          </HStack>
+
           <Box
             bg="sand.100"
             border="1px solid"
@@ -322,9 +492,29 @@ export default function Nd2FilesPage() {
                   _hover={{ bg: 'sand.200' }}
                   transition="background 0.2s ease"
                 >
-                  <Text fontSize="sm" fontWeight="500">
-                    {file}
-                  </Text>
+                  <Checkbox.Root
+                    checked={selectedFiles.has(file)}
+                    onCheckedChange={(details) =>
+                      handleSelectionChange(file, details.checked === true)
+                    }
+                    colorPalette="tide"
+                    display="flex"
+                    alignItems="center"
+                    gap="3"
+                  >
+                    <Checkbox.HiddenInput />
+                    <Checkbox.Control
+                      borderColor="tide.400"
+                      _checked={{
+                        bg: 'tide.500',
+                        borderColor: 'tide.500',
+                        color: 'ink.900',
+                      }}
+                    />
+                    <Checkbox.Label fontSize="sm" fontWeight="500" color="ink.900">
+                      {file}
+                    </Checkbox.Label>
+                  </Checkbox.Root>
                   <HStack
                     justify={{ base: 'flex-start', md: 'flex-end' }}
                     spacing="2"
@@ -375,6 +565,7 @@ export default function Nd2FilesPage() {
                       _hover={{ bg: 'red.500/10' }}
                       onClick={() => handleDelete(file)}
                       loading={deletingFile === file}
+                      isDisabled={isBulkDeleting}
                       aria-label={`Delete ${file}`}
                       minW="auto"
                       px="2"

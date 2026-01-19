@@ -4,10 +4,15 @@ from pathlib import Path
 import aiofiles
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 router_nd2 = APIRouter(tags=["nd2files"])
 UPLOAD_DIR = Path(__file__).resolve().parent
 UPLOAD_CHUNK_SIZE = 1024 * 1024 * 100
+
+
+class Nd2BulkDeleteRequest(BaseModel):
+    filenames: list[str]
 
 
 def _ensure_upload_dir() -> Path:
@@ -72,3 +77,38 @@ def delete_nd2_file(filename: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return JSONResponse(content={"deleted": True, "filename": sanitized})
+
+
+@router_nd2.post("/nd2_files/bulk-delete")
+def bulk_delete_nd2_files(payload: Nd2BulkDeleteRequest):
+    if not payload.filenames:
+        raise HTTPException(status_code=400, detail="No filenames provided")
+
+    upload_dir = _ensure_upload_dir()
+    deleted: list[str] = []
+    missing: list[str] = []
+    invalid: list[str] = []
+    seen: set[str] = set()
+
+    for filename in payload.filenames:
+        if filename in seen:
+            continue
+        seen.add(filename)
+        try:
+            sanitized = _sanitize_nd2_filename(filename)
+        except HTTPException:
+            invalid.append(filename)
+            continue
+        file_path = upload_dir / sanitized
+        if not file_path.exists():
+            missing.append(sanitized)
+            continue
+        try:
+            file_path.unlink()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        deleted.append(sanitized)
+
+    return JSONResponse(
+        content={"deleted": deleted, "missing": missing, "invalid": invalid}
+    )
