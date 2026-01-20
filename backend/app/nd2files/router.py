@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
@@ -78,23 +79,138 @@ def _to_jsonable(value: Any, depth: int = 0, max_depth: int = 6) -> Any:
     return str(value)
 
 
+_DATETIME_FORMATS = (
+    "%m/%d/%Y  %H:%M:%S",
+    "%m/%d/%Y  %I:%M:%S %p",
+    "%m/%d/%Y %H:%M:%S",
+    "%m/%d/%Y %I:%M:%S %p",
+    "%d/%m/%Y %H:%M:%S",
+    "%Y/%m/%d %H:%M:%S",
+    "%Y-%m-%d %H:%M:%S",
+    "%Y/%m/%d %H:%M:%S.%f",
+    "%Y-%m-%d %H:%M:%S.%f",
+    "%Y-%m-%dT%H:%M:%S",
+    "%Y-%m-%dT%H:%M:%S.%f",
+)
+_DATETIME_REGEX = re.compile(
+    r"(?:\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?|\d{2}[-/]\d{2}[-/]\d{4}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?: ?[AP]M)?)"
+)
+
+
+def _parse_datetime_string(value: str) -> datetime | None:
+    if not value:
+        return None
+    trimmed = value.strip()
+    try:
+        return datetime.fromisoformat(trimmed)
+    except ValueError:
+        pass
+    for fmt in _DATETIME_FORMATS:
+        try:
+            return datetime.strptime(trimmed, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _extract_text_lines(text_info: Any) -> list[str]:
+    if not text_info:
+        return []
+    if isinstance(text_info, dict):
+        values = text_info.values()
+    elif isinstance(text_info, (list, tuple, set)):
+        values = text_info
+    else:
+        values = [text_info]
+    lines: list[str] = []
+    for value in values:
+        if isinstance(value, bytes):
+            try:
+                text = value.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+        else:
+            text = str(value)
+        text = text.strip()
+        if text:
+            lines.append(text)
+    return lines
+
+
+def _parse_datetime_from_lines(lines: list[str]) -> datetime | None:
+    for line in lines:
+        parsed = _parse_datetime_string(line)
+        if parsed:
+            return parsed
+        for match in _DATETIME_REGEX.finditer(line):
+            parsed = _parse_datetime_string(match.group(0))
+            if parsed:
+                return parsed
+    return None
+
+
+def _safe_raw_metadata(raw_metadata: Any, attr: str) -> Any:
+    try:
+        return getattr(raw_metadata, attr)
+    except Exception:
+        return None
+
+
+def _materialize_iterable(value: Any) -> Any:
+    if value is None or isinstance(value, (str, bytes, dict, list, tuple, set, np.ndarray)):
+        return value
+    if isinstance(value, np.generic):
+        return value.item()
+    try:
+        return list(value)
+    except TypeError:
+        return value
+
+
 def _extract_nd2_metadata(file_path: Path) -> dict[str, Any]:
     stats = file_path.stat()
     created_ts = getattr(stats, "st_birthtime", None)
     if created_ts is None:
         created_ts = stats.st_ctime
     with nd2reader.ND2Reader(str(file_path)) as images:
+        raw_metadata = getattr(images.parser, "_raw_metadata", None)
+        raw_text_info = (
+            _safe_raw_metadata(raw_metadata, "image_text_info")
+            if raw_metadata is not None
+            else None
+        )
+        text_lines = _extract_text_lines(raw_text_info)
         nd2_created = None
         try:
             nd2_created = images.metadata.get("date")
         except Exception:
             nd2_created = None
+        start_time = None
+        start_time_dt = None
+        start_time_source = None
         if isinstance(nd2_created, datetime):
-            created_time = nd2_created
-            created_time_source = "nd2_metadata"
+            start_time = nd2_created
+            start_time_dt = nd2_created
+            start_time_source = "metadata.date"
         elif isinstance(nd2_created, str) and nd2_created:
-            created_time = nd2_created
-            created_time_source = "nd2_metadata"
+            parsed = _parse_datetime_string(nd2_created)
+            if parsed:
+                start_time = parsed
+                start_time_dt = parsed
+            else:
+                start_time = nd2_created
+            start_time_source = "metadata.date"
+        if start_time is None:
+            parsed = _parse_datetime_from_lines(text_lines)
+            if parsed:
+                start_time = parsed
+                start_time_dt = parsed
+                start_time_source = "text_info"
+        if start_time is not None:
+            created_time = start_time
+            created_time_source = (
+                "nd2_metadata" if start_time_source == "metadata.date" else "nd2_text_info"
+            )
         else:
             created_time = datetime.fromtimestamp(created_ts)
             created_time_source = "filesystem"
@@ -116,14 +232,59 @@ def _extract_nd2_metadata(file_path: Path) -> dict[str, Any]:
             reader_info["frame_rate_fps"] = float(images.frame_rate)
         except Exception:
             reader_info["frame_rate_fps"] = None
+        timesteps_ms = None
         try:
-            reader_info["timesteps_ms"] = images.timesteps
+            timesteps_ms = images.timesteps
         except Exception:
-            reader_info["timesteps_ms"] = None
+            timesteps_ms = None
+        reader_info["timesteps_ms"] = timesteps_ms
         try:
             reader_info["parser_supported"] = bool(images.parser.supported)
         except Exception:
             reader_info["parser_supported"] = None
+        events = None
+        try:
+            events = images.events
+        except Exception:
+            events = None
+        frame_timestamps = None
+        if start_time_dt is not None and timesteps_ms is not None:
+            try:
+                frame_timestamps = [
+                    (start_time_dt + timedelta(milliseconds=float(ms))).isoformat()
+                    for ms in list(timesteps_ms)
+                ]
+            except Exception:
+                frame_timestamps = None
+        raw_metadata_details: dict[str, Any] | None = None
+        if raw_metadata is not None:
+            raw_metadata_details = {}
+            raw_metadata_details["image_text_info"] = raw_text_info
+            for attr in (
+                "app_info",
+                "camera_exposure_time",
+                "camera_temp",
+                "custom_data",
+                "grabber_settings",
+                "image_attributes",
+                "image_calibration",
+                "image_events",
+                "image_metadata",
+                "image_metadata_sequence",
+                "lut_data",
+                "pfs_offset",
+                "pfs_status",
+                "roi_metadata",
+                "x_data",
+                "y_data",
+                "z_data",
+            ):
+                value = _safe_raw_metadata(raw_metadata, attr)
+                if value is not None:
+                    raw_metadata_details[attr] = _materialize_iterable(value)
+            acquisition_times = _safe_raw_metadata(raw_metadata, "acquisition_times")
+            if acquisition_times is not None:
+                raw_metadata_details["acquisition_times_s"] = list(acquisition_times)
         payload: dict[str, Any] = {
             "file": {
                 "name": file_path.name,
@@ -132,9 +293,18 @@ def _extract_nd2_metadata(file_path: Path) -> dict[str, Any]:
                 "created_time": created_time,
                 "created_time_source": created_time_source,
             },
+            "acquisition": {
+                "start_time": start_time,
+                "start_time_source": start_time_source,
+                "timesteps_ms": timesteps_ms,
+                "frame_timestamps": frame_timestamps,
+                "events": events,
+            },
             "reader": reader_info,
             "metadata": getattr(images, "metadata", None),
         }
+        if raw_metadata_details:
+            payload["raw_metadata"] = raw_metadata_details
     return _to_jsonable(payload)
 
 
