@@ -84,6 +84,20 @@ def _extract_nd2_metadata(file_path: Path) -> dict[str, Any]:
     if created_ts is None:
         created_ts = stats.st_ctime
     with nd2reader.ND2Reader(str(file_path)) as images:
+        nd2_created = None
+        try:
+            nd2_created = images.metadata.get("date")
+        except Exception:
+            nd2_created = None
+        if isinstance(nd2_created, datetime):
+            created_time = nd2_created
+            created_time_source = "nd2_metadata"
+        elif isinstance(nd2_created, str) and nd2_created:
+            created_time = nd2_created
+            created_time_source = "nd2_metadata"
+        else:
+            created_time = datetime.fromtimestamp(created_ts)
+            created_time_source = "filesystem"
         reader_info: dict[str, Any] = {
             "axes": getattr(images, "axes", None),
             "sizes": dict(getattr(images, "sizes", {}) or {}),
@@ -115,7 +129,8 @@ def _extract_nd2_metadata(file_path: Path) -> dict[str, Any]:
                 "name": file_path.name,
                 "size_bytes": int(stats.st_size),
                 "modified_time": datetime.fromtimestamp(stats.st_mtime).isoformat(),
-                "created_time": datetime.fromtimestamp(created_ts).isoformat(),
+                "created_time": created_time,
+                "created_time_source": created_time_source,
             },
             "reader": reader_info,
             "metadata": getattr(images, "metadata", None),
