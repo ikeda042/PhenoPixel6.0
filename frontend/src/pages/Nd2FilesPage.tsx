@@ -48,6 +48,7 @@ export default function Nd2FilesPage() {
   const navigate = useNavigate()
   const apiBase = useMemo(() => getApiBase(), [])
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const metadataRequestRef = useRef(0)
   const [files, setFiles] = useState<string[]>([])
   const [searchText, setSearchText] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
@@ -57,6 +58,10 @@ export default function Nd2FilesPage() {
   const [deletingFile, setDeletingFile] = useState<string | null>(null)
   const [parsingFile, setParsingFile] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [metadataFile, setMetadataFile] = useState<string | null>(null)
+  const [metadataData, setMetadataData] = useState<unknown | null>(null)
+  const [metadataError, setMetadataError] = useState<string | null>(null)
+  const [isMetadataLoading, setIsMetadataLoading] = useState(false)
 
   const fetchFiles = useCallback(async () => {
     setIsLoading(true)
@@ -158,6 +163,47 @@ export default function Nd2FilesPage() {
     [apiBase, navigate, parsingFile],
   )
 
+  const handleMetadata = useCallback(
+    async (file: string) => {
+      const requestId = metadataRequestRef.current + 1
+      metadataRequestRef.current = requestId
+      setMetadataFile(file)
+      setMetadataData(null)
+      setMetadataError(null)
+      setIsMetadataLoading(true)
+      try {
+        const res = await fetch(
+          `${apiBase}/nd2_files/${encodeURIComponent(file)}/metadata`,
+          { headers: { accept: 'application/json' } },
+        )
+        if (!res.ok) {
+          throw new Error(`Metadata request failed (${res.status})`)
+        }
+        const data = (await res.json()) as unknown
+        if (metadataRequestRef.current !== requestId) return
+        setMetadataData(data)
+      } catch (err) {
+        if (metadataRequestRef.current !== requestId) return
+        setMetadataError(
+          err instanceof Error ? err.message : 'Failed to load metadata',
+        )
+      } finally {
+        if (metadataRequestRef.current === requestId) {
+          setIsMetadataLoading(false)
+        }
+      }
+    },
+    [apiBase],
+  )
+
+  const handleMetadataClose = useCallback(() => {
+    metadataRequestRef.current += 1
+    setMetadataFile(null)
+    setMetadataData(null)
+    setMetadataError(null)
+    setIsMetadataLoading(false)
+  }, [])
+
   useEffect(() => {
     void fetchFiles()
   }, [fetchFiles])
@@ -209,6 +255,15 @@ export default function Nd2FilesPage() {
   }, [filteredFiles, selectedFiles])
   const allFilteredSelected =
     filteredFiles.length > 0 && filteredSelectedCount === filteredFiles.length
+
+  const metadataText = useMemo(() => {
+    if (!metadataData) return ''
+    try {
+      return JSON.stringify(metadataData, null, 2)
+    } catch {
+      return String(metadataData)
+    }
+  }, [metadataData])
 
   const handleSelectionChange = useCallback((file: string, checked: boolean) => {
     setSelectedFiles((prev) => {
@@ -543,6 +598,18 @@ export default function Nd2FilesPage() {
                     <Button
                       size="xs"
                       variant="outline"
+                      borderColor="sand.200"
+                      color="ink.700"
+                      _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                      onClick={() => handleMetadata(file)}
+                      loading={isMetadataLoading && metadataFile === file}
+                      isDisabled={isBulkDeleting}
+                    >
+                      Metadata
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
                       borderColor="red.400"
                       color="red.400"
                       _hover={{ bg: 'red.500/10' }}
@@ -569,6 +636,81 @@ export default function Nd2FilesPage() {
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
+
+      {metadataFile && (
+        <Box
+          position="fixed"
+          inset="0"
+          bg="rgba(11, 13, 16, 0.55)"
+          zIndex={1400}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          px="4"
+          onClick={handleMetadataClose}
+        >
+          <Box
+            bg="sand.100"
+            border="1px solid"
+            borderColor="sand.200"
+            borderRadius="xl"
+            p="4"
+            w="100%"
+            maxW={{ base: '90vw', md: '860px' }}
+            maxH="80vh"
+            display="flex"
+            flexDirection="column"
+            gap="3"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <HStack justify="space-between" align="center" spacing="3">
+              <Text fontSize="sm" fontWeight="600" color="ink.900">
+                Metadata: {metadataFile}
+              </Text>
+              <Button
+                size="xs"
+                variant="outline"
+                borderColor="sand.200"
+                color="ink.700"
+                _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                onClick={handleMetadataClose}
+              >
+                Close
+              </Button>
+            </HStack>
+            {isMetadataLoading && (
+              <Text fontSize="sm" color="ink.700">
+                Loading metadata...
+              </Text>
+            )}
+            {!isMetadataLoading && metadataError && (
+              <Text fontSize="sm" color="violet.300">
+                {metadataError}
+              </Text>
+            )}
+            {!isMetadataLoading && !metadataError && (
+              <Box
+                as="pre"
+                fontSize="xs"
+                color="ink.700"
+                bg="sand.50"
+                border="1px solid"
+                borderColor="sand.200"
+                borderRadius="md"
+                p="3"
+                overflowY="auto"
+                whiteSpace="pre-wrap"
+                fontFamily="mono"
+                flex="1"
+              >
+                {metadataText || 'No metadata available.'}
+              </Box>
+            )}
+          </Box>
+        </Box>
+      )}
     </Box>
   )
 }
