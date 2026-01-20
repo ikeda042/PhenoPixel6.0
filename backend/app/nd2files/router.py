@@ -80,6 +80,9 @@ def _to_jsonable(value: Any, depth: int = 0, max_depth: int = 6) -> Any:
 
 def _extract_nd2_metadata(file_path: Path) -> dict[str, Any]:
     stats = file_path.stat()
+    created_ts = getattr(stats, "st_birthtime", None)
+    if created_ts is None:
+        created_ts = stats.st_ctime
     with nd2reader.ND2Reader(str(file_path)) as images:
         reader_info: dict[str, Any] = {
             "axes": getattr(images, "axes", None),
@@ -112,6 +115,7 @@ def _extract_nd2_metadata(file_path: Path) -> dict[str, Any]:
                 "name": file_path.name,
                 "size_bytes": int(stats.st_size),
                 "modified_time": datetime.fromtimestamp(stats.st_mtime).isoformat(),
+                "created_time": datetime.fromtimestamp(created_ts).isoformat(),
             },
             "reader": reader_info,
             "metadata": getattr(images, "metadata", None),
