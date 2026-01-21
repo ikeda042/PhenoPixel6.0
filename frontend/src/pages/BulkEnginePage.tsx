@@ -101,7 +101,7 @@ export default function BulkEnginePage() {
   const scaledViewportHeight = `calc(100vh / ${bulkZoom})`
 
   const [cells, setCells] = useState<BulkCell[]>([])
-  const [selectedLabel, setSelectedLabel] = useState('All')
+  const [selectedLabel, setSelectedLabel] = useState('1')
   const [selectedChannel, setSelectedChannel] = useState('ph')
   const [isLoading, setIsLoading] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -175,7 +175,7 @@ export default function BulkEnginePage() {
     const loadAnnotationZip = async () => {
       setIsLoading(true)
       setError(null)
-      setSelectedLabel('All')
+      setSelectedLabel('1')
       setCells([])
       try {
         const params = new URLSearchParams({
@@ -281,7 +281,7 @@ export default function BulkEnginePage() {
 
   useEffect(() => {
     if (!labelOptions.includes(selectedLabel)) {
-      setSelectedLabel('All')
+      setSelectedLabel('1')
     }
   }, [labelOptions, selectedLabel])
 
