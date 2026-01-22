@@ -688,17 +688,17 @@ def _basis_conversion(
     )
 
 
-def _generate_replot_image(
-    image_fluo_raw: bytes,
+def _prepare_replot_geometry(
+    image_fluo_gray: np.ndarray,
     contour_raw: bytes,
-    degree: int,
-    dark_mode: bool = False,
-) -> bytes:
-    image_fluo = cv2.imdecode(np.frombuffer(image_fluo_raw, np.uint8), cv2.IMREAD_COLOR)
-    if image_fluo is None:
-        raise ValueError("Failed to decode image")
-    image_fluo_gray = cv2.cvtColor(image_fluo, cv2.COLOR_BGR2GRAY)
-
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    list[list[float]],
+]:
     mask = np.zeros_like(image_fluo_gray)
     unpickled_contour = pickle.loads(contour_raw)
     contour_array = np.asarray(unpickled_contour)
@@ -715,9 +715,6 @@ def _generate_replot_image(
     coords_inside_cell = np.column_stack(np.where(mask))
     if coords_inside_cell.size == 0:
         raise ValueError("No points inside contour")
-    points_inside_cell = image_fluo_gray[
-        coords_inside_cell[:, 0], coords_inside_cell[:, 1]
-    ]
 
     X = np.array(
         [
@@ -731,17 +728,17 @@ def _generate_replot_image(
         u2,
         u1_contour,
         u2_contour,
-        min_u1,
-        max_u1,
+        _min_u1,
+        _max_u1,
         u1_c,
         u2_c,
         U,
-        contour_U,
+        _contour_U,
     ) = _basis_conversion(
         contour_points,
         X,
-        image_fluo.shape[0] / 2,
-        image_fluo.shape[1] / 2,
+        image_fluo_gray.shape[0] / 2,
+        image_fluo_gray.shape[1] / 2,
         coords_inside_cell.tolist(),
     )
 
@@ -755,6 +752,60 @@ def _generate_replot_image(
         x_val_shifted = x_val - u1_c
         y_val_shifted = y_val - u2_c
         U_shifted.append([y_val_shifted, x_val_shifted])
+
+    return (
+        coords_inside_cell,
+        u1_shifted,
+        u2_shifted,
+        u1_contour_shifted,
+        u2_contour_shifted,
+        U_shifted,
+    )
+
+
+def _compute_replot_stats(points_inside_cell: np.ndarray) -> dict[str, float]:
+    max_val = np.max(points_inside_cell) if len(points_inside_cell) else 1
+    normalized_points = [i / max_val for i in points_inside_cell]
+    median_val = float(np.median(points_inside_cell))
+    mean_val = float(np.mean(points_inside_cell))
+    normalized_median_val = float(np.median(normalized_points))
+    normalized_mean_val = float(np.mean(normalized_points))
+    sd_val = float(np.std(points_inside_cell))
+    cv_val = sd_val / mean_val if mean_val != 0 else 0.0
+    localization_val = _localization_index_energy_1d(points_inside_cell)
+    return {
+        "sd": sd_val,
+        "cv": cv_val,
+        "localization": localization_val,
+        "median": median_val,
+        "mean": mean_val,
+        "normalized_median": normalized_median_val,
+        "normalized_mean": normalized_mean_val,
+    }
+
+
+def _generate_replot_image(
+    image_fluo_raw: bytes,
+    contour_raw: bytes,
+    degree: int,
+    dark_mode: bool = False,
+) -> bytes:
+    image_fluo = cv2.imdecode(np.frombuffer(image_fluo_raw, np.uint8), cv2.IMREAD_COLOR)
+    if image_fluo is None:
+        raise ValueError("Failed to decode image")
+    image_fluo_gray = cv2.cvtColor(image_fluo, cv2.COLOR_BGR2GRAY)
+    (
+        coords_inside_cell,
+        u1_shifted,
+        u2_shifted,
+        u1_contour_shifted,
+        u2_contour_shifted,
+        U_shifted,
+    ) = _prepare_replot_geometry(image_fluo_gray, contour_raw)
+
+    points_inside_cell = image_fluo_gray[
+        coords_inside_cell[:, 0], coords_inside_cell[:, 1]
+    ]
 
     style = "dark_background" if dark_mode else "default"
     text_kwargs = {"color": "white"} if dark_mode else {}
@@ -788,20 +839,12 @@ def _generate_replot_image(
         plt.xlim([x_min, x_max])
         plt.ylim([y_min, y_max])
 
-        max_val = np.max(points_inside_cell) if len(points_inside_cell) else 1
-        normalized_points = [i / max_val for i in points_inside_cell]
-        median_val = float(np.median(points_inside_cell))
-        mean_val = float(np.mean(points_inside_cell))
-        normalized_median_val = float(np.median(normalized_points))
-        normalized_mean_val = float(np.mean(normalized_points))
-        sd_val = float(np.std(points_inside_cell))
-        cv_val = sd_val / mean_val if mean_val != 0 else 0.0
-        localization_val = _localization_index_energy_1d(points_inside_cell)
+        stats = _compute_replot_stats(points_inside_cell)
 
         plt.text(
             0.5,
             0.35,
-            f"SD: {sd_val:.2f}",
+            f"SD: {stats['sd']:.2f}",
             horizontalalignment="center",
             verticalalignment="center",
             transform=plt.gca().transAxes,
@@ -810,7 +853,7 @@ def _generate_replot_image(
         plt.text(
             0.5,
             0.30,
-            f"CV: {cv_val:.2f}",
+            f"CV: {stats['cv']:.2f}",
             horizontalalignment="center",
             verticalalignment="center",
             transform=plt.gca().transAxes,
@@ -819,7 +862,7 @@ def _generate_replot_image(
         plt.text(
             0.5,
             0.25,
-            f"Localization score: {localization_val:.4g}",
+            f"Localization score: {stats['localization']:.4g}",
             horizontalalignment="center",
             verticalalignment="center",
             transform=plt.gca().transAxes,
@@ -828,7 +871,7 @@ def _generate_replot_image(
         plt.text(
             0.5,
             0.20,
-            f"Median: {median_val:.2f}",
+            f"Median: {stats['median']:.2f}",
             horizontalalignment="center",
             verticalalignment="center",
             transform=plt.gca().transAxes,
@@ -837,7 +880,7 @@ def _generate_replot_image(
         plt.text(
             0.5,
             0.15,
-            f"Mean: {mean_val:.2f}",
+            f"Mean: {stats['mean']:.2f}",
             horizontalalignment="center",
             verticalalignment="center",
             transform=plt.gca().transAxes,
@@ -846,7 +889,7 @@ def _generate_replot_image(
         plt.text(
             0.5,
             0.10,
-            f"Normalized median: {normalized_median_val:.2f}",
+            f"Normalized median: {stats['normalized_median']:.2f}",
             horizontalalignment="center",
             verticalalignment="center",
             transform=plt.gca().transAxes,
@@ -855,12 +898,189 @@ def _generate_replot_image(
         plt.text(
             0.5,
             0.05,
-            f"Normalized mean: {normalized_mean_val:.2f}",
+            f"Normalized mean: {stats['normalized_mean']:.2f}",
             horizontalalignment="center",
             verticalalignment="center",
             transform=plt.gca().transAxes,
             **text_kwargs,
         )
+
+        x_for_fit = np.linspace(min_u1_shifted, max_u1_shifted, 1000)
+        theta = _poly_fit(U_shifted, degree=degree)
+        y_for_fit = np.polyval(theta, x_for_fit)
+        plt.plot(x_for_fit, y_for_fit, color="red", label="Poly fit")
+
+        plt.scatter(
+            u1_contour_shifted,
+            u2_contour_shifted,
+            color="lime",
+            s=20,
+            label="Contour",
+        )
+
+        plt.tick_params(direction="in")
+        plt.grid(True)
+        plt.legend()
+
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png")
+        buf.seek(0)
+        plt.close(fig)
+
+    return buf.getvalue()
+
+
+def _generate_replot_overlay_image(
+    image_fluo1_raw: bytes,
+    image_fluo2_raw: bytes,
+    contour_raw: bytes,
+    degree: int,
+    dark_mode: bool = False,
+) -> bytes:
+    image_fluo1 = cv2.imdecode(np.frombuffer(image_fluo1_raw, np.uint8), cv2.IMREAD_COLOR)
+    if image_fluo1 is None:
+        raise ValueError("Failed to decode fluo1 image")
+    image_fluo2 = cv2.imdecode(np.frombuffer(image_fluo2_raw, np.uint8), cv2.IMREAD_COLOR)
+    if image_fluo2 is None:
+        raise ValueError("Failed to decode fluo2 image")
+    if image_fluo1.shape[:2] != image_fluo2.shape[:2]:
+        raise ValueError("Fluo image dimensions do not match")
+
+    fluo1_gray = cv2.cvtColor(image_fluo1, cv2.COLOR_BGR2GRAY)
+    fluo2_gray = cv2.cvtColor(image_fluo2, cv2.COLOR_BGR2GRAY)
+
+    (
+        coords_inside_cell,
+        u1_shifted,
+        u2_shifted,
+        u1_contour_shifted,
+        u2_contour_shifted,
+        U_shifted,
+    ) = _prepare_replot_geometry(fluo1_gray, contour_raw)
+
+    points_inside_cell_1 = fluo1_gray[
+        coords_inside_cell[:, 0], coords_inside_cell[:, 1]
+    ]
+    points_inside_cell_2 = fluo2_gray[
+        coords_inside_cell[:, 0], coords_inside_cell[:, 1]
+    ]
+
+    style = "dark_background" if dark_mode else "default"
+    text_kwargs = {"color": "white"} if dark_mode else {}
+    margin_width = 20
+    margin_height = 20
+
+    with plt.style.context(style):
+        fig = plt.figure(figsize=(6, 6))
+
+        plt.scatter(u1_shifted, u2_shifted, s=5, label="Points in cell")
+        plt.scatter([0], [0], color="red", s=100, label="Centroid (0,0)")
+        plt.axis("equal")
+
+        x_vals = [val[1] for val in U_shifted]
+        y_vals = [val[0] for val in U_shifted]
+        plt.scatter(
+            x_vals,
+            y_vals,
+            c=points_inside_cell_1,
+            cmap="Blues",
+            marker="o",
+            s=20,
+            alpha=0.8,
+            label="Fluo1 intensity",
+        )
+        plt.scatter(
+            x_vals,
+            y_vals,
+            c=points_inside_cell_2,
+            cmap="Reds",
+            marker="o",
+            s=20,
+            alpha=0.8,
+            label="Fluo2 intensity",
+        )
+
+        min_u1_shifted = float(np.min(u1_shifted))
+        max_u1_shifted = float(np.max(u1_shifted))
+        min_u2_shifted = float(np.min(u2_shifted))
+        max_u2_shifted = float(np.max(u2_shifted))
+        x_min = min_u1_shifted - margin_width
+        x_max = max_u1_shifted + margin_width
+        y_min = min_u2_shifted - margin_height
+        y_max = max_u2_shifted + margin_height
+        plt.xlim([x_min, x_max])
+        plt.ylim([y_min, y_max])
+
+        stats_fluo1 = _compute_replot_stats(points_inside_cell_1)
+        stats_fluo2 = _compute_replot_stats(points_inside_cell_2)
+
+        def draw_stats(x_pos: float, label: str, stats: dict[str, float]) -> None:
+            plt.text(
+                x_pos,
+                0.35,
+                f"{label} SD: {stats['sd']:.2f}",
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=plt.gca().transAxes,
+                **text_kwargs,
+            )
+            plt.text(
+                x_pos,
+                0.30,
+                f"{label} CV: {stats['cv']:.2f}",
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=plt.gca().transAxes,
+                **text_kwargs,
+            )
+            plt.text(
+                x_pos,
+                0.25,
+                f"{label} Loc: {stats['localization']:.4g}",
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=plt.gca().transAxes,
+                **text_kwargs,
+            )
+            plt.text(
+                x_pos,
+                0.20,
+                f"{label} Med: {stats['median']:.2f}",
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=plt.gca().transAxes,
+                **text_kwargs,
+            )
+            plt.text(
+                x_pos,
+                0.15,
+                f"{label} Mean: {stats['mean']:.2f}",
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=plt.gca().transAxes,
+                **text_kwargs,
+            )
+            plt.text(
+                x_pos,
+                0.10,
+                f"{label} NMed: {stats['normalized_median']:.2f}",
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=plt.gca().transAxes,
+                **text_kwargs,
+            )
+            plt.text(
+                x_pos,
+                0.05,
+                f"{label} NMean: {stats['normalized_mean']:.2f}",
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=plt.gca().transAxes,
+                **text_kwargs,
+            )
+
+        draw_stats(0.28, "F1", stats_fluo1)
+        draw_stats(0.72, "F2", stats_fluo2)
 
         x_for_fit = np.linspace(min_u1_shifted, max_u1_shifted, 1000)
         theta = _poly_fit(U_shifted, degree=degree)
@@ -1317,7 +1537,7 @@ def get_cell_overlay(db_name: str, cell_id: str) -> bytes:
 def get_cell_replot(
     db_name: str,
     cell_id: str,
-    image_type: Literal["fluo1", "fluo2", "ph"] = "fluo1",
+    image_type: Literal["fluo1", "fluo2", "ph", "overlay"] = "fluo1",
     degree: int = 4,
     dark_mode: bool = False,
 ) -> bytes:
@@ -1330,6 +1550,24 @@ def get_cell_replot(
             raise RuntimeError("Database session is not bound")
         metadata = MetaData()
         cells = Table("cells", metadata, autoload_with=bind)
+        if image_type == "overlay":
+            stmt = (
+                select(cells.c.img_fluo1, cells.c.img_fluo2, cells.c.contour)
+                .where(cells.c.cell_id == cell_id)
+                .limit(1)
+            )
+            row = session.execute(stmt).first()
+            if row is None or row[0] is None or row[1] is None:
+                raise LookupError("Cell image not found")
+            if row[2] is None:
+                raise LookupError("Cell contour not found")
+            return _generate_replot_overlay_image(
+                bytes(row[0]),
+                bytes(row[1]),
+                bytes(row[2]),
+                degree=degree,
+                dark_mode=dark_mode,
+            )
         column_map = {
             "ph": "img_ph",
             "fluo1": "img_fluo1",

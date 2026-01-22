@@ -103,7 +103,7 @@ Response: `image/png`
 
 **GET** `/get-cell-replot`  
 Replot image with contour alignment.  
-Params: `dbname`, `cell_id`, `image_type=ph|fluo1|fluo2`, `degree`, `dark_mode`  
+Params: `dbname`, `cell_id`, `image_type=ph|fluo1|fluo2|overlay`, `degree`, `dark_mode`  
 Response: `image/png`
 
 **GET** `/get-cell-heatmap`  

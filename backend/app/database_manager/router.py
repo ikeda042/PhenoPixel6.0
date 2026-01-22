@@ -261,7 +261,7 @@ def elastic_contour_endpoint(
 def get_cell_replot_endpoint(
     dbname: str = Query(...),
     cell_id: str = Query(...),
-    image_type: str = Query("fluo1", description="ph | fluo1 | fluo2"),
+    image_type: str = Query("fluo1", description="ph | fluo1 | fluo2 | overlay"),
     degree: int = Query(4, ge=1),
     dark_mode: bool = Query(False),
 ) -> StreamingResponse:

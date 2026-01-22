@@ -30,6 +30,7 @@ import ThemeToggle from '../components/ThemeToggle'
 import { getApiBase } from '../utils/apiBase'
 
 type ChannelKey = 'ph' | 'fluo1' | 'fluo2'
+type ReplotChannel = ChannelKey | 'overlay'
 type OverlayOptions = {
   contour: boolean
   scale: boolean
@@ -41,10 +42,14 @@ const channels: { key: ChannelKey; label: string }[] = [
   { key: 'fluo2', label: 'FLUO2' },
 ]
 
-const replotChannelOptions: { value: ChannelKey; label: string }[] = [
+const channelOptions: { value: ChannelKey; label: string }[] = [
   { value: 'ph', label: 'PH' },
   { value: 'fluo1', label: 'Fluo1' },
   { value: 'fluo2', label: 'Fluo2' },
+]
+const replotChannelOptions: { value: ReplotChannel; label: string }[] = [
+  ...channelOptions,
+  { value: 'overlay', label: 'Overlay' },
 ]
 
 const isNumericLabel = (label: string) => /^\d+$/.test(label)
@@ -130,7 +135,7 @@ export default function CellsPage() {
   const [isLoadingDistribution, setIsLoadingDistribution] = useState(false)
   const [distributionError, setDistributionError] = useState<string | null>(null)
   const [distributionChannel, setDistributionChannel] = useState<ChannelKey>('fluo1')
-  const [replotChannel, setReplotChannel] = useState<ChannelKey>('fluo1')
+  const [replotChannel, setReplotChannel] = useState<ReplotChannel>('fluo1')
   const [contourRefreshKey, setContourRefreshKey] = useState(0)
   const [modificationMode, setModificationMode] = useState<'elastic' | 'optical-boost'>(
     'elastic',
@@ -1572,7 +1577,7 @@ export default function CellsPage() {
                           boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
                         }}
                       >
-                        {replotChannelOptions.map((option) => (
+                        {channelOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
@@ -1591,7 +1596,7 @@ export default function CellsPage() {
                       <NativeSelect.Field
                         value={replotChannel}
                         onChange={(event) =>
-                          setReplotChannel(event.target.value as ChannelKey)
+                          setReplotChannel(event.target.value as ReplotChannel)
                         }
                         bg="sand.50"
                         border="1px solid"
