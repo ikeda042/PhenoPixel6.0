@@ -261,6 +261,27 @@ async def get_contours_grid_plot(
     return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
 
 
+@router_bulk_engine.get("/get-contours-grid-csv")
+async def get_contours_grid_csv(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        csv_bytes = await loop.run_in_executor(
+            bulk_executor, BulkEngineCrud.get_contours_grid_csv, dbname, label
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(csv_bytes), media_type="text/csv")
+
+
 @router_bulk_engine.get("/get-cell-lengths", response_model=list[CellLength])
 async def get_cell_lengths(
     dbname: str = Query(...),

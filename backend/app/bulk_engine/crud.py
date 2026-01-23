@@ -1,3 +1,4 @@
+import csv
 import io
 import pickle
 from typing import Optional, Sequence
@@ -478,6 +479,51 @@ def _collect_transformed_contours_by_label(
         session.close()
 
 
+def _collect_transformed_contours_with_ids(
+    db_name: str, label: Optional[str] = None
+) -> list[tuple[str, np.ndarray]]:
+    label_str = str(label).strip() if label is not None else ""
+    apply_filter = bool(label_str) and label_str.lower() != "all"
+
+    session = DatabaseManagerCrud.get_database_session(db_name)
+    try:
+        bind = session.get_bind()
+        if bind is None:
+            raise RuntimeError("Database session is not bound")
+        metadata = MetaData()
+        cells = Table("cells", metadata, autoload_with=bind)
+
+        stmt = (
+            select(cells.c.cell_id, cells.c.contour, cells.c.manual_label)
+            .where(cells.c.contour.is_not(None))
+            .where(cells.c.cell_id.is_not(None))
+            .order_by(cells.c.manual_label, cells.c.cell_id)
+        )
+
+        if apply_filter:
+            filters = [cast(cells.c.manual_label, String) == label_str]
+            if label_str.isdigit():
+                filters.append(cells.c.manual_label == int(label_str))
+            if label_str.upper() == "N/A":
+                filters.append(cells.c.manual_label == "N/A")
+                filters.append(cells.c.manual_label == 1000)
+            stmt = stmt.where(or_(*filters))
+
+        result = session.execute(stmt)
+        transformed: list[tuple[str, np.ndarray]] = []
+        for cell_id, contour_raw, _ in result.fetchall():
+            if cell_id is None or contour_raw is None:
+                continue
+            try:
+                contour = _parse_contour_blob(bytes(contour_raw))
+                transformed.append((str(cell_id), _transform_contour_replot(contour)))
+            except Exception:
+                continue
+        return transformed
+    finally:
+        session.close()
+
+
 def _build_contours_grid_image(
     contours: Sequence[np.ndarray],
     invert_y: bool = False,
@@ -891,6 +937,31 @@ def create_contours_grid_plot(
     return _build_contours_grid_image(contours)
 
 
+def get_contours_grid_csv(
+    db_name: str, label: Optional[str] = None
+) -> bytes:
+    contours = _collect_transformed_contours_with_ids(db_name, label)
+    if not contours:
+        raise LookupError("No contours found for the specified label.")
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["cell_id", "point_index", "u1", "u2"])
+    for cell_id, contour in contours:
+        if contour.size == 0:
+            continue
+        for idx, point in enumerate(contour.tolist()):
+            writer.writerow(
+                [
+                    cell_id,
+                    idx,
+                    f"{float(point[0]):.6f}",
+                    f"{float(point[1]):.6f}",
+                ]
+            )
+    return buf.getvalue().encode("utf-8")
+
+
 def create_cell_length_boxplot(
     db_name: str, label: Optional[str] = None
 ) -> bytes:
@@ -999,6 +1070,12 @@ class BulkEngineCrud:
         cls, db_name: str, label: Optional[str] = None
     ) -> bytes:
         return create_contours_grid_plot(db_name, label)
+
+    @classmethod
+    def get_contours_grid_csv(
+        cls, db_name: str, label: Optional[str] = None
+    ) -> bytes:
+        return get_contours_grid_csv(db_name, label)
 
     @classmethod
     def create_cell_length_boxplot(cls, db_name: str, label: Optional[str] = None) -> bytes:

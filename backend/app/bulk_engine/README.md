@@ -57,6 +57,11 @@ Contours grid plot aligned to the cell principal axes.
 Params: `dbname`, `label`  
 Response: `image/png`
 
+**GET** `/get-contours-grid-csv`  
+Contours grid coordinates (u1/u2 per point).  
+Params: `dbname`, `label`  
+Response: `text/csv`
+
 ### Measurements
 
 **GET** `/get-cell-lengths`  

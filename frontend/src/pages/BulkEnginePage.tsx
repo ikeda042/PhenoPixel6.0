@@ -154,6 +154,8 @@ export default function BulkEnginePage() {
   const [contoursPlotUrl, setContoursPlotUrl] = useState<string | null>(null)
   const [contoursError, setContoursError] = useState<string | null>(null)
   const [isContoursLoading, setIsContoursLoading] = useState(false)
+  const [isContoursExporting, setIsContoursExporting] = useState(false)
+  const [contoursExportError, setContoursExportError] = useState<string | null>(null)
   const [hasCalculatedContours, setHasCalculatedContours] = useState(false)
   const activeUrlsRef = useRef<Set<string>>(new Set())
   const lengthPlotUrlRef = useRef<string | null>(null)
@@ -388,6 +390,8 @@ export default function BulkEnginePage() {
     setContoursPlotUrl(null)
     setContoursError(null)
     setIsContoursLoading(false)
+    setContoursExportError(null)
+    setIsContoursExporting(false)
     setHasCalculatedContours(false)
   }, [analysisMode, analysisLabel, analysisChannel, dbName])
 
@@ -988,6 +992,45 @@ export default function BulkEnginePage() {
       setHasCalculatedContours(true)
     } finally {
       setIsContoursLoading(false)
+    }
+  }
+
+  const handleExportContoursCsv = async () => {
+    if (!dbName || isContoursExporting) return
+    setIsContoursExporting(true)
+    setContoursExportError(null)
+    try {
+      const params = new URLSearchParams({ dbname: dbName, label: analysisLabel })
+      const res = await fetch(`${apiBase}/get-contours-grid-csv?${params.toString()}`, {
+        headers: { accept: 'text/csv' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const blob = await res.blob()
+      if (blob.size === 0) {
+        throw new Error('No contours found for this label.')
+      }
+      const safeDb = (dbName || 'db').replace(/\.db$/i, '').replace(/[^a-zA-Z0-9_-]/g, '_')
+      const safeLabel =
+        analysisLabel === 'All'
+          ? 'all'
+          : analysisLabel.replace(/[^a-zA-Z0-9_-]/g, '_')
+      const filename = `bulk-${safeDb}-${safeLabel}-contours.csv`
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setContoursExportError(
+        err instanceof Error ? err.message : 'Failed to export contours CSV',
+      )
+    } finally {
+      setIsContoursExporting(false)
     }
   }
 
@@ -2232,7 +2275,22 @@ export default function BulkEnginePage() {
                         >
                           {isContoursLoading ? 'Generating...' : 'Generate contours'}
                         </Button>
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="ink.900"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleExportContoursCsv}
+                          isDisabled={!dbName || isContoursExporting}
+                        >
+                          {isContoursExporting ? 'Exporting...' : 'Export CSV'}
+                        </Button>
                       </HStack>
+                      {contoursExportError && (
+                        <Text fontSize="xs" color="violet.300">
+                          {contoursExportError}
+                        </Text>
+                      )}
                       {contoursError && (
                         <Text fontSize="xs" color="violet.300">
                           {contoursError}
