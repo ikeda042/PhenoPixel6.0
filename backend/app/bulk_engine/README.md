@@ -58,8 +58,9 @@ Params: `dbname`, `label`
 Response: `image/png`
 
 **GET** `/get-contours-grid-csv`  
-Contours grid coordinates (u1/u2 per point).  
+Raw contour coordinates (x/y per point).  
 Params: `dbname`, `label`  
+Columns: `cell_id`, `manual_label`, `point_index`, `x`, `y`  
 Response: `text/csv`
 
 ### Measurements

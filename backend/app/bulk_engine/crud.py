@@ -479,9 +479,9 @@ def _collect_transformed_contours_by_label(
         session.close()
 
 
-def _collect_transformed_contours_with_ids(
+def _collect_raw_contours_with_ids(
     db_name: str, label: Optional[str] = None
-) -> list[tuple[str, np.ndarray]]:
+) -> list[tuple[str, str, np.ndarray]]:
     label_str = str(label).strip() if label is not None else ""
     apply_filter = bool(label_str) and label_str.lower() != "all"
 
@@ -510,16 +510,20 @@ def _collect_transformed_contours_with_ids(
             stmt = stmt.where(or_(*filters))
 
         result = session.execute(stmt)
-        transformed: list[tuple[str, np.ndarray]] = []
-        for cell_id, contour_raw, _ in result.fetchall():
+        contours: list[tuple[str, str, np.ndarray]] = []
+        for cell_id, contour_raw, manual_label in result.fetchall():
             if cell_id is None or contour_raw is None:
                 continue
             try:
                 contour = _parse_contour_blob(bytes(contour_raw))
-                transformed.append((str(cell_id), _transform_contour_replot(contour)))
+                if manual_label == 1000:
+                    label_value = "N/A"
+                else:
+                    label_value = "" if manual_label is None else str(manual_label)
+                contours.append((str(cell_id), label_value, contour))
             except Exception:
                 continue
-        return transformed
+        return contours
     finally:
         session.close()
 
@@ -940,23 +944,24 @@ def create_contours_grid_plot(
 def get_contours_grid_csv(
     db_name: str, label: Optional[str] = None
 ) -> bytes:
-    contours = _collect_transformed_contours_with_ids(db_name, label)
+    contours = _collect_raw_contours_with_ids(db_name, label)
     if not contours:
         raise LookupError("No contours found for the specified label.")
 
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(["cell_id", "point_index", "u1", "u2"])
-    for cell_id, contour in contours:
+    writer.writerow(["cell_id", "manual_label", "point_index", "x", "y"])
+    for cell_id, manual_label, contour in contours:
         if contour.size == 0:
             continue
         for idx, point in enumerate(contour.tolist()):
             writer.writerow(
                 [
                     cell_id,
+                    manual_label,
                     idx,
-                    f"{float(point[0]):.6f}",
-                    f"{float(point[1]):.6f}",
+                    point[0],
+                    point[1],
                 ]
             )
     return buf.getvalue().encode("utf-8")
