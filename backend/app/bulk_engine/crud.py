@@ -673,42 +673,16 @@ def create_cell_length_boxplot(
     if not lengths:
         raise LookupError("No cells found for the specified label.")
     values = [length for _, length in lengths]
-
-    fig, ax = plt.subplots(figsize=(4.6, 4.2), dpi=180)
-    ax.boxplot(
-        values,
-        vert=True,
-        widths=0.35,
-        patch_artist=False,
-        showfliers=False,
-        boxprops={"color": "#4a5568", "linewidth": 1.2},
-        medianprops={"color": "#2f855a", "linewidth": 1.4},
-        whiskerprops={"color": "#4a5568", "linewidth": 1.1},
-        capprops={"color": "#4a5568", "linewidth": 1.1},
-    )
-    rng = np.random.default_rng(0)
-    jitter = rng.uniform(-0.08, 0.08, size=len(values))
-    ax.scatter(
-        1 + jitter,
-        values,
-        s=16,
-        color="#2c7a7b",
-        alpha=0.65,
-        linewidth=0,
-    )
     label_text = str(label) if label not in (None, "", "all", "All") else "All"
-    ax.set_xticks([1])
-    ax.set_xticklabels([label_text])
-    ax.set_ylabel("Cell length (um)")
-    ax.grid(axis="y", linestyle="--", alpha=0.25)
-    ax.set_title(f"{db_name} | label {label_text}", fontsize=9)
-
-    buf = io.BytesIO()
-    fig.tight_layout()
-    fig.savefig(buf, format="png")
-    plt.close(fig)
-    buf.seek(0)
-    return buf.getvalue()
+    return _build_boxplot_image(
+        data=[values],
+        labels=[label_text],
+        ylabel="Cell length (um)",
+        title=f"{db_name} | label {label_text}",
+        point_color="#2c7a7b",
+        median_color="#2f855a",
+        box_color="#4a5568",
+    )
 
 
 class BulkEngineCrud:
@@ -817,42 +791,16 @@ def create_cell_area_boxplot(
     if not areas:
         raise LookupError("No cells found for the specified label.")
     values = [area for _, area in areas]
-
-    fig, ax = plt.subplots(figsize=(4.6, 4.2), dpi=180)
-    ax.boxplot(
-        values,
-        vert=True,
-        widths=0.35,
-        patch_artist=False,
-        showfliers=False,
-        boxprops={"color": "#4a5568", "linewidth": 1.2},
-        medianprops={"color": "#b83280", "linewidth": 1.4},
-        whiskerprops={"color": "#4a5568", "linewidth": 1.1},
-        capprops={"color": "#4a5568", "linewidth": 1.1},
-    )
-    rng = np.random.default_rng(0)
-    jitter = rng.uniform(-0.08, 0.08, size=len(values))
-    ax.scatter(
-        1 + jitter,
-        values,
-        s=16,
-        color="#b7791f",
-        alpha=0.65,
-        linewidth=0,
-    )
     label_text = str(label) if label not in (None, "", "all", "All") else "All"
-    ax.set_xticks([1])
-    ax.set_xticklabels([label_text])
-    ax.set_ylabel("Cell area (px^2)")
-    ax.grid(axis="y", linestyle="--", alpha=0.25)
-    ax.set_title(f"{db_name} | label {label_text}", fontsize=9)
-
-    buf = io.BytesIO()
-    fig.tight_layout()
-    fig.savefig(buf, format="png")
-    plt.close(fig)
-    buf.seek(0)
-    return buf.getvalue()
+    return _build_boxplot_image(
+        data=[values],
+        labels=[label_text],
+        ylabel="Cell area (px^2)",
+        title=f"{db_name} | label {label_text}",
+        point_color="#b7791f",
+        median_color="#b83280",
+        box_color="#4a5568",
+    )
 
 
 def create_normalized_median_boxplot(
@@ -862,35 +810,67 @@ def create_normalized_median_boxplot(
     if not medians:
         raise LookupError("No cells found for the specified label.")
     values = [median for _, median in medians]
+    label_text = str(label) if label not in (None, "", "all", "All") else "All"
+    return _build_boxplot_image(
+        data=[values],
+        labels=[label_text],
+        ylabel="Normalized median intensity",
+        title=f"{db_name} | label {label_text} | {channel}",
+        point_color="#2b6cb0",
+        median_color="#2b6cb0",
+        box_color="#2d3748",
+    )
+
+
+def _build_boxplot_image(
+    data: Sequence[Sequence[float]],
+    labels: Sequence[str],
+    ylabel: str,
+    title: str,
+    point_color: str,
+    median_color: str,
+    box_color: str,
+    xlabel: Optional[str] = None,
+) -> bytes:
+    if len(data) != len(labels):
+        raise ValueError("Data and labels must be the same length.")
 
     fig, ax = plt.subplots(figsize=(4.6, 4.2), dpi=180)
     ax.boxplot(
-        values,
+        data,
+        sym="",
         vert=True,
         widths=0.35,
         patch_artist=False,
-        showfliers=False,
-        boxprops={"color": "#2d3748", "linewidth": 1.2},
-        medianprops={"color": "#2b6cb0", "linewidth": 1.4},
-        whiskerprops={"color": "#2d3748", "linewidth": 1.1},
-        capprops={"color": "#2d3748", "linewidth": 1.1},
+        boxprops={"color": box_color, "linewidth": 1.2},
+        medianprops={"color": median_color, "linewidth": 1.4},
+        whiskerprops={"color": box_color, "linewidth": 1.1},
+        capprops={"color": box_color, "linewidth": 1.1},
     )
+
     rng = np.random.default_rng(0)
-    jitter = rng.uniform(-0.08, 0.08, size=len(values))
-    ax.scatter(
-        1 + jitter,
-        values,
-        s=16,
-        color="#2b6cb0",
-        alpha=0.65,
-        linewidth=0,
-    )
-    label_text = str(label) if label not in (None, "", "all", "All") else "All"
-    ax.set_xticks([1])
-    ax.set_xticklabels([label_text])
-    ax.set_ylabel("Normalized median intensity")
-    ax.grid(axis="y", linestyle="--", alpha=0.25)
-    ax.set_title(f"{db_name} | label {label_text} | {channel}", fontsize=9)
+    for i, values in enumerate(data, start=1):
+        values_arr = np.asarray(values, dtype=float)
+        if values_arr.size == 0:
+            continue
+        x = rng.normal(i, 0.04, size=values_arr.size)
+        ax.plot(
+            x,
+            values_arr,
+            "o",
+            alpha=0.5,
+            color=point_color,
+            markersize=4,
+            markeredgewidth=0,
+        )
+
+    ax.set_xticks([i + 1 for i in range(len(labels))])
+    ax.set_xticklabels([str(label) for label in labels])
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.grid(True)
+    ax.set_title(title, fontsize=9)
 
     buf = io.BytesIO()
     fig.tight_layout()
