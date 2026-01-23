@@ -52,6 +52,11 @@ Map256 strip image across cells.
 Params: `dbname`, `label`, `channel`, `degree`  
 Response: `image/png`
 
+**GET** `/get-contours-grid-plot`  
+Contours grid plot aligned to the cell principal axes.  
+Params: `dbname`, `label`  
+Response: `image/png`
+
 ### Measurements
 
 **GET** `/get-cell-lengths`  

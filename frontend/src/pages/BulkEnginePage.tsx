@@ -151,6 +151,10 @@ export default function BulkEnginePage() {
   const [map256Error, setMap256Error] = useState<string | null>(null)
   const [map256PlotUrl, setMap256PlotUrl] = useState<string | null>(null)
   const [hasCalculatedMap256, setHasCalculatedMap256] = useState(false)
+  const [contoursPlotUrl, setContoursPlotUrl] = useState<string | null>(null)
+  const [contoursError, setContoursError] = useState<string | null>(null)
+  const [isContoursLoading, setIsContoursLoading] = useState(false)
+  const [hasCalculatedContours, setHasCalculatedContours] = useState(false)
   const activeUrlsRef = useRef<Set<string>>(new Set())
   const lengthPlotUrlRef = useRef<string | null>(null)
   const areaPlotUrlRef = useRef<string | null>(null)
@@ -160,6 +164,7 @@ export default function BulkEnginePage() {
   const heatmapRelUrlRef = useRef<string | null>(null)
   const huSeparationUrlRef = useRef<string | null>(null)
   const map256PlotUrlRef = useRef<string | null>(null)
+  const contoursPlotUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!dbName) {
@@ -345,6 +350,10 @@ export default function BulkEnginePage() {
       URL.revokeObjectURL(map256PlotUrlRef.current)
       map256PlotUrlRef.current = null
     }
+    if (contoursPlotUrlRef.current) {
+      URL.revokeObjectURL(contoursPlotUrlRef.current)
+      contoursPlotUrlRef.current = null
+    }
     setLengthPlotUrl(null)
     setLengthError(null)
     setLengthExportError(null)
@@ -376,6 +385,10 @@ export default function BulkEnginePage() {
     setMap256Error(null)
     setIsMap256Loading(false)
     setHasCalculatedMap256(false)
+    setContoursPlotUrl(null)
+    setContoursError(null)
+    setIsContoursLoading(false)
+    setHasCalculatedContours(false)
   }, [analysisMode, analysisLabel, analysisChannel, dbName])
 
   useEffect(() => {
@@ -411,6 +424,10 @@ export default function BulkEnginePage() {
       if (map256PlotUrlRef.current) {
         URL.revokeObjectURL(map256PlotUrlRef.current)
         map256PlotUrlRef.current = null
+      }
+      if (contoursPlotUrlRef.current) {
+        URL.revokeObjectURL(contoursPlotUrlRef.current)
+        contoursPlotUrlRef.current = null
       }
     }
   }, [])
@@ -940,6 +957,37 @@ export default function BulkEnginePage() {
       setHuSeparationUrl(null)
     } finally {
       setIsHuSeparationLoading(false)
+    }
+  }
+
+  const handleGenerateContoursGrid = async () => {
+    if (!dbName || isContoursLoading) return
+    setIsContoursLoading(true)
+    setContoursError(null)
+    try {
+      const params = new URLSearchParams({ dbname: dbName, label: analysisLabel })
+      const res = await fetch(`${apiBase}/get-contours-grid-plot?${params.toString()}`, {
+        headers: { accept: 'image/png' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const blob = await res.blob()
+      if (contoursPlotUrlRef.current) {
+        URL.revokeObjectURL(contoursPlotUrlRef.current)
+      }
+      const url = URL.createObjectURL(blob)
+      contoursPlotUrlRef.current = url
+      setContoursPlotUrl(url)
+      setHasCalculatedContours(true)
+    } catch (err) {
+      setContoursError(
+        err instanceof Error ? err.message : 'Failed to generate contours grid',
+      )
+      setContoursPlotUrl(null)
+      setHasCalculatedContours(true)
+    } finally {
+      setIsContoursLoading(false)
     }
   }
 
@@ -1497,6 +1545,7 @@ export default function BulkEnginePage() {
                         <option value="normalized-median">Normalized median</option>
                         <option value="entropy">Entropy</option>
                         <option value="heatmap">Heatmap</option>
+                        <option value="contours">Contours</option>
                         <option value="map256">Map256</option>
                         <option value="raw-data">Raw data</option>
                       </NativeSelect.Field>
@@ -2134,6 +2183,86 @@ export default function BulkEnginePage() {
                       <Text fontSize="sm" color="ink.700">
                         CSV rows are u1 and G vectors per cell for heatmap rendering.
                       </Text>
+                    </Stack>
+                  )}
+                  {analysisMode === 'contours' && (
+                    <Stack spacing="3" mt="2">
+                      <Text fontSize="sm" fontWeight="600" color="ink.900">
+                        Contours grid
+                      </Text>
+                      <Box maxW="12rem">
+                        <Text fontSize="xs" letterSpacing="0.18em" color="ink.700" mb="1">
+                          Manual label
+                        </Text>
+                        <NativeSelect.Root>
+                          <NativeSelect.Field
+                            value={analysisLabel}
+                            onChange={(event) => setAnalysisLabel(event.target.value)}
+                            bg="sand.50"
+                            border="1px solid"
+                            borderColor="sand.200"
+                            fontSize="sm"
+                            h="2.25rem"
+                            color="ink.900"
+                            _focusVisible={{
+                              borderColor: 'tide.400',
+                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                            }}
+                          >
+                            {analysisLabelOptions.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator color="ink.700" />
+                        </NativeSelect.Root>
+                      </Box>
+                      <Text fontSize="xs" color="ink.700" mt="3">
+                        Execution
+                      </Text>
+                      <HStack spacing="3" flexWrap="wrap">
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="ink.900"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleGenerateContoursGrid}
+                          isDisabled={!dbName || isContoursLoading}
+                        >
+                          {isContoursLoading ? 'Generating...' : 'Generate contours'}
+                        </Button>
+                      </HStack>
+                      {contoursError && (
+                        <Text fontSize="xs" color="violet.300">
+                          {contoursError}
+                        </Text>
+                      )}
+                      <Text fontSize="xs" color="ink.700" mt="3">
+                        Result
+                      </Text>
+                      {!contoursError && hasCalculatedContours && !contoursPlotUrl && (
+                        <Text fontSize="sm" color="ink.700">
+                          No contours found for this label.
+                        </Text>
+                      )}
+                      {contoursPlotUrl && (
+                        <Box
+                          bg="sand.50"
+                          border="1px solid"
+                          borderColor="sand.200"
+                          borderRadius="md"
+                          p="2"
+                        >
+                          <Box
+                            as="img"
+                            src={contoursPlotUrl}
+                            alt="Contours grid"
+                            width="100%"
+                            height="auto"
+                          />
+                        </Box>
+                      )}
                     </Stack>
                   )}
                   {analysisMode === 'map256' && (

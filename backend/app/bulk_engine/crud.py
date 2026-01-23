@@ -304,6 +304,222 @@ def get_raw_intensities_by_label(
         session.close()
 
 
+def _parse_contour_blob(contour_blob: bytes) -> np.ndarray:
+    contour = pickle.loads(contour_blob)
+    contour_array = np.asarray(contour)
+    if contour_array.ndim == 3 and contour_array.shape[1] == 1:
+        contour_array = contour_array[:, 0, :]
+    elif contour_array.ndim == 2 and contour_array.shape[1] == 2:
+        pass
+    else:
+        raise ValueError("Invalid contour format")
+    return contour_array.astype(float)
+
+
+def _basis_conversion(
+    contour: list[list[float]],
+    X: np.ndarray,
+    center_x: float,
+    center_y: float,
+    coordinates_inside_cell: list[list[int]],
+) -> tuple[
+    list[float],
+    list[float],
+    list[float],
+    list[float],
+    float,
+    float,
+    float,
+    float,
+    list[list[float]],
+    list[list[float]],
+]:
+    Sigma = np.cov(X)
+    eigenvalues, eigenvectors = np.linalg.eig(Sigma)
+
+    if eigenvalues[1] < eigenvalues[0]:
+        Q = np.array([eigenvectors[1], eigenvectors[0]])
+        U = [Q.transpose() @ np.array([i, j]) for i, j in coordinates_inside_cell]
+        U = [[j, i] for i, j in U]
+        contour_U = [Q.transpose() @ np.array([j, i]) for i, j in contour]
+        contour_U = [[j, i] for i, j in contour_U]
+        center = [center_x, center_y]
+        u1_c, u2_c = center @ Q
+    else:
+        Q = np.array([eigenvectors[0], eigenvectors[1]])
+        U = [
+            Q.transpose() @ np.array([j, i]).transpose()
+            for i, j in coordinates_inside_cell
+        ]
+        contour_U = [Q.transpose() @ np.array([i, j]) for i, j in contour]
+        center = [center_x, center_y]
+        u2_c, u1_c = center @ Q
+
+    u1 = [val[1] for val in U]
+    u2 = [val[0] for val in U]
+    u1_contour = [val[1] for val in contour_U]
+    u2_contour = [val[0] for val in contour_U]
+    min_u1, max_u1 = min(u1), max(u1)
+    return (
+        u1,
+        u2,
+        u1_contour,
+        u2_contour,
+        min_u1,
+        max_u1,
+        u1_c,
+        u2_c,
+        U,
+        contour_U,
+    )
+
+
+def _rasterize_contour(
+    contour: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, tuple[int, int]]:
+    if contour.shape[0] < 3:
+        raise ValueError("Contour must have at least 3 points")
+    min_xy = np.floor(contour.min(axis=0)).astype(int)
+    max_xy = np.ceil(contour.max(axis=0)).astype(int)
+    min_x, min_y = int(min_xy[0]), int(min_xy[1])
+    max_x, max_y = int(max_xy[0]), int(max_xy[1])
+    width = max(1, max_x - min_x + 1)
+    height = max(1, max_y - min_y + 1)
+
+    contour_shifted = contour - np.array([min_x, min_y], dtype=float)
+    contour_int = np.round(contour_shifted).astype(np.int32).reshape(-1, 1, 2)
+
+    mask = np.zeros((height, width), dtype=np.uint8)
+    cv2.fillPoly(mask, [contour_int], 255)
+    coords_inside_cell = np.column_stack(np.where(mask))
+    return coords_inside_cell, contour_shifted, (height, width)
+
+
+def _transform_contour_replot(contour: np.ndarray) -> np.ndarray:
+    coords_inside_cell, contour_shifted, mask_shape = _rasterize_contour(contour)
+    if coords_inside_cell.size == 0:
+        raise ValueError("No points inside contour")
+
+    X = np.array(
+        [
+            [i[1] for i in coords_inside_cell],
+            [i[0] for i in coords_inside_cell],
+        ]
+    )
+
+    center_x = mask_shape[0] / 2
+    center_y = mask_shape[1] / 2
+
+    (
+        _u1,
+        _u2,
+        u1_contour,
+        u2_contour,
+        _min_u1,
+        _max_u1,
+        u1_c,
+        u2_c,
+        _U,
+        _contour_U,
+    ) = _basis_conversion(
+        contour_shifted.tolist(),
+        X,
+        center_x,
+        center_y,
+        coords_inside_cell.tolist(),
+    )
+
+    u1_contour_shifted = np.array(u1_contour) - u1_c
+    u2_contour_shifted = np.array(u2_contour) - u2_c
+    return np.column_stack([u1_contour_shifted, u2_contour_shifted])
+
+
+def _collect_transformed_contours_by_label(
+    db_name: str, label: Optional[str] = None
+) -> list[np.ndarray]:
+    label_str = str(label).strip() if label is not None else ""
+    apply_filter = bool(label_str) and label_str.lower() != "all"
+
+    session = DatabaseManagerCrud.get_database_session(db_name)
+    try:
+        bind = session.get_bind()
+        if bind is None:
+            raise RuntimeError("Database session is not bound")
+        metadata = MetaData()
+        cells = Table("cells", metadata, autoload_with=bind)
+
+        stmt = (
+            select(cells.c.contour, cells.c.manual_label)
+            .where(cells.c.contour.is_not(None))
+            .order_by(cells.c.manual_label, cells.c.cell_id)
+        )
+
+        if apply_filter:
+            filters = [cast(cells.c.manual_label, String) == label_str]
+            if label_str.isdigit():
+                filters.append(cells.c.manual_label == int(label_str))
+            if label_str.upper() == "N/A":
+                filters.append(cells.c.manual_label == "N/A")
+                filters.append(cells.c.manual_label == 1000)
+            stmt = stmt.where(or_(*filters))
+
+        result = session.execute(stmt)
+        transformed: list[np.ndarray] = []
+        for contour_raw, _ in result.fetchall():
+            if contour_raw is None:
+                continue
+            try:
+                contour = _parse_contour_blob(bytes(contour_raw))
+                transformed.append(_transform_contour_replot(contour))
+            except Exception:
+                continue
+        return transformed
+    finally:
+        session.close()
+
+
+def _build_contours_grid_image(
+    contours: Sequence[np.ndarray],
+    invert_y: bool = False,
+    dpi: int = 200,
+) -> bytes:
+    count = len(contours)
+    if count == 0:
+        raise LookupError("No contours found for the specified label.")
+
+    cols = int(np.ceil(np.sqrt(count)))
+    rows = int(np.ceil(count / cols))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 2.2, rows * 2.2), squeeze=False)
+
+    axes_flat = axes.ravel()
+    for ax, contour in zip(axes_flat, contours):
+        if contour.shape[0] < 2:
+            ax.axis("off")
+            continue
+        closed = np.vstack([contour, contour[0]])
+        ax.plot(
+            closed[:, 0],
+            closed[:, 1],
+            color="lime",
+            linewidth=5,
+            alpha=1,
+        )
+        ax.set_aspect("equal", adjustable="box")
+        if invert_y:
+            ax.invert_yaxis()
+        ax.axis("off")
+
+    for ax in axes_flat[count:]:
+        ax.axis("off")
+
+    buf = io.BytesIO()
+    fig.tight_layout()
+    fig.savefig(buf, format="png", dpi=dpi)
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
+
+
 def _collect_heatmap_paths(
     db_name: str,
     label: Optional[str] = None,
@@ -666,6 +882,15 @@ def create_map256_strip(
         session.close()
 
 
+def create_contours_grid_plot(
+    db_name: str, label: Optional[str] = None
+) -> bytes:
+    contours = _collect_transformed_contours_by_label(db_name, label)
+    if not contours:
+        raise LookupError("No contours found for the specified label.")
+    return _build_contours_grid_image(contours)
+
+
 def create_cell_length_boxplot(
     db_name: str, label: Optional[str] = None
 ) -> bytes:
@@ -768,6 +993,12 @@ class BulkEngineCrud:
         degree: int = 4,
     ) -> bytes:
         return create_map256_strip(db_name, label=label, channel=channel, degree=degree)
+
+    @classmethod
+    def create_contours_grid_plot(
+        cls, db_name: str, label: Optional[str] = None
+    ) -> bytes:
+        return create_contours_grid_plot(db_name, label)
 
     @classmethod
     def create_cell_length_boxplot(cls, db_name: str, label: Optional[str] = None) -> bytes:

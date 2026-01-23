@@ -240,6 +240,27 @@ async def get_map256_strip_endpoint(
     return StreamingResponse(io.BytesIO(image_bytes), media_type="image/png")
 
 
+@router_bulk_engine.get("/get-contours-grid-plot")
+async def get_contours_grid_plot(
+    dbname: str = Query(...),
+    label: str | None = Query(None),
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        plot_bytes = await loop.run_in_executor(
+            bulk_executor, BulkEngineCrud.create_contours_grid_plot, dbname, label
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
+
+
 @router_bulk_engine.get("/get-cell-lengths", response_model=list[CellLength])
 async def get_cell_lengths(
     dbname: str = Query(...),
