@@ -7,5 +7,6 @@ pydantic
 SQLAlchemy
 uvicorn
 aiofiles
+aiohttp
 python-multipart
 matplotlib

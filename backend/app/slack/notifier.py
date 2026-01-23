@@ -1,10 +1,12 @@
+import asyncio
 import json
 import logging
 import os
+import threading
 from pathlib import Path
-from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+
+import aiohttp
 
 logger = logging.getLogger(__name__)
 _ENV_LOADED = False
@@ -57,6 +59,57 @@ def _get_base_path() -> str | None:
     )
 
 
+async def _post_slack(
+    webhook_url: str,
+    payload: bytes,
+    success_log: tuple[str, tuple[object, ...]],
+) -> None:
+    timeout = aiohttp.ClientTimeout(total=10)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(
+                webhook_url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+            ) as response:
+                body = await response.text(errors="ignore")
+                if response.status >= 400:
+                    logger.warning(
+                        "Slack notification failed %s: %s",
+                        response.status,
+                        body.strip() or response.reason,
+                    )
+                    return
+        logger.info(success_log[0], *success_log[1])
+    except asyncio.TimeoutError:
+        logger.warning("Slack notification failed: timeout")
+    except aiohttp.ClientError as exc:
+        logger.warning("Slack notification failed: %s", exc)
+    except Exception as exc:
+        logger.warning("Slack notification failed: %s", exc)
+
+
+def _notify_slack_async(
+    webhook_url: str,
+    payload: bytes,
+    success_log: tuple[str, tuple[object, ...]],
+) -> None:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        loop.create_task(_post_slack(webhook_url, payload, success_log))
+        return
+
+    def _runner() -> None:
+        asyncio.run(_post_slack(webhook_url, payload, success_log))
+
+    thread = threading.Thread(target=_runner, name="slack-webhook", daemon=True)
+    thread.start()
+
+
 def notify_slack_database_created(
     db_name: str,
     *,
@@ -100,30 +153,11 @@ def notify_slack_database_created(
         slack_message = f"{slack_message}\n{db_url}"
 
     payload = json.dumps({"text": slack_message}).encode("utf-8")
-    request = Request(
+    _notify_slack_async(
         webhook_url,
-        data=payload,
-        headers={"Content-Type": "application/json"},
+        payload,
+        ("Slack notified for database creation: %s", (db_name,)),
     )
-    try:
-        with urlopen(request, timeout=10) as response:
-            response.read()
-        logger.info("Slack notified for database creation: %s", db_name)
-    except HTTPError as exc:
-        body = ""
-        try:
-            body = exc.read().decode("utf-8", "ignore")
-        except Exception:
-            body = ""
-        logger.warning(
-            "Slack notification failed %s: %s",
-            exc.code,
-            body or exc.reason,
-        )
-    except URLError as exc:
-        logger.warning("Slack notification failed: %s", exc.reason)
-    except Exception as exc:
-        logger.warning("Slack notification failed: %s", exc)
 
 
 def notify_slack_bulk_engine_completed(
@@ -166,27 +200,8 @@ def notify_slack_bulk_engine_completed(
         slack_message = f"{slack_message}\n" + "\n".join(details)
 
     payload = json.dumps({"text": slack_message}).encode("utf-8")
-    request = Request(
+    _notify_slack_async(
         webhook_url,
-        data=payload,
-        headers={"Content-Type": "application/json"},
+        payload,
+        ("Slack notified for bulk engine: %s (%s)", (db_name, task_text)),
     )
-    try:
-        with urlopen(request, timeout=10) as response:
-            response.read()
-        logger.info("Slack notified for bulk engine: %s (%s)", db_name, task_text)
-    except HTTPError as exc:
-        body = ""
-        try:
-            body = exc.read().decode("utf-8", "ignore")
-        except Exception:
-            body = ""
-        logger.warning(
-            "Slack notification failed %s: %s",
-            exc.code,
-            body or exc.reason,
-        )
-    except URLError as exc:
-        logger.warning("Slack notification failed: %s", exc.reason)
-    except Exception as exc:
-        logger.warning("Slack notification failed: %s", exc)
