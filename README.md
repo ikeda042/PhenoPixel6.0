@@ -33,6 +33,13 @@ npm run dev
 - Backend: http://localhost:3000
 - Frontend dev server: http://localhost:3001
 
+## Local URLs
+
+- API base: http://localhost:3000/api/v1
+- Swagger UI (OpenAPI): http://localhost:3000/api/v1/docs
+- OpenAPI JSON: http://localhost:3000/api/v1/openapi.json
+- Health check: http://localhost:3000/api/v1/health
+
 ## Tech Stack
 
 Backend:
