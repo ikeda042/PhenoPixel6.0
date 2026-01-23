@@ -1,5 +1,5 @@
-import csv
 import io
+import json
 import pickle
 from typing import Optional, Sequence
 
@@ -479,9 +479,9 @@ def _collect_transformed_contours_by_label(
         session.close()
 
 
-def _collect_raw_contours_with_ids(
+def _collect_transformed_contours_with_ids(
     db_name: str, label: Optional[str] = None
-) -> list[tuple[str, str, np.ndarray]]:
+) -> dict[str, list[list[float]]]:
     label_str = str(label).strip() if label is not None else ""
     apply_filter = bool(label_str) and label_str.lower() != "all"
 
@@ -510,20 +510,17 @@ def _collect_raw_contours_with_ids(
             stmt = stmt.where(or_(*filters))
 
         result = session.execute(stmt)
-        contours: list[tuple[str, str, np.ndarray]] = []
-        for cell_id, contour_raw, manual_label in result.fetchall():
+        contours_by_id: dict[str, list[list[float]]] = {}
+        for cell_id, contour_raw, _ in result.fetchall():
             if cell_id is None or contour_raw is None:
                 continue
             try:
                 contour = _parse_contour_blob(bytes(contour_raw))
-                if manual_label == 1000:
-                    label_value = "N/A"
-                else:
-                    label_value = "" if manual_label is None else str(manual_label)
-                contours.append((str(cell_id), label_value, contour))
+                transformed = _transform_contour_replot(contour)
             except Exception:
                 continue
-        return contours
+            contours_by_id[str(cell_id)] = transformed.astype(float).tolist()
+        return contours_by_id
     finally:
         session.close()
 
@@ -941,30 +938,15 @@ def create_contours_grid_plot(
     return _build_contours_grid_image(contours)
 
 
-def get_contours_grid_csv(
+def get_contours_grid_json(
     db_name: str, label: Optional[str] = None
 ) -> bytes:
-    contours = _collect_raw_contours_with_ids(db_name, label)
-    if not contours:
+    contours_by_id = _collect_transformed_contours_with_ids(db_name, label)
+    if not contours_by_id:
         raise LookupError("No contours found for the specified label.")
 
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(["cell_id", "manual_label", "point_index", "x", "y"])
-    for cell_id, manual_label, contour in contours:
-        if contour.size == 0:
-            continue
-        for idx, point in enumerate(contour.tolist()):
-            writer.writerow(
-                [
-                    cell_id,
-                    manual_label,
-                    idx,
-                    point[0],
-                    point[1],
-                ]
-            )
-    return buf.getvalue().encode("utf-8")
+    payload = json.dumps(contours_by_id, ensure_ascii=True, indent=2)
+    return payload.encode("utf-8")
 
 
 def create_cell_length_boxplot(
@@ -1077,10 +1059,10 @@ class BulkEngineCrud:
         return create_contours_grid_plot(db_name, label)
 
     @classmethod
-    def get_contours_grid_csv(
+    def get_contours_grid_json(
         cls, db_name: str, label: Optional[str] = None
     ) -> bytes:
-        return get_contours_grid_csv(db_name, label)
+        return get_contours_grid_json(db_name, label)
 
     @classmethod
     def create_cell_length_boxplot(cls, db_name: str, label: Optional[str] = None) -> bytes:

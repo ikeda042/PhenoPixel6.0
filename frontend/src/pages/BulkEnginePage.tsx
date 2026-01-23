@@ -995,14 +995,14 @@ export default function BulkEnginePage() {
     }
   }
 
-  const handleExportContoursCsv = async () => {
+  const handleExportContoursJson = async () => {
     if (!dbName || isContoursExporting) return
     setIsContoursExporting(true)
     setContoursExportError(null)
     try {
       const params = new URLSearchParams({ dbname: dbName, label: analysisLabel })
-      const res = await fetch(`${apiBase}/get-contours-grid-csv?${params.toString()}`, {
-        headers: { accept: 'text/csv' },
+      const res = await fetch(`${apiBase}/get-contours-grid-json?${params.toString()}`, {
+        headers: { accept: 'application/json' },
       })
       if (!res.ok) {
         throw new Error(`Request failed (${res.status})`)
@@ -1016,7 +1016,7 @@ export default function BulkEnginePage() {
         analysisLabel === 'All'
           ? 'all'
           : analysisLabel.replace(/[^a-zA-Z0-9_-]/g, '_')
-      const filename = `bulk-${safeDb}-${safeLabel}-contours.csv`
+      const filename = `bulk-${safeDb}-${safeLabel}-contours.json`
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -1027,7 +1027,7 @@ export default function BulkEnginePage() {
       URL.revokeObjectURL(url)
     } catch (err) {
       setContoursExportError(
-        err instanceof Error ? err.message : 'Failed to export contours CSV',
+        err instanceof Error ? err.message : 'Failed to export contours JSON',
       )
     } finally {
       setIsContoursExporting(false)
@@ -2280,10 +2280,10 @@ export default function BulkEnginePage() {
                           bg="tide.500"
                           color="ink.900"
                           _hover={{ bg: 'tide.400' }}
-                          onClick={handleExportContoursCsv}
+                          onClick={handleExportContoursJson}
                           isDisabled={!dbName || isContoursExporting}
                         >
-                          {isContoursExporting ? 'Exporting...' : 'Export CSV'}
+                          {isContoursExporting ? 'Exporting...' : 'Export JSON'}
                         </Button>
                       </HStack>
                       {contoursExportError && (
