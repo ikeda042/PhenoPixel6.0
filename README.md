@@ -40,6 +40,22 @@ npm run dev
 - OpenAPI JSON: http://localhost:3000/api/v1/openapi.json
 - Health check: http://localhost:3000/api/v1/health
 
+## Docker Deploy (Traefik)
+
+`docker/compose.yaml` で Traefik + backend を起動します。
+
+1) `backend/.env` を作成（`backend/.env.template` を参考）
+2) `SERVER_HOST` と `TRAEFIK_ACME_EMAIL` を設定
+3) 起動:
+
+```sh
+cd docker
+docker compose -f compose.yaml up -d --build
+```
+
+Traefik は `80/443` を使用します。`SERVER_HOST` で設定したホスト名に
+アクセスし、API は `/api/v1` 以下に公開されます。
+
 ## Tech Stack
 
 Backend:
