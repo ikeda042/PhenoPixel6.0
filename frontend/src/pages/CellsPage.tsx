@@ -110,7 +110,13 @@ export default function CellsPage() {
     scale: true,
   })
   const [contourMode, setContourMode] = useState<
-    'contour' | 'replot' | 'overlay' | 'heatmap' | 'distribution' | 'map256'
+    | 'contour'
+    | 'replot'
+    | 'overlay'
+    | 'overlay-fluo'
+    | 'heatmap'
+    | 'distribution'
+    | 'map256'
   >('overlay')
   const [contourData, setContourData] = useState<number[][]>([])
   const [isLoadingContour, setIsLoadingContour] = useState(false)
@@ -488,7 +494,9 @@ export default function CellsPage() {
   }, [apiBase, contourMode, currentCellId, dbName, contourRefreshKey, replotChannel])
 
   useEffect(() => {
-    if (!dbName || !currentCellId || contourMode !== 'overlay') {
+    const shouldLoadOverlay =
+      contourMode === 'overlay' || contourMode === 'overlay-fluo'
+    if (!dbName || !currentCellId || !shouldLoadOverlay) {
       setOverlayUrl(null)
       setOverlayError(null)
       setIsLoadingOverlay(false)
@@ -506,6 +514,7 @@ export default function CellsPage() {
           dbname: dbName,
           cell_id: currentCellId,
           draw_scale_bar: String(overlayOptions.scale),
+          overlay_mode: contourMode === 'overlay-fluo' ? 'fluo' : 'ph',
         })
         const res = await fetch(`${apiBase}/get-cell-overlay?${params.toString()}`, {
           signal: controller.signal,
@@ -536,7 +545,14 @@ export default function CellsPage() {
       isActive = false
       controller.abort()
     }
-  }, [apiBase, contourMode, currentCellId, dbName, contourRefreshKey, overlayOptions.scale])
+  }, [
+    apiBase,
+    contourMode,
+    currentCellId,
+    dbName,
+    contourRefreshKey,
+    overlayOptions.scale,
+  ])
 
   useEffect(() => {
     if (!dbName || !currentCellId || contourMode !== 'heatmap') {
@@ -854,10 +870,11 @@ export default function CellsPage() {
   }
 
   const isNavigatorDisabled = cellCount === 0 || isLoadingIds
+  const isOverlayMode = contourMode === 'overlay' || contourMode === 'overlay-fluo'
   const contourPanelError =
     contourMode === 'replot'
       ? replotError
-      : contourMode === 'overlay'
+      : isOverlayMode
         ? overlayError
         : contourMode === 'heatmap'
           ? heatmapError
@@ -869,7 +886,7 @@ export default function CellsPage() {
   const isContourPending =
     contourMode === 'contour' &&
     (isLoadingContour || (contourData.length > 0 && !imageDimensions))
-  const isOverlayPending = contourMode === 'overlay' && isLoadingOverlay
+  const isOverlayPending = isOverlayMode && isLoadingOverlay
   const isHeatmapPending = contourMode === 'heatmap' && isLoadingHeatmap
   const isMap256Pending = contourMode === 'map256' && isLoadingMap256
   const isDistributionPending =
@@ -1468,6 +1485,7 @@ export default function CellsPage() {
                               | 'contour'
                               | 'replot'
                               | 'overlay'
+                              | 'overlay-fluo'
                               | 'heatmap'
                               | 'map256'
                               | 'distribution',
@@ -1487,6 +1505,7 @@ export default function CellsPage() {
                         <option value="contour">Contour</option>
                         <option value="replot">Replot</option>
                         <option value="overlay">Overlay</option>
+                        <option value="overlay-fluo">Overlay Fluo</option>
                         <option value="heatmap">Heatmap</option>
                         <option value="map256">Map 256</option>
                         <option value="distribution">Distribution</option>
@@ -1651,7 +1670,7 @@ export default function CellsPage() {
                           Replot not available.
                         </Text>
                       )
-                    ) : contourMode === 'overlay' ? (
+                    ) : isOverlayMode ? (
                       isOverlayPending ? (
                         <Spinner color="ink.700" />
                       ) : overlayUrl ? (

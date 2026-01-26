@@ -954,16 +954,6 @@
               "type": "string",
               "title": "Cell Id"
             }
-          },
-          {
-            "name": "draw_scale_bar",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": false,
-              "title": "Draw Scale Bar"
-            }
           }
         ],
         "responses": {
@@ -1228,6 +1218,30 @@
             "schema": {
               "type": "string",
               "title": "Cell Id"
+            }
+          },
+          {
+            "name": "draw_scale_bar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Draw Scale Bar"
+            }
+          },
+          {
+            "name": "overlay_mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ph",
+              "title": "Overlay Mode",
+              "enum": [
+                "ph",
+                "fluo"
+              ]
             }
           }
         ],
