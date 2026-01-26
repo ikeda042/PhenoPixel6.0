@@ -1499,7 +1499,7 @@ def get_cell_overlay(
         else:
             raise ValueError("Invalid contour format")
 
-        mask = np.zeros(ph_image.shape[:2], dtype=np.uint8)
+        mask = np.zeros(overlay.shape[:2], dtype=np.uint8)
         cv2.fillPoly(mask, [contour_np], 255)
         mask_bool = mask > 0
         if not np.any(mask_bool):
