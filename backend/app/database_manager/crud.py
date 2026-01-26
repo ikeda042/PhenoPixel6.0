@@ -1439,7 +1439,7 @@ def get_cell_image_optical_boost(
         session.close()
 
 
-def get_cell_overlay(db_name: str, cell_id: str) -> bytes:
+def get_cell_overlay(db_name: str, cell_id: str, draw_scale_bar: bool = False) -> bytes:
     session = get_database_session(db_name)
     try:
         bind = session.get_bind()
@@ -1528,6 +1528,9 @@ def get_cell_overlay(db_name: str, cell_id: str) -> bytes:
             red = overlay[:, :, 2]
             red[mask_bool] = np.maximum(red[mask_bool], norm2[mask_bool])
             overlay[:, :, 2] = red
+
+        if draw_scale_bar:
+            overlay = _draw_scale_bar_with_centered_text(overlay)
 
         return _encode_image(overlay)
     finally:

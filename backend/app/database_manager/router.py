@@ -205,9 +205,12 @@ def get_cell_image_optical_boost_endpoint(
 def get_cell_overlay_endpoint(
     dbname: str = Query(...),
     cell_id: str = Query(...),
+    draw_scale_bar: bool = Query(False),
 ) -> StreamingResponse:
     try:
-        image_bytes = DatabaseManagerCrud.get_cell_overlay(dbname, cell_id)
+        image_bytes = DatabaseManagerCrud.get_cell_overlay(
+            dbname, cell_id, draw_scale_bar=draw_scale_bar
+        )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except LookupError:

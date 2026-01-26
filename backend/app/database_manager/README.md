@@ -96,7 +96,7 @@ Response: `image/png`
 
 **GET** `/get-cell-overlay`  
 Ph image with fluo overlay inside the contour.  
-Params: `dbname`, `cell_id`  
+Params: `dbname`, `cell_id`, `draw_scale_bar`  
 Response: `image/png`
 
 ### Derived Visualizations

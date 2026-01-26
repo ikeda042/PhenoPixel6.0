@@ -505,6 +505,7 @@ export default function CellsPage() {
         const params = new URLSearchParams({
           dbname: dbName,
           cell_id: currentCellId,
+          draw_scale_bar: String(overlayOptions.scale),
         })
         const res = await fetch(`${apiBase}/get-cell-overlay?${params.toString()}`, {
           signal: controller.signal,
@@ -535,7 +536,7 @@ export default function CellsPage() {
       isActive = false
       controller.abort()
     }
-  }, [apiBase, contourMode, currentCellId, dbName, contourRefreshKey])
+  }, [apiBase, contourMode, currentCellId, dbName, contourRefreshKey, overlayOptions.scale])
 
   useEffect(() => {
     if (!dbName || !currentCellId || contourMode !== 'heatmap') {
