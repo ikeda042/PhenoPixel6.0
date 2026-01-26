@@ -1469,12 +1469,13 @@ def get_cell_overlay(
             raise LookupError("Cell overlay data not found")
 
         ph_raw, fluo1_raw, fluo2_raw, contour_raw = row
-        if fluo1_raw is None or contour_raw is None:
+        if fluo1_raw is None:
+            raise LookupError("Cell overlay data not found")
+        if overlay_mode == "ph" and contour_raw is None:
             raise LookupError("Cell overlay data not found")
 
         fluo1_image = _decode_image(bytes(fluo1_raw))
         fluo2_image = _decode_image(bytes(fluo2_raw)) if fluo2_raw is not None else None
-        contour_raw = bytes(contour_raw)
 
         if overlay_mode == "ph":
             if ph_raw is None:
@@ -1490,32 +1491,42 @@ def get_cell_overlay(
             if fluo2_image is not None and fluo1_image.shape[:2] != fluo2_image.shape[:2]:
                 raise ValueError("Overlay image sizes do not match")
 
-        contour = pickle.loads(contour_raw)
-        contour_array = np.asarray(contour)
-        if contour_array.ndim == 3 and contour_array.shape[1] == 1:
-            contour_np = contour_array.astype(np.int32)
-        elif contour_array.ndim == 2 and contour_array.shape[1] == 2:
-            contour_np = contour_array.reshape(-1, 1, 2).astype(np.int32)
-        else:
-            raise ValueError("Invalid contour format")
-
-        mask = np.zeros(ph_image.shape[:2], dtype=np.uint8)
-        cv2.fillPoly(mask, [contour_np], 255)
-        mask_bool = mask > 0
-        if not np.any(mask_bool):
-            raise ValueError("No pixels inside contour")
-
         fluo1_gray = cv2.cvtColor(fluo1_image, cv2.COLOR_BGR2GRAY)
         fluo2_gray = (
             cv2.cvtColor(fluo2_image, cv2.COLOR_BGR2GRAY)
             if fluo2_image is not None
             else None
         )
+        if overlay_mode == "ph":
+            contour_raw_bytes = bytes(contour_raw)
+            contour = pickle.loads(contour_raw_bytes)
+            contour_array = np.asarray(contour)
+            if contour_array.ndim == 3 and contour_array.shape[1] == 1:
+                contour_np = contour_array.astype(np.int32)
+            elif contour_array.ndim == 2 and contour_array.shape[1] == 2:
+                contour_np = contour_array.reshape(-1, 1, 2).astype(np.int32)
+            else:
+                raise ValueError("Invalid contour format")
 
-        min1 = float(fluo1_gray[mask_bool].min())
-        max1 = float(fluo1_gray[mask_bool].max())
-        min2 = float(fluo2_gray[mask_bool].min()) if fluo2_gray is not None else 0.0
-        max2 = float(fluo2_gray[mask_bool].max()) if fluo2_gray is not None else 0.0
+            mask = np.zeros(overlay.shape[:2], dtype=np.uint8)
+            cv2.fillPoly(mask, [contour_np], 255)
+            mask_bool = mask > 0
+            if not np.any(mask_bool):
+                raise ValueError("No pixels inside contour")
+
+            min1 = float(fluo1_gray[mask_bool].min())
+            max1 = float(fluo1_gray[mask_bool].max())
+            min2 = (
+                float(fluo2_gray[mask_bool].min()) if fluo2_gray is not None else 0.0
+            )
+            max2 = (
+                float(fluo2_gray[mask_bool].max()) if fluo2_gray is not None else 0.0
+            )
+        else:
+            min1 = float(fluo1_gray.min())
+            max1 = float(fluo1_gray.max())
+            min2 = float(fluo2_gray.min()) if fluo2_gray is not None else 0.0
+            max2 = float(fluo2_gray.max()) if fluo2_gray is not None else 0.0
 
         range1 = max1 - min1
         range2 = max2 - min2 if fluo2_gray is not None else 0.0
@@ -1535,13 +1546,18 @@ def get_cell_overlay(
         if norm2 is not None:
             norm2 = np.clip(norm2, 0, 255).astype(np.uint8)
 
-        green = overlay[:, :, 1]
-        green[mask_bool] = np.maximum(green[mask_bool], norm1[mask_bool])
-        overlay[:, :, 1] = green
-        if norm2 is not None:
-            red = overlay[:, :, 2]
-            red[mask_bool] = np.maximum(red[mask_bool], norm2[mask_bool])
-            overlay[:, :, 2] = red
+        if overlay_mode == "ph":
+            green = overlay[:, :, 1]
+            green[mask_bool] = np.maximum(green[mask_bool], norm1[mask_bool])
+            overlay[:, :, 1] = green
+            if norm2 is not None:
+                red = overlay[:, :, 2]
+                red[mask_bool] = np.maximum(red[mask_bool], norm2[mask_bool])
+                overlay[:, :, 2] = red
+        else:
+            overlay[:, :, 1] = np.maximum(overlay[:, :, 1], norm1)
+            if norm2 is not None:
+                overlay[:, :, 2] = np.maximum(overlay[:, :, 2], norm2)
 
         if draw_scale_bar:
             overlay = _draw_scale_bar_with_centered_text(overlay)
