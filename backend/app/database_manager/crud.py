@@ -1469,13 +1469,13 @@ def get_cell_overlay(
             raise LookupError("Cell overlay data not found")
 
         ph_raw, fluo1_raw, fluo2_raw, contour_raw = row
-        if fluo1_raw is None or contour_raw is None:
+        if fluo1_raw is None:
+            raise LookupError("Cell overlay data not found")
+        if overlay_mode == "ph" and contour_raw is None:
             raise LookupError("Cell overlay data not found")
 
         fluo1_image = _decode_image(bytes(fluo1_raw))
         fluo2_image = _decode_image(bytes(fluo2_raw)) if fluo2_raw is not None else None
-        contour_raw = bytes(contour_raw)
-
         if overlay_mode == "ph":
             if ph_raw is None:
                 raise LookupError("Cell overlay data not found")
@@ -1490,20 +1490,24 @@ def get_cell_overlay(
             if fluo2_image is not None and fluo1_image.shape[:2] != fluo2_image.shape[:2]:
                 raise ValueError("Overlay image sizes do not match")
 
-        contour = pickle.loads(contour_raw)
-        contour_array = np.asarray(contour)
-        if contour_array.ndim == 3 and contour_array.shape[1] == 1:
-            contour_np = contour_array.astype(np.int32)
-        elif contour_array.ndim == 2 and contour_array.shape[1] == 2:
-            contour_np = contour_array.reshape(-1, 1, 2).astype(np.int32)
-        else:
-            raise ValueError("Invalid contour format")
+        if overlay_mode == "ph":
+            contour_raw = bytes(contour_raw)
+            contour = pickle.loads(contour_raw)
+            contour_array = np.asarray(contour)
+            if contour_array.ndim == 3 and contour_array.shape[1] == 1:
+                contour_np = contour_array.astype(np.int32)
+            elif contour_array.ndim == 2 and contour_array.shape[1] == 2:
+                contour_np = contour_array.reshape(-1, 1, 2).astype(np.int32)
+            else:
+                raise ValueError("Invalid contour format")
 
-        mask = np.zeros(overlay.shape[:2], dtype=np.uint8)
-        cv2.fillPoly(mask, [contour_np], 255)
-        mask_bool = mask > 0
-        if not np.any(mask_bool):
-            raise ValueError("No pixels inside contour")
+            mask = np.zeros(overlay.shape[:2], dtype=np.uint8)
+            cv2.fillPoly(mask, [contour_np], 255)
+            mask_bool = mask > 0
+            if not np.any(mask_bool):
+                raise ValueError("No pixels inside contour")
+        else:
+            mask_bool = np.ones(overlay.shape[:2], dtype=bool)
 
         fluo1_gray = cv2.cvtColor(fluo1_image, cv2.COLOR_BGR2GRAY)
         fluo2_gray = (
