@@ -1,7 +1,7 @@
 import asyncio
 import io
 from concurrent.futures import ProcessPoolExecutor
-from typing import Optional
+from typing import Literal, Optional
 
 import aiofiles
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
@@ -206,10 +206,11 @@ def get_cell_overlay_endpoint(
     dbname: str = Query(...),
     cell_id: str = Query(...),
     draw_scale_bar: bool = Query(False),
+    overlay_mode: Literal["ph", "fluo"] = Query("ph"),
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_overlay(
-            dbname, cell_id, draw_scale_bar=draw_scale_bar
+            dbname, cell_id, draw_scale_bar=draw_scale_bar, overlay_mode=overlay_mode
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")

@@ -1439,9 +1439,16 @@ def get_cell_image_optical_boost(
         session.close()
 
 
-def get_cell_overlay(db_name: str, cell_id: str, draw_scale_bar: bool = False) -> bytes:
+def get_cell_overlay(
+    db_name: str,
+    cell_id: str,
+    draw_scale_bar: bool = False,
+    overlay_mode: Literal["ph", "fluo"] = "ph",
+) -> bytes:
     session = get_database_session(db_name)
     try:
+        if overlay_mode not in ("ph", "fluo"):
+            raise ValueError("Invalid overlay_mode")
         bind = session.get_bind()
         if bind is None:
             raise RuntimeError("Database session is not bound")
@@ -1462,18 +1469,26 @@ def get_cell_overlay(db_name: str, cell_id: str, draw_scale_bar: bool = False) -
             raise LookupError("Cell overlay data not found")
 
         ph_raw, fluo1_raw, fluo2_raw, contour_raw = row
-        if ph_raw is None or fluo1_raw is None or contour_raw is None:
+        if fluo1_raw is None or contour_raw is None:
             raise LookupError("Cell overlay data not found")
 
-        ph_image = _decode_image(bytes(ph_raw))
         fluo1_image = _decode_image(bytes(fluo1_raw))
         fluo2_image = _decode_image(bytes(fluo2_raw)) if fluo2_raw is not None else None
         contour_raw = bytes(contour_raw)
 
-        if ph_image.shape[:2] != fluo1_image.shape[:2]:
-            raise ValueError("Overlay image sizes do not match")
-        if fluo2_image is not None and ph_image.shape[:2] != fluo2_image.shape[:2]:
-            raise ValueError("Overlay image sizes do not match")
+        if overlay_mode == "ph":
+            if ph_raw is None:
+                raise LookupError("Cell overlay data not found")
+            ph_image = _decode_image(bytes(ph_raw))
+            if ph_image.shape[:2] != fluo1_image.shape[:2]:
+                raise ValueError("Overlay image sizes do not match")
+            if fluo2_image is not None and ph_image.shape[:2] != fluo2_image.shape[:2]:
+                raise ValueError("Overlay image sizes do not match")
+            overlay = ph_image.copy()
+        else:
+            overlay = np.zeros_like(fluo1_image)
+            if fluo2_image is not None and fluo1_image.shape[:2] != fluo2_image.shape[:2]:
+                raise ValueError("Overlay image sizes do not match")
 
         contour = pickle.loads(contour_raw)
         contour_array = np.asarray(contour)
@@ -1520,7 +1535,6 @@ def get_cell_overlay(db_name: str, cell_id: str, draw_scale_bar: bool = False) -
         if norm2 is not None:
             norm2 = np.clip(norm2, 0, 255).astype(np.uint8)
 
-        overlay = ph_image.copy()
         green = overlay[:, :, 1]
         green[mask_bool] = np.maximum(green[mask_bool], norm1[mask_bool])
         overlay[:, :, 1] = green
