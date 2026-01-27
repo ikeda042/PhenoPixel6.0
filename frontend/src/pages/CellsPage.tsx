@@ -93,8 +93,9 @@ const sortCellIds = (ids: string[]) =>
   })
 
 export default function CellsPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const dbName = searchParams.get('db') ?? ''
+  const requestedCellId = searchParams.get('cell_id') ?? searchParams.get('cell') ?? ''
   const apiBase = useMemo(() => getApiBase(), [])
 
   const [cellIds, setCellIds] = useState<string[]>([])
@@ -169,6 +170,23 @@ export default function CellsPage() {
 
   const currentCellId = cellIds[currentIndex] ?? ''
   const cellCount = cellIds.length
+
+  useEffect(() => {
+    if (!requestedCellId || cellIds.length === 0) return
+    const nextIndex = cellIds.indexOf(requestedCellId)
+    if (nextIndex >= 0) {
+      setCurrentIndex(nextIndex)
+    }
+  }, [cellIds, requestedCellId])
+
+  useEffect(() => {
+    if (!dbName || !currentCellId) return
+    if (searchParams.get('cell_id') === currentCellId) return
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('cell_id', currentCellId)
+    nextParams.delete('cell')
+    setSearchParams(nextParams, { replace: true })
+  }, [currentCellId, dbName, searchParams, setSearchParams])
 
   const fetchLabelOptions = useCallback(async () => {
     if (!dbName) {
