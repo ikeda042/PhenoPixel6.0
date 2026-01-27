@@ -434,6 +434,19 @@ export default function AnnotationPage() {
               Database: {dbName || 'Not selected'}
             </Text>
             <HStack spacing="4" flexWrap="wrap" align="flex-end">
+              {dbName && (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  borderColor="sand.200"
+                  color="ink.700"
+                  _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                  as={RouterLink}
+                  to={`/bulk-engine?dbname=${encodeURIComponent(dbName)}`}
+                >
+                  Bulk-engine
+                </Button>
+              )}
               <Box minW="10rem">
                 <NativeSelect.Root>
                   <NativeSelect.Field
