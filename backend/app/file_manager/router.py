@@ -1,6 +1,6 @@
-from typing import AsyncIterator
+from typing import Annotated, AsyncIterator
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Path, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.file_manager.crud import FileManagerCrud
@@ -26,7 +26,7 @@ async def list_files_endpoint():
 
 
 @router_file_manager.post("/filemanager/files")
-async def upload_file_endpoint(file: UploadFile = File(...)):
+async def upload_file_endpoint(file: Annotated[UploadFile, File()] = ...):
     try:
         payload = await FileManagerCrud.save_upload(file.filename or "", _iter_upload(file))
     except ValueError as exc:
@@ -39,7 +39,7 @@ async def upload_file_endpoint(file: UploadFile = File(...)):
 
 
 @router_file_manager.get("/filemanager/files/{filename}")
-async def download_file_endpoint(filename: str):
+async def download_file_endpoint(filename: Annotated[str, Path()]):
     try:
         file_path = FileManagerCrud.resolve_file_path(filename)
     except ValueError as exc:
@@ -55,7 +55,7 @@ async def download_file_endpoint(filename: str):
 
 
 @router_file_manager.delete("/filemanager/files/{filename}")
-async def delete_file_endpoint(filename: str):
+async def delete_file_endpoint(filename: Annotated[str, Path()]):
     try:
         deleted = await FileManagerCrud.delete_file(filename)
     except FileNotFoundError as exc:

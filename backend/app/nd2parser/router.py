@@ -7,6 +7,7 @@ import shutil
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from threading import Lock
+from typing import Annotated
 
 import nd2reader
 import numpy as np
@@ -539,7 +540,7 @@ async def parse_nd2(payload: ParseNd2Request):
 
 
 @router_nd2parser.get("/nd2parser/metadata")
-def get_nd2_metadata(nd2file: str = Query(...)):
+def get_nd2_metadata(nd2file: Annotated[str, Query()] = ...):
     sanitized = _sanitize_nd2_filename(nd2file)
     output_dir = _get_output_dir(sanitized)
     return JSONResponse(content=_load_metadata(output_dir))
@@ -547,11 +548,11 @@ def get_nd2_metadata(nd2file: str = Query(...)):
 
 @router_nd2parser.get("/nd2parser/image")
 async def get_nd2_image(
-    nd2file: str = Query(...),
-    channel: str = Query(...),
-    frame: int = Query(..., ge=0),
-    mode: str = Query("none"),
-    brightness: float = Query(1.0, gt=0),
+    nd2file: Annotated[str, Query()] = ...,
+    channel: Annotated[str, Query()] = ...,
+    frame: Annotated[int, Query(ge=0)] = ...,
+    mode: Annotated[str, Query()] = "none",
+    brightness: Annotated[float, Query(gt=0)] = 1.0,
 ):
     sanitized = _sanitize_nd2_filename(nd2file)
     output_dir = _get_output_dir(sanitized)
@@ -580,13 +581,13 @@ async def get_nd2_image(
 
 @router_nd2parser.get("/nd2parser/export-region")
 async def export_nd2_region(
-    nd2file: str = Query(...),
-    frame: int = Query(..., ge=0),
-    grid_size: int = Query(..., gt=0),
-    center_x: int = Query(...),
-    center_y: int = Query(...),
-    mode: str = Query("none"),
-    brightness: float = Query(1.0, gt=0),
+    nd2file: Annotated[str, Query()] = ...,
+    frame: Annotated[int, Query(ge=0)] = ...,
+    grid_size: Annotated[int, Query(gt=0)] = ...,
+    center_x: Annotated[int, Query()] = ...,
+    center_y: Annotated[int, Query()] = ...,
+    mode: Annotated[str, Query()] = "none",
+    brightness: Annotated[float, Query(gt=0)] = 1.0,
 ):
     sanitized = _sanitize_nd2_filename(nd2file)
     output_dir = _get_output_dir(sanitized)
