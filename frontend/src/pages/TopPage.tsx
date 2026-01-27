@@ -562,7 +562,7 @@ export default function TopPage() {
                               width="100%"
                               height="100%"
                               viewBox={`0 0 ${activityChart.width} ${activityChart.height}`}
-                              preserveAspectRatio="none"
+                              preserveAspectRatio="xMidYMid meet"
                               role="img"
                               aria-label="Weekly activity line chart"
                             >

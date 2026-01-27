@@ -6,3 +6,4 @@ __pycache__/
 backend/app/file_manager/storage/
 backend/app/nd2parser/parsednd2/
 backend/.env
+backend/app/activity_tracker/data/
