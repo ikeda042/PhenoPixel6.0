@@ -115,6 +115,7 @@ export default function CellsPage() {
     | 'replot'
     | 'overlay'
     | 'overlay-fluo'
+    | 'overlay-raw'
     | 'heatmap'
     | 'distribution'
     | 'map256'
@@ -527,7 +528,9 @@ export default function CellsPage() {
 
   useEffect(() => {
     const shouldLoadOverlay =
-      contourMode === 'overlay' || contourMode === 'overlay-fluo'
+      contourMode === 'overlay' ||
+      contourMode === 'overlay-fluo' ||
+      contourMode === 'overlay-raw'
     if (!dbName || !currentCellId || !shouldLoadOverlay) {
       setOverlayUrl(null)
       setOverlayError(null)
@@ -546,7 +549,12 @@ export default function CellsPage() {
           dbname: dbName,
           cell_id: currentCellId,
           draw_scale_bar: String(overlayOptions.scale),
-          overlay_mode: contourMode === 'overlay-fluo' ? 'fluo' : 'ph',
+          overlay_mode:
+            contourMode === 'overlay-fluo'
+              ? 'fluo'
+              : contourMode === 'overlay-raw'
+                ? 'raw'
+                : 'ph',
         })
         const res = await fetch(`${apiBase}/get-cell-overlay?${params.toString()}`, {
           signal: controller.signal,
@@ -902,7 +910,10 @@ export default function CellsPage() {
   }
 
   const isNavigatorDisabled = cellCount === 0 || isLoadingIds
-  const isOverlayMode = contourMode === 'overlay' || contourMode === 'overlay-fluo'
+  const isOverlayMode =
+    contourMode === 'overlay' ||
+    contourMode === 'overlay-fluo' ||
+    contourMode === 'overlay-raw'
   const contourPanelError =
     contourMode === 'replot'
       ? replotError
@@ -1518,6 +1529,7 @@ export default function CellsPage() {
                               | 'replot'
                               | 'overlay'
                               | 'overlay-fluo'
+                              | 'overlay-raw'
                               | 'heatmap'
                               | 'map256'
                               | 'distribution',
@@ -1537,6 +1549,7 @@ export default function CellsPage() {
                         <option value="contour">Contour</option>
                         <option value="replot">Replot</option>
                         <option value="overlay">Overlay</option>
+                        <option value="overlay-raw">Overlay Raw</option>
                         <option value="overlay-fluo">Overlay Fluo</option>
                         <option value="heatmap">Heatmap</option>
                         <option value="map256">Map 256</option>

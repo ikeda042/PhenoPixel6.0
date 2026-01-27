@@ -97,7 +97,8 @@ Response: `image/png`
 **GET** `/get-cell-overlay`  
 Ph image with fluo overlay inside the contour.  
 Use `overlay_mode=fluo` to return a fluo-only overlay without contour masking.  
-Params: `dbname`, `cell_id`, `draw_scale_bar`, `overlay_mode=ph|fluo`  
+Use `overlay_mode=raw` to overlay fluo on the PH image without contour masking.  
+Params: `dbname`, `cell_id`, `draw_scale_bar`, `overlay_mode=ph|fluo|raw`  
 Response: `image/png`
 
 ### Derived Visualizations

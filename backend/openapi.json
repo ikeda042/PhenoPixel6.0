@@ -1240,7 +1240,8 @@
               "title": "Overlay Mode",
               "enum": [
                 "ph",
-                "fluo"
+                "fluo",
+                "raw"
               ]
             }
           }
