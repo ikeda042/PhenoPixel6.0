@@ -622,22 +622,22 @@ export default function TopPage() {
                                   strokeWidth="1.5"
                                 />
                               ))}
+                              {activityChart.coordinates.map((point, index) => (
+                                <text
+                                  key={`label-${index}`}
+                                  x={point.x}
+                                  y={activityChart.height - activityChart.paddingY / 2}
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
+                                  fontSize="10"
+                                  fill="var(--chakra-colors-ink-700)"
+                                >
+                                  {activityLabels[index] ?? formatShortDate(point.date)}
+                                </text>
+                              ))}
                             </svg>
                           </Box>
                         </Box>
-                        <HStack justify="space-between" spacing="2" flexWrap="wrap">
-                          {activityLabels.map((label, index) => (
-                            <Text
-                              key={`${label}-${index}`}
-                              fontSize="xs"
-                              color="ink.700"
-                              minW="2.5rem"
-                              textAlign="center"
-                            >
-                              {label}
-                            </Text>
-                          ))}
-                        </HStack>
                       </>
                     ) : (
                       <Text fontSize="sm" color="ink.700">
