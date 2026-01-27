@@ -2,12 +2,12 @@ import os
 import re
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 import aiofiles
 import nd2reader
 import numpy as np
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile, Path as ApiPath
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -309,7 +309,7 @@ def _extract_nd2_metadata(file_path: Path) -> dict[str, Any]:
 
 
 @router_nd2.post("/nd2_files")
-async def upload_nd2_file(file: UploadFile = File(...)):
+async def upload_nd2_file(file: Annotated[UploadFile, File(...)]):
     sanitized = _sanitize_nd2_filename(file.filename or "")
     file_path = _ensure_upload_dir() / sanitized
     try:
@@ -328,7 +328,7 @@ async def get_nd2_files():
 
 
 @router_nd2.delete("/nd2_files/{filename}")
-def delete_nd2_file(filename: str):
+def delete_nd2_file(filename: Annotated[str, ApiPath(...)]):
     sanitized = _sanitize_nd2_filename(filename)
     file_path = _ensure_upload_dir() / sanitized
     if not file_path.exists():
@@ -376,7 +376,7 @@ def bulk_delete_nd2_files(payload: Nd2BulkDeleteRequest):
 
 
 @router_nd2.get("/nd2_files/{filename}/metadata")
-def get_nd2_file_metadata(filename: str):
+def get_nd2_file_metadata(filename: Annotated[str, ApiPath(...)]):
     sanitized = _sanitize_nd2_filename(filename)
     file_path = _ensure_upload_dir() / sanitized
     if not file_path.is_file():
