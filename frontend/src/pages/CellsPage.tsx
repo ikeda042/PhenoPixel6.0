@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import {
   AspectRatio,
@@ -170,17 +170,31 @@ export default function CellsPage() {
 
   const currentCellId = cellIds[currentIndex] ?? ''
   const cellCount = cellIds.length
+  const restorePendingRef = useRef(false)
+
+  useEffect(() => {
+    restorePendingRef.current = Boolean(requestedCellId)
+  }, [requestedCellId, dbName])
 
   useEffect(() => {
     if (!requestedCellId || cellIds.length === 0) return
     const nextIndex = cellIds.indexOf(requestedCellId)
     if (nextIndex >= 0) {
       setCurrentIndex(nextIndex)
+      return
     }
+    restorePendingRef.current = false
   }, [cellIds, requestedCellId])
 
   useEffect(() => {
+    if (restorePendingRef.current && requestedCellId && currentCellId === requestedCellId) {
+      restorePendingRef.current = false
+    }
+  }, [currentCellId, requestedCellId])
+
+  useEffect(() => {
     if (!dbName || !currentCellId) return
+    if (restorePendingRef.current) return
     if (searchParams.get('cell_id') === currentCellId) return
     const nextParams = new URLSearchParams(searchParams)
     nextParams.set('cell_id', currentCellId)
