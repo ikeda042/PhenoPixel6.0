@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.activity_tracker.router import router_activity_tracker
 from app.bulk_engine.router import router_bulk_engine
 from app.cellextraction.router import router_cellextraction
 from app.database_manager.router import router_database_manager
@@ -36,6 +37,7 @@ app.include_router(router_database_manager, prefix=API_PREFIX)
 app.include_router(router_bulk_engine, prefix=API_PREFIX)
 app.include_router(router_file_manager, prefix=API_PREFIX)
 app.include_router(router_system, prefix=API_PREFIX)
+app.include_router(router_activity_tracker, prefix=API_PREFIX)
 
 
 @app.exception_handler(HTTPException)

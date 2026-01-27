@@ -11,6 +11,7 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.activity_tracker.crud import ACTION_CELL_EXTRACTION, record_activity_sync
 from app.cellextraction.crud import ExtractionCrudBase
 from app.slack.notifier import notify_slack_database_created
 
@@ -275,6 +276,10 @@ def extract_cells(payload: ExtractCellsRequest):
         raise HTTPException(status_code=500, detail="Failed to start extraction") from exc
     job_id = uuid4().hex
     _register_job(job_id, process, result_queue)
+    try:
+        record_activity_sync(ACTION_CELL_EXTRACTION)
+    except Exception as exc:
+        logger.warning("Activity tracking failed: %s", exc)
     Thread(
         target=_watch_extraction_job,
         args=(job_id, process, result_queue),

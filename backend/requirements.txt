@@ -8,5 +8,6 @@ SQLAlchemy
 uvicorn
 aiofiles
 aiohttp
+aiosqlite
 python-multipart
 matplotlib

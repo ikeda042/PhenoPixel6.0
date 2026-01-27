@@ -4,18 +4,31 @@ import logging
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 
+from app.activity_tracker.crud import ACTION_BULK_ENGINE, record_activity
 from app.bulk_engine.crud import BulkEngineCrud
 from app.slack.notifier import notify_slack_bulk_engine_completed
 
 
-router_bulk_engine = APIRouter(tags=["bulk_engine"])
+logger = logging.getLogger("uvicorn.error")
+
+
+async def _track_bulk_engine_activity() -> None:
+    try:
+        await record_activity(ACTION_BULK_ENGINE)
+    except Exception as exc:
+        logger.warning("Activity tracking failed: %s", exc)
+
+
+router_bulk_engine = APIRouter(
+    tags=["bulk_engine"],
+    dependencies=[Depends(_track_bulk_engine_activity)],
+)
 bulk_executor = ProcessPoolExecutor()
 heatmap_bulk_executor = ProcessPoolExecutor(max_workers=1)
-logger = logging.getLogger("uvicorn.error")
 
 
 def _notify_bulk_engine_completed(
