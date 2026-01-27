@@ -72,43 +72,41 @@ def _basis_conversion(
     list[list[float]],
     list[list[float]],
 ]:
+    coords_arr = np.asarray(coordinates_inside_cell).reshape(-1, 2)
+    contour_arr = np.asarray(contour).reshape(-1, 2)
+    center_arr = np.array([center_x, center_y])
+
     Sigma = np.cov(X)
     eigenvalues, eigenvectors = np.linalg.eig(Sigma)
 
     if eigenvalues[1] < eigenvalues[0]:
         Q = np.array([eigenvectors[1], eigenvectors[0]])
-        U = [Q.transpose() @ np.array([i, j]) for i, j in coordinates_inside_cell]
-        U = [[j, i] for i, j in U]
-        contour_U = [Q.transpose() @ np.array([j, i]) for i, j in contour]
-        contour_U = [[j, i] for i, j in contour_U]
-        center = [center_x, center_y]
-        u1_c, u2_c = center @ Q
+        U = (coords_arr @ Q)[:, ::-1]
+        contour_U = (contour_arr[:, ::-1] @ Q)[:, ::-1]
+        u1_c, u2_c = center_arr @ Q
     else:
         Q = np.array([eigenvectors[0], eigenvectors[1]])
-        U = [
-            Q.transpose() @ np.array([j, i]).transpose()
-            for i, j in coordinates_inside_cell
-        ]
-        contour_U = [Q.transpose() @ np.array([i, j]) for i, j in contour]
-        center = [center_x, center_y]
-        u2_c, u1_c = center @ Q
+        U = coords_arr[:, ::-1] @ Q
+        contour_U = contour_arr @ Q
+        u2_c, u1_c = center_arr @ Q
 
-    u1 = [val[1] for val in U]
-    u2 = [val[0] for val in U]
-    u1_contour = [val[1] for val in contour_U]
-    u2_contour = [val[0] for val in contour_U]
-    min_u1, max_u1 = min(u1), max(u1)
+    u1 = U[:, 1]
+    u2 = U[:, 0]
+    u1_contour = contour_U[:, 1]
+    u2_contour = contour_U[:, 0]
+    min_u1 = float(u1.min())
+    max_u1 = float(u1.max())
     return (
-        u1,
-        u2,
-        u1_contour,
-        u2_contour,
+        u1.tolist(),
+        u2.tolist(),
+        u1_contour.tolist(),
+        u2_contour.tolist(),
         min_u1,
         max_u1,
-        u1_c,
-        u2_c,
-        U,
-        contour_U,
+        float(u1_c),
+        float(u2_c),
+        U.tolist(),
+        contour_U.tolist(),
     )
 
 
