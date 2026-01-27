@@ -309,9 +309,9 @@ export default function TopPage() {
       return null
     }
     const width = 640
-    const height = 180
-    const paddingX = 28
-    const paddingY = 18
+    const height = 240
+    const paddingX = 32
+    const paddingY = 24
     const innerWidth = width - paddingX * 2
     const innerHeight = height - paddingY * 2
     const maxCount = Math.max(
@@ -435,9 +435,9 @@ export default function TopPage() {
               border="1px solid"
               borderColor="sand.200"
               borderRadius="xl"
-              p={{ base: 4, md: 5 }}
+              p={{ base: 4, md: 6 }}
             >
-              <Stack spacing="4">
+              <Stack spacing="6">
                 <HStack justify="space-between" flexWrap="wrap" gap="4">
                   <Box>
                     <Text
@@ -481,177 +481,196 @@ export default function TopPage() {
                 )}
 
                 {activityStatus === 'ready' && (
-                  <Stack spacing="4">
-                    <SimpleGrid columns={{ base: 1, md: 3 }} gap="3">
-                      <Box
-                        bg="sand.50"
-                        border="1px solid"
-                        borderColor="sand.200"
-                        borderRadius="lg"
-                        p="3"
-                      >
-                        <Text
-                          fontSize="xs"
-                          color="ink.700"
-                          textTransform="uppercase"
-                          letterSpacing="0.16em"
-                          mb="1"
-                        >
-                          Total actions
-                        </Text>
-                        <Text fontSize="2xl" fontWeight="600">
-                          {activityTotal}
-                        </Text>
-                      </Box>
-                      <Box
-                        bg="sand.50"
-                        border="1px solid"
-                        borderColor="sand.200"
-                        borderRadius="lg"
-                        p="3"
-                      >
-                        <Text
-                          fontSize="xs"
-                          color="ink.700"
-                          textTransform="uppercase"
-                          letterSpacing="0.16em"
-                          mb="1"
-                        >
-                          Peak day
-                        </Text>
-                        <Text fontSize="xl" fontWeight="600">
-                          {activityPeak ? activityPeak.count : 0}
-                        </Text>
-                        <Text fontSize="xs" color="ink.700">
-                          {activityPeak ? formatLongDate(activityPeak.date) : 'No data'}
-                        </Text>
-                      </Box>
-                      <Box
-                        bg="sand.50"
-                        border="1px solid"
-                        borderColor="sand.200"
-                        borderRadius="lg"
-                        p="3"
-                      >
-                        <Text
-                          fontSize="xs"
-                          color="ink.700"
-                          textTransform="uppercase"
-                          letterSpacing="0.16em"
-                          mb="1"
-                        >
-                          Daily avg
-                        </Text>
-                        <Text fontSize="2xl" fontWeight="600">
-                          {activityAverage}
-                        </Text>
-                      </Box>
-                    </SimpleGrid>
-
-                    {activityChart ? (
-                      <>
+                  <Flex direction={{ base: 'column', lg: 'row' }} gap="6">
+                    <Box w={{ base: 'full', lg: '16rem' }} flexShrink={0}>
+                      <SimpleGrid columns={{ base: 2, lg: 1 }} gap="3">
                         <Box
                           bg="sand.50"
                           border="1px solid"
                           borderColor="sand.200"
                           borderRadius="lg"
-                          p="3"
+                          p="4"
                         >
-                          <Box w="full" h={{ base: '180px', md: '200px' }}>
-                            <svg
-                              width="100%"
-                              height="100%"
-                              viewBox={`0 0 ${activityChart.width} ${activityChart.height}`}
-                              preserveAspectRatio="xMidYMid meet"
-                              role="img"
-                              aria-label="Weekly activity line chart"
-                            >
-                              <defs>
-                                <linearGradient
-                                  id="activityGradient"
-                                  x1="0"
-                                  y1="0"
-                                  x2="0"
-                                  y2="1"
-                                >
-                                  <stop
-                                    offset="0%"
-                                    stopColor="rgba(45, 212, 191, 0.35)"
-                                  />
-                                  <stop
-                                    offset="100%"
-                                    stopColor="rgba(45, 212, 191, 0)"
-                                  />
-                                </linearGradient>
-                              </defs>
-                              {activityChart.gridLines.map((line, index) => (
-                                <line
-                                  key={`grid-${index}`}
-                                  x1={activityChart.paddingX}
-                                  x2={activityChart.width - activityChart.paddingX}
-                                  y1={line.y}
-                                  y2={line.y}
-                                  stroke="var(--chakra-colors-sand-300)"
-                                  strokeDasharray="4 6"
-                                />
-                              ))}
-                              {activityChart.areaPath && (
-                                <path
-                                  d={activityChart.areaPath}
-                                  fill="url(#activityGradient)"
-                                />
-                              )}
-                              {activityChart.linePath && (
-                                <path
-                                  d={activityChart.linePath}
-                                  fill="none"
-                                  stroke="var(--chakra-colors-tide-400)"
-                                  strokeWidth="2.5"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              )}
-                              {activityChart.coordinates.map((point, index) => (
-                                <circle
-                                  key={`point-${index}`}
-                                  cx={point.x}
-                                  cy={point.y}
-                                  r="3.5"
-                                  fill="var(--chakra-colors-tide-400)"
-                                  stroke="var(--chakra-colors-sand-50)"
-                                  strokeWidth="1.5"
-                                />
-                              ))}
-                              {activityChart.coordinates.map((point, index) => (
-                                <text
-                                  key={`label-${index}`}
-                                  x={point.x}
-                                  y={activityChart.height - activityChart.paddingY / 2}
-                                  textAnchor="middle"
-                                  dominantBaseline="middle"
-                                  fontSize="10"
-                                  fill="var(--chakra-colors-ink-700)"
-                                >
-                                  {activityLabels[index] ?? formatShortDate(point.date)}
-                                </text>
-                              ))}
-                            </svg>
-                          </Box>
+                          <Text
+                            fontSize="xs"
+                            color="ink.700"
+                            textTransform="uppercase"
+                            letterSpacing="0.1em"
+                            mb="1"
+                          >
+                            Total actions
+                          </Text>
+                          <Text fontSize="3xl" fontWeight="600" lineHeight="1">
+                            {activityTotal}
+                          </Text>
                         </Box>
-                      </>
-                    ) : (
-                      <Text fontSize="sm" color="ink.700">
-                        No activity data yet.
-                      </Text>
-                    )}
 
-                    {activityTotal === 0 && (
-                      <Text fontSize="sm" color="ink.700">
-                        Start by extracting cells or running a bulk analysis to
-                        see usage trends here.
-                      </Text>
-                    )}
-                  </Stack>
+                        <Box
+                          bg="sand.50"
+                          border="1px solid"
+                          borderColor="sand.200"
+                          borderRadius="lg"
+                          p="4"
+                        >
+                          <Text
+                            fontSize="xs"
+                            color="ink.700"
+                            textTransform="uppercase"
+                            letterSpacing="0.1em"
+                            mb="1"
+                          >
+                            Daily Avg
+                          </Text>
+                          <Text fontSize="3xl" fontWeight="600" lineHeight="1">
+                            {activityAverage}
+                          </Text>
+                        </Box>
+
+                        <Box
+                          bg="sand.50"
+                          border="1px solid"
+                          borderColor="sand.200"
+                          borderRadius="lg"
+                          p="4"
+                          gridColumn={{ base: 'span 2', lg: 'span 1' }}
+                        >
+                          <HStack justify="space-between" align="baseline">
+                            <Text
+                              fontSize="xs"
+                              color="ink.700"
+                              textTransform="uppercase"
+                              letterSpacing="0.1em"
+                              mb="1"
+                            >
+                              Peak Day
+                            </Text>
+                            <Text fontSize="xs" color="ink.500" fontWeight="500">
+                              {activityPeak ? formatLongDate(activityPeak.date) : '-'}
+                            </Text>
+                          </HStack>
+
+                          <Text fontSize="2xl" fontWeight="600" lineHeight="1">
+                            {activityPeak ? activityPeak.count : 0}
+                          </Text>
+                        </Box>
+                      </SimpleGrid>
+                    </Box>
+
+                    <Box
+                      flex="1"
+                      bg="sand.50"
+                      border="1px solid"
+                      borderColor="sand.200"
+                      borderRadius="lg"
+                      p="4"
+                      minH={{ base: '200px', lg: 'auto' }}
+                      display="flex"
+                      flexDirection="column"
+                    >
+                      {activityChart ? (
+                        <Box flex="1" w="full" position="relative" minH="240px">
+                          <svg
+                            width="100%"
+                            height="100%"
+                            viewBox={`0 0 ${activityChart.width} ${activityChart.height}`}
+                            preserveAspectRatio="none"
+                            role="img"
+                            aria-label="Weekly activity line chart"
+                            style={{ overflow: 'visible' }}
+                          >
+                            <defs>
+                              <linearGradient
+                                id="activityGradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="0%"
+                                  stopColor="rgba(45, 212, 191, 0.25)"
+                                />
+                                <stop
+                                  offset="100%"
+                                  stopColor="rgba(45, 212, 191, 0)"
+                                />
+                              </linearGradient>
+                            </defs>
+
+                            {activityChart.gridLines.map((line, index) => (
+                              <line
+                                key={`grid-${index}`}
+                                x1={activityChart.paddingX}
+                                x2={activityChart.width - activityChart.paddingX}
+                                y1={line.y}
+                                y2={line.y}
+                                stroke="var(--chakra-colors-sand-300)"
+                                strokeDasharray="4 6"
+                              />
+                            ))}
+
+                            {activityChart.areaPath && (
+                              <path
+                                d={activityChart.areaPath}
+                                fill="url(#activityGradient)"
+                              />
+                            )}
+
+                            {activityChart.linePath && (
+                              <path
+                                d={activityChart.linePath}
+                                fill="none"
+                                stroke="var(--chakra-colors-tide-400)"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                vectorEffect="non-scaling-stroke"
+                              />
+                            )}
+
+                            {activityChart.coordinates.map((point, index) => (
+                              <circle
+                                key={`point-${index}`}
+                                cx={point.x}
+                                cy={point.y}
+                                r="4"
+                                fill="var(--chakra-colors-tide-400)"
+                                stroke="var(--chakra-colors-sand-50)"
+                                strokeWidth="2"
+                              />
+                            ))}
+
+                            {activityChart.coordinates.map((point, index) => (
+                              <text
+                                key={`label-${index}`}
+                                x={point.x}
+                                y={activityChart.height - 5}
+                                textAnchor="middle"
+                                fontSize="11"
+                                fontWeight="500"
+                                fill="var(--chakra-colors-ink-500)"
+                              >
+                                {activityLabels[index] ?? formatShortDate(point.date)}
+                              </text>
+                            ))}
+                          </svg>
+                        </Box>
+                      ) : (
+                        <Flex justify="center" align="center" h="full">
+                          <Text fontSize="sm" color="ink.700">
+                            No activity data yet.
+                          </Text>
+                        </Flex>
+                      )}
+                    </Box>
+                  </Flex>
+                )}
+
+                {activityStatus === 'ready' && activityTotal === 0 && (
+                  <Text fontSize="sm" color="ink.700" mt="2">
+                    Start by extracting cells or running a bulk analysis to see
+                    usage trends here.
+                  </Text>
                 )}
               </Stack>
             </Box>
