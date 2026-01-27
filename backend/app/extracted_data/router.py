@@ -50,8 +50,8 @@ async def _read_file_chunks(path: Path, chunk_size: int = 1024 * 1024):
 
 @router_extracted_data.get("/get-extracted-image")
 async def get_extracted_image(
-    folder: Annotated[str, Query(...)],
-    n: Annotated[int, Query(..., ge=0)],
+    folder: Annotated[str, Query()] = ...,
+    n: Annotated[int, Query(ge=0)] = ...,
 ):
     folder_name = _sanitize_folder(folder)
     folder_path = EXTRACTED_DATA_DIR / folder_name
@@ -65,7 +65,7 @@ async def get_extracted_image(
 
 @router_extracted_data.get("/get-extracted-image-count")
 async def get_extracted_image_count(
-    folder: Annotated[str, Query(...)],
+    folder: Annotated[str, Query()] = ...,
 ):
     folder_name = _sanitize_folder(folder)
     folder_path = EXTRACTED_DATA_DIR / folder_name

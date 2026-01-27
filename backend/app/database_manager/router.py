@@ -22,7 +22,7 @@ async def get_databases() -> list[str]:
 
 
 @router_database_manager.post("/database_files")
-async def upload_database(file: Annotated[UploadFile, File(...)]) -> dict:
+async def upload_database(file: Annotated[UploadFile, File()] = ...) -> dict:
     try:
         sanitized = DatabaseManagerCrud.sanitize_db_name(file.filename or "")
     except ValueError as exc:
@@ -43,7 +43,7 @@ async def upload_database(file: Annotated[UploadFile, File(...)]) -> dict:
 
 
 @router_database_manager.get("/database_files/{dbname}")
-async def download_database_endpoint(dbname: Annotated[str, Path(...)]) -> StreamingResponse:
+async def download_database_endpoint(dbname: Annotated[str, Path()]) -> StreamingResponse:
     try:
         db_path = DatabaseManagerCrud.resolve_database_path(dbname)
     except ValueError as exc:
@@ -59,7 +59,7 @@ async def download_database_endpoint(dbname: Annotated[str, Path(...)]) -> Strea
 
 
 @router_database_manager.delete("/database_files/{dbname}")
-async def delete_database_endpoint(dbname: Annotated[str, Path(...)]) -> dict:
+async def delete_database_endpoint(dbname: Annotated[str, Path()]) -> dict:
     try:
         deleted = await DatabaseManagerCrud.delete_database(dbname)
     except FileNotFoundError as exc:
@@ -72,7 +72,7 @@ async def delete_database_endpoint(dbname: Annotated[str, Path(...)]) -> dict:
 
 
 @router_database_manager.get("/get-cell-ids", response_model=list[str])
-def get_cell_ids_endpoint(dbname: Annotated[str, Query(...)]) -> list[str]:
+def get_cell_ids_endpoint(dbname: Annotated[str, Query()] = ...) -> list[str]:
     try:
         return DatabaseManagerCrud.get_cell_ids(dbname)
     except FileNotFoundError:
@@ -85,8 +85,8 @@ def get_cell_ids_endpoint(dbname: Annotated[str, Query(...)]) -> list[str]:
 
 @router_database_manager.get("/get-cell-ids-by-label", response_model=list[str])
 def get_cell_ids_by_label_endpoint(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str, Query(...)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str, Query()] = ...,
 ) -> list[str]:
     try:
         return DatabaseManagerCrud.get_cell_ids_by_label(dbname, label)
@@ -100,7 +100,7 @@ def get_cell_ids_by_label_endpoint(
 
 @router_database_manager.get("/get-manual-labels", response_model=list[str])
 def get_manual_labels_endpoint(
-    dbname: Annotated[str, Query(...)],
+    dbname: Annotated[str, Query()] = ...,
 ) -> list[str]:
     try:
         return DatabaseManagerCrud.get_manual_labels(dbname)
@@ -114,8 +114,8 @@ def get_manual_labels_endpoint(
 
 @router_database_manager.get("/get-cell-contour")
 def get_cell_contour_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
 ) -> dict:
     try:
         contour = DatabaseManagerCrud.get_cell_contour(dbname, cell_id)
@@ -132,8 +132,8 @@ def get_cell_contour_endpoint(
 
 @router_database_manager.get("/get-cell-label", response_model=str)
 def get_cell_label_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
 ) -> str:
     try:
         return DatabaseManagerCrud.get_cell_label(dbname, cell_id)
@@ -149,11 +149,11 @@ def get_cell_label_endpoint(
 
 @router_database_manager.get("/get-cell-image")
 def get_cell_image_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
-    image_type: Annotated[str, Query(..., description="ph | fluo1 | fluo2")],
-    draw_contour: Annotated[bool, Query(False)],
-    draw_scale_bar: Annotated[bool, Query(False)],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
+    image_type: Annotated[str, Query(description="ph | fluo1 | fluo2")] = ...,
+    draw_contour: Annotated[bool, Query()] = False,
+    draw_scale_bar: Annotated[bool, Query()] = False,
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_image(
@@ -176,11 +176,11 @@ def get_cell_image_endpoint(
 
 @router_database_manager.get("/get-cell-image-optical-boost")
 def get_cell_image_optical_boost_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
-    image_type: Annotated[str, Query(..., description="fluo1 | fluo2")],
-    draw_contour: Annotated[bool, Query(False)],
-    draw_scale_bar: Annotated[bool, Query(False)],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
+    image_type: Annotated[str, Query(description="fluo1 | fluo2")] = ...,
+    draw_contour: Annotated[bool, Query()] = False,
+    draw_scale_bar: Annotated[bool, Query()] = False,
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_image_optical_boost(
@@ -203,10 +203,10 @@ def get_cell_image_optical_boost_endpoint(
 
 @router_database_manager.get("/get-cell-overlay")
 def get_cell_overlay_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
-    draw_scale_bar: Annotated[bool, Query(False)],
-    overlay_mode: Annotated[Literal["ph", "fluo", "raw"], Query("ph")],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
+    draw_scale_bar: Annotated[bool, Query()] = False,
+    overlay_mode: Annotated[Literal["ph", "fluo", "raw"], Query()] = "ph",
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_overlay(
@@ -225,9 +225,9 @@ def get_cell_overlay_endpoint(
 
 @router_database_manager.patch("/update-cell-label")
 def update_cell_label_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
-    label: Annotated[str, Query(...)],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
+    label: Annotated[str, Query()] = ...,
 ) -> dict:
     try:
         updated = DatabaseManagerCrud.update_cell_label(dbname, cell_id, label)
@@ -244,9 +244,9 @@ def update_cell_label_endpoint(
 
 @router_database_manager.patch("/elastic-contour")
 def elastic_contour_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
-    delta: Annotated[int, Query(0)],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
+    delta: Annotated[int, Query()] = 0,
 ) -> dict:
     try:
         contour = DatabaseManagerCrud.apply_elastic_contour(dbname, cell_id, delta)
@@ -263,11 +263,11 @@ def elastic_contour_endpoint(
 
 @router_database_manager.get("/get-cell-replot")
 def get_cell_replot_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
-    image_type: Annotated[str, Query("fluo1", description="ph | fluo1 | fluo2 | overlay")],
-    degree: Annotated[int, Query(4, ge=1)],
-    dark_mode: Annotated[bool, Query(False)],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
+    image_type: Annotated[str, Query(description="ph | fluo1 | fluo2 | overlay")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
+    dark_mode: Annotated[bool, Query()] = False,
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_replot(
@@ -290,10 +290,10 @@ def get_cell_replot_endpoint(
 
 @router_database_manager.get("/get-cell-heatmap")
 async def get_cell_heatmap_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
-    image_type: Annotated[str, Query("fluo1", description="fluo1 | fluo2")],
-    degree: Annotated[int, Query(4, ge=1)],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
+    image_type: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -318,9 +318,9 @@ async def get_cell_heatmap_endpoint(
 
 @router_database_manager.get("/get-cell-distribution")
 def get_cell_distribution_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
-    image_type: Annotated[str, Query("fluo1", description="ph | fluo1 | fluo2")],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
+    image_type: Annotated[str, Query(description="ph | fluo1 | fluo2")] = "fluo1",
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_intensity_distribution(
@@ -339,10 +339,10 @@ def get_cell_distribution_endpoint(
 
 @router_database_manager.get("/get-cell-map256")
 async def get_cell_map256_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
-    image_type: Annotated[str, Query("fluo1", description="fluo1 | fluo2")],
-    degree: Annotated[int, Query(4, ge=1)],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
+    image_type: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -367,10 +367,10 @@ async def get_cell_map256_endpoint(
 
 @router_database_manager.get("/get-cell-map256-jet")
 async def get_cell_map256_jet_endpoint(
-    dbname: Annotated[str, Query(...)],
-    cell_id: Annotated[str, Query(...)],
-    image_type: Annotated[str, Query("fluo1", description="fluo1 | fluo2")],
-    degree: Annotated[int, Query(4, ge=1)],
+    dbname: Annotated[str, Query()] = ...,
+    cell_id: Annotated[str, Query()] = ...,
+    image_type: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -395,10 +395,10 @@ async def get_cell_map256_jet_endpoint(
 
 @router_database_manager.get("/get-annotation-zip")
 async def get_annotation_zip_endpoint(
-    dbname: Annotated[str, Query(...)],
-    image_type: Annotated[str, Query("ph", description="ph | fluo1 | fluo2")],
-    raw: Annotated[bool, Query(False)],
-    downscale: Annotated[Optional[float], Query(None, ge=0.05, le=1.0)],
+    dbname: Annotated[str, Query()] = ...,
+    image_type: Annotated[str, Query(description="ph | fluo1 | fluo2")] = "ph",
+    raw: Annotated[bool, Query()] = False,
+    downscale: Annotated[Optional[float], Query(ge=0.05, le=1.0)] = None,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()

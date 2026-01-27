@@ -45,8 +45,8 @@ async def track_activity(payload: TrackActivityRequest) -> dict:
 
 @router_activity_tracker.get("/activity/weekly", response_model=ActivitySummaryResponse)
 async def get_weekly_activity(
-    days: Annotated[int, Query(7, ge=1, le=31)],
-    action_name: Annotated[str | None, Query(None)],
+    days: Annotated[int, Query(ge=1, le=31)] = 7,
+    action_name: Annotated[str | None, Query()] = None,
 ) -> ActivitySummaryResponse:
     if action_name is not None:
         normalized = action_name.strip()

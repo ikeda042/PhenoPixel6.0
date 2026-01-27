@@ -228,7 +228,7 @@ def _watch_extraction_job(job_id: str, process, result_queue) -> None:
 
 
 @router_cellextraction.get("/extract-cells/{job_id}")
-def get_extract_cells_status(job_id: Annotated[str, ApiPath(...)]):
+def get_extract_cells_status(job_id: Annotated[str, ApiPath()]):
     job = _get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")

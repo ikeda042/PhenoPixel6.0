@@ -77,10 +77,10 @@ class RawIntensity(BaseModel):
 
 @router_bulk_engine.get("/get-heatmap-vectors-csv")
 async def get_heatmap_vectors_csv_endpoint(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
-    channel: Annotated[str, Query("fluo1", description="fluo1 | fluo2")],
-    degree: Annotated[int, Query(4, ge=1)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -105,10 +105,10 @@ async def get_heatmap_vectors_csv_endpoint(
 
 @router_bulk_engine.get("/get-heatmap-abs-plot")
 async def get_heatmap_abs_plot_endpoint(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
-    channel: Annotated[str, Query("fluo1", description="fluo1 | fluo2")],
-    degree: Annotated[int, Query(4, ge=1)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -144,10 +144,10 @@ async def get_heatmap_abs_plot_endpoint(
 
 @router_bulk_engine.get("/get-heatmap-rel-plot")
 async def get_heatmap_rel_plot_endpoint(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
-    channel: Annotated[str, Query("fluo1", description="fluo1 | fluo2")],
-    degree: Annotated[int, Query(4, ge=1)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -183,12 +183,12 @@ async def get_heatmap_rel_plot_endpoint(
 
 @router_bulk_engine.get("/get-hu-separation-overlay")
 async def get_hu_separation_overlay_endpoint(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
-    channel: Annotated[str, Query("fluo1", description="fluo1 | fluo2")],
-    degree: Annotated[int, Query(4, ge=1)],
-    center_ratio: Annotated[float, Query(0.15, ge=0.0, le=1.0)],
-    max_to_min_ratio: Annotated[float, Query(0.9, ge=0.0)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
+    center_ratio: Annotated[float, Query(ge=0.0, le=1.0)] = 0.15,
+    max_to_min_ratio: Annotated[float, Query(ge=0.0)] = 0.9,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -228,10 +228,10 @@ async def get_hu_separation_overlay_endpoint(
 
 @router_bulk_engine.get("/get-map256-strip")
 async def get_map256_strip_endpoint(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
-    channel: Annotated[str, Query("fluo1", description="fluo1 | fluo2")],
-    degree: Annotated[int, Query(4, ge=1)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -256,8 +256,8 @@ async def get_map256_strip_endpoint(
 
 @router_bulk_engine.get("/get-contours-grid-plot")
 async def get_contours_grid_plot(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -277,8 +277,8 @@ async def get_contours_grid_plot(
 
 @router_bulk_engine.get("/get-contours-grid-json")
 async def get_contours_grid_json(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -298,8 +298,8 @@ async def get_contours_grid_json(
 
 @router_bulk_engine.get("/get-cell-lengths", response_model=list[CellLength])
 async def get_cell_lengths(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
 ) -> list[CellLength]:
     try:
         loop = asyncio.get_running_loop()
@@ -320,8 +320,8 @@ async def get_cell_lengths(
 
 @router_bulk_engine.get("/get-cell-lengths-plot")
 async def get_cell_lengths_plot(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -341,8 +341,8 @@ async def get_cell_lengths_plot(
 
 @router_bulk_engine.get("/get-cell-areas", response_model=list[CellArea])
 def get_cell_areas(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
 ) -> list[CellArea]:
     try:
         areas = BulkEngineCrud.get_cell_areas_by_label(dbname, label)
@@ -357,8 +357,8 @@ def get_cell_areas(
 
 @router_bulk_engine.get("/get-cell-areas-plot")
 async def get_cell_areas_plot(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -378,9 +378,9 @@ async def get_cell_areas_plot(
 
 @router_bulk_engine.get("/get-normalized-medians", response_model=list[NormalizedMedian])
 async def get_normalized_medians(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
-    channel: Annotated[str, Query("ph", description="ph | fluo1 | fluo2")],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="ph | fluo1 | fluo2")] = "ph",
 ) -> list[NormalizedMedian]:
     try:
         loop = asyncio.get_running_loop()
@@ -405,9 +405,9 @@ async def get_normalized_medians(
 
 @router_bulk_engine.get("/get-normalized-medians-plot")
 async def get_normalized_medians_plot(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
-    channel: Annotated[str, Query("ph", description="ph | fluo1 | fluo2")],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="ph | fluo1 | fluo2")] = "ph",
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -431,9 +431,9 @@ async def get_normalized_medians_plot(
 
 @router_bulk_engine.get("/get-raw-intensities", response_model=list[RawIntensity])
 async def get_raw_intensities(
-    dbname: Annotated[str, Query(...)],
-    label: Annotated[str | None, Query(None)],
-    channel: Annotated[str, Query("ph", description="ph | fluo1 | fluo2")],
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="ph | fluo1 | fluo2")] = "ph",
 ) -> list[RawIntensity]:
     try:
         loop = asyncio.get_running_loop()
