@@ -174,17 +174,27 @@ export default function CellsPage() {
   useEffect(() => {
     if (!requestedCellId || cellIds.length === 0) return
     const nextIndex = cellIds.indexOf(requestedCellId)
+<<<<<<< HEAD
     if (nextIndex >= 0) {
       setCurrentIndex(nextIndex)
     }
   }, [cellIds, requestedCellId])
+=======
+    if (nextIndex >= 0 && nextIndex !== currentIndex) {
+      setCurrentIndex(nextIndex)
+    }
+  }, [cellIds, currentIndex, requestedCellId])
+>>>>>>> 0973fa0d44f7f8b4308309d57c72269dcd05828d
 
   useEffect(() => {
     if (!dbName || !currentCellId) return
     if (searchParams.get('cell_id') === currentCellId) return
     const nextParams = new URLSearchParams(searchParams)
     nextParams.set('cell_id', currentCellId)
+<<<<<<< HEAD
     nextParams.delete('cell')
+=======
+>>>>>>> 0973fa0d44f7f8b4308309d57c72269dcd05828d
     setSearchParams(nextParams, { replace: true })
   }, [currentCellId, dbName, searchParams, setSearchParams])
 
