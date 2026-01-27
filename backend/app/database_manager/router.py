@@ -206,7 +206,7 @@ def get_cell_overlay_endpoint(
     dbname: str = Query(...),
     cell_id: str = Query(...),
     draw_scale_bar: bool = Query(False),
-    overlay_mode: Literal["ph", "fluo"] = Query("ph"),
+    overlay_mode: Literal["ph", "fluo", "raw"] = Query("ph"),
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_overlay(

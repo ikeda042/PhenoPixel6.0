@@ -1443,11 +1443,11 @@ def get_cell_overlay(
     db_name: str,
     cell_id: str,
     draw_scale_bar: bool = False,
-    overlay_mode: Literal["ph", "fluo"] = "ph",
+    overlay_mode: Literal["ph", "fluo", "raw"] = "ph",
 ) -> bytes:
     session = get_database_session(db_name)
     try:
-        if overlay_mode not in ("ph", "fluo"):
+        if overlay_mode not in ("ph", "fluo", "raw"):
             raise ValueError("Invalid overlay_mode")
         bind = session.get_bind()
         if bind is None:
@@ -1476,7 +1476,8 @@ def get_cell_overlay(
 
         fluo1_image = _decode_image(bytes(fluo1_raw))
         fluo2_image = _decode_image(bytes(fluo2_raw)) if fluo2_raw is not None else None
-        if overlay_mode == "ph":
+        ph_image = None
+        if overlay_mode in ("ph", "raw"):
             if ph_raw is None:
                 raise LookupError("Cell overlay data not found")
             ph_image = _decode_image(bytes(ph_raw))
