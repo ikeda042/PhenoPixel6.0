@@ -89,28 +89,7 @@ async def _post_slack(
         logger.warning("Slack notification failed: %s", exc)
 
 
-def _notify_slack_async(
-    webhook_url: str,
-    payload: bytes,
-    success_log: tuple[str, tuple[object, ...]],
-) -> None:
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        loop.create_task(_post_slack(webhook_url, payload, success_log))
-        return
-
-    def _runner() -> None:
-        asyncio.run(_post_slack(webhook_url, payload, success_log))
-
-    thread = threading.Thread(target=_runner, name="slack-webhook", daemon=True)
-    thread.start()
-
-
-def notify_slack(
+async def notify_slack(
     message: str,
     *,
     success_log: tuple[str, tuple[object, ...]] | None = None,
@@ -122,7 +101,24 @@ def notify_slack(
     payload = json.dumps({"text": message}).encode("utf-8")
     if success_log is None:
         success_log = ("Slack notified", ())
-    _notify_slack_async(webhook_url, payload, success_log)
+    await _post_slack(webhook_url, payload, success_log)
+
+
+def notify_slack_sync(
+    message: str,
+    *,
+    success_log: tuple[str, tuple[object, ...]] | None = None,
+) -> None:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        def _runner() -> None:
+            asyncio.run(notify_slack(message, success_log=success_log))
+
+        thread = threading.Thread(target=_runner, name="slack-webhook", daemon=True)
+        thread.start()
+        return
+    loop.create_task(notify_slack(message, success_log=success_log))
 
 
 def build_database_created_message(
