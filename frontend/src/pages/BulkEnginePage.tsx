@@ -157,6 +157,12 @@ export default function BulkEnginePage() {
   const [isContoursExporting, setIsContoursExporting] = useState(false)
   const [contoursExportError, setContoursExportError] = useState<string | null>(null)
   const [hasCalculatedContours, setHasCalculatedContours] = useState(false)
+  const [jsonExportMode, setJsonExportMode] = useState<string | null>(null)
+  const [jsonModal, setJsonModal] = useState<{ title: string; content: string } | null>(
+    null,
+  )
+  const [jsonCopyStatus, setJsonCopyStatus] = useState<string | null>(null)
+  const isJsonExporting = jsonExportMode !== null
   const activeUrlsRef = useRef<Set<string>>(new Set())
   const lengthPlotUrlRef = useRef<string | null>(null)
   const areaPlotUrlRef = useRef<string | null>(null)
@@ -314,6 +320,71 @@ export default function BulkEnginePage() {
     return value
   }
 
+  const formatJsonString = (data: unknown) => {
+    try {
+      return JSON.stringify(data, null, 2) ?? ''
+    } catch {
+      return String(data)
+    }
+  }
+
+  const openJsonModal = (title: string, data: unknown) => {
+    setJsonModal({ title, content: formatJsonString(data) })
+    setJsonCopyStatus(null)
+  }
+
+  const closeJsonModal = () => {
+    setJsonModal(null)
+    setJsonCopyStatus(null)
+  }
+
+  const handleCopyJson = async () => {
+    if (!jsonModal?.content) return
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(jsonModal.content)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = jsonModal.content
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+        const copied = document.execCommand('copy')
+        document.body.removeChild(textarea)
+        if (!copied) {
+          throw new Error('Copy failed')
+        }
+      }
+      setJsonCopyStatus('Copied to clipboard.')
+    } catch {
+      setJsonCopyStatus('Failed to copy.')
+    }
+  }
+
+  const parseHeatmapCsv = (csvText: string) => {
+    const trimmed = csvText.trim()
+    if (!trimmed) return []
+    const lines = trimmed.split(/\r?\n/).filter((line) => line.length > 0)
+    const rows = lines.map((line) =>
+      line.split(',').map((value) => {
+        const trimmedValue = value.trim()
+        if (!trimmedValue) return null
+        const parsed = Number(trimmedValue)
+        return Number.isFinite(parsed) ? parsed : trimmedValue
+      }),
+    )
+    const paired: { u1: Array<number | string | null>; g: Array<number | string | null> }[] = []
+    for (let i = 0; i < rows.length; i += 2) {
+      const u1 = rows[i] ?? []
+      const g = rows[i + 1] ?? []
+      if (u1.length === 0 && g.length === 0) continue
+      paired.push({ u1, g })
+    }
+    return paired
+  }
+
   const filteredCells = useMemo(() => {
     if (selectedLabel === 'All') return cells
     return cells.filter((cell) => cell.label === selectedLabel)
@@ -393,6 +464,9 @@ export default function BulkEnginePage() {
     setContoursExportError(null)
     setIsContoursExporting(false)
     setHasCalculatedContours(false)
+    setJsonModal(null)
+    setJsonCopyStatus(null)
+    setJsonExportMode(null)
   }, [analysisMode, analysisLabel, analysisChannel, dbName])
 
   useEffect(() => {
@@ -523,6 +597,46 @@ export default function BulkEnginePage() {
     }
   }
 
+  const handleExportLengthJson = async () => {
+    if (!dbName || isJsonExporting) return
+    setJsonExportMode('cell-length')
+    setLengthExportError(null)
+    try {
+      const params = new URLSearchParams({ dbname: dbName, label: analysisLabel })
+      const res = await fetch(`${apiBase}/get-cell-lengths?${params.toString()}`, {
+        headers: { accept: 'application/json' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const payload = (await res.json()) as unknown
+      if (!Array.isArray(payload)) {
+        throw new Error('Invalid response format')
+      }
+      const rows = payload
+        .filter(
+          (item): item is CellLengthPair =>
+            item &&
+            typeof item === 'object' &&
+            typeof (item as CellLengthPair).cell_id === 'string' &&
+            typeof (item as CellLengthPair).length === 'number',
+        )
+        .map((item) => ({
+          cell_id: item.cell_id,
+          length: item.length,
+        }))
+      if (rows.length === 0) {
+        throw new Error('No lengths found for this label.')
+      }
+      const labelDescriptor = analysisLabel === 'All' ? 'all labels' : `label ${analysisLabel}`
+      openJsonModal(`Cell length JSON (${labelDescriptor})`, rows)
+    } catch (err) {
+      setLengthExportError(err instanceof Error ? err.message : 'Failed to export JSON')
+    } finally {
+      setJsonExportMode(null)
+    }
+  }
+
   const handleCalcArea = async () => {
     if (!dbName || isAreaLoading) return
     setIsAreaLoading(true)
@@ -647,6 +761,53 @@ export default function BulkEnginePage() {
     }
   }
 
+  const handleExportNormalizedMedianJson = async () => {
+    if (!dbName || isJsonExporting) return
+    setJsonExportMode('normalized-median')
+    setMedianExportError(null)
+    try {
+      const params = new URLSearchParams({
+        dbname: dbName,
+        label: analysisLabel,
+        channel: analysisChannel,
+      })
+      const res = await fetch(`${apiBase}/get-normalized-medians?${params.toString()}`, {
+        headers: { accept: 'application/json' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const payload = (await res.json()) as unknown
+      if (!Array.isArray(payload)) {
+        throw new Error('Invalid response format')
+      }
+      const rows = payload
+        .filter(
+          (item): item is NormalizedMedianPair =>
+            item &&
+            typeof item === 'object' &&
+            typeof (item as NormalizedMedianPair).cell_id === 'string' &&
+            typeof (item as NormalizedMedianPair).normalized_median === 'number',
+        )
+        .map((item) => ({
+          cell_id: item.cell_id,
+          normalized_median: item.normalized_median,
+        }))
+      if (rows.length === 0) {
+        throw new Error('No values found for this label.')
+      }
+      const labelDescriptor = analysisLabel === 'All' ? 'all labels' : `label ${analysisLabel}`
+      openJsonModal(
+        `Normalized median JSON (${labelDescriptor}, ${analysisChannel})`,
+        rows,
+      )
+    } catch (err) {
+      setMedianExportError(err instanceof Error ? err.message : 'Failed to export JSON')
+    } finally {
+      setJsonExportMode(null)
+    }
+  }
+
   const handleCalcEntropy = async () => {
     if (!dbName || isEntropyLoading) return
     setIsEntropyLoading(true)
@@ -747,6 +908,52 @@ export default function BulkEnginePage() {
     }
   }
 
+  const handleExportEntropyJson = async () => {
+    if (!dbName || isJsonExporting) return
+    setJsonExportMode('entropy')
+    setEntropyExportError(null)
+    try {
+      const params = new URLSearchParams({
+        dbname: dbName,
+        label: analysisLabel,
+        channel: analysisChannel,
+      })
+      const res = await fetch(`${apiBase}/get-entropy-metrics?${params.toString()}`, {
+        headers: { accept: 'application/json' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const payload = (await res.json()) as unknown
+      if (!Array.isArray(payload)) {
+        throw new Error('Invalid response format')
+      }
+      const rows = payload
+        .filter(
+          (item): item is EntropyMetricsPair =>
+            item &&
+            typeof item === 'object' &&
+            typeof (item as EntropyMetricsPair).cell_id === 'string' &&
+            typeof (item as EntropyMetricsPair).entropy_norm === 'number' &&
+            typeof (item as EntropyMetricsPair).sparsity === 'number',
+        )
+        .map((item) => ({
+          cell_id: item.cell_id,
+          entropy_norm: item.entropy_norm,
+          sparsity: item.sparsity,
+        }))
+      if (rows.length === 0) {
+        throw new Error('No values found for this label.')
+      }
+      const labelDescriptor = analysisLabel === 'All' ? 'all labels' : `label ${analysisLabel}`
+      openJsonModal(`Entropy JSON (${labelDescriptor}, ${analysisChannel})`, rows)
+    } catch (err) {
+      setEntropyExportError(err instanceof Error ? err.message : 'Failed to export JSON')
+    } finally {
+      setJsonExportMode(null)
+    }
+  }
+
   const handleExportRawData = async () => {
     if (!dbName || isRawExporting) return
     setIsRawExporting(true)
@@ -811,6 +1018,52 @@ export default function BulkEnginePage() {
     }
   }
 
+  const handleExportRawJson = async () => {
+    if (!dbName || isJsonExporting) return
+    setJsonExportMode('raw-data')
+    setRawExportError(null)
+    try {
+      const params = new URLSearchParams({
+        dbname: dbName,
+        label: analysisLabel,
+        channel: analysisChannel,
+      })
+      const res = await fetch(`${apiBase}/get-raw-intensities?${params.toString()}`, {
+        headers: { accept: 'application/json' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const payload = (await res.json()) as unknown
+      if (!Array.isArray(payload)) {
+        throw new Error('Invalid response format')
+      }
+      const rows = payload
+        .filter(
+          (item): item is RawIntensityPair =>
+            item &&
+            typeof item === 'object' &&
+            typeof (item as RawIntensityPair).cell_id === 'string' &&
+            Array.isArray((item as RawIntensityPair).intensities),
+        )
+        .map((item) => ({
+          cell_id: item.cell_id,
+          intensities: item.intensities.filter(
+            (value) => typeof value === 'number' && Number.isFinite(value),
+          ),
+        }))
+      if (rows.length === 0) {
+        throw new Error('No raw intensities found for this label.')
+      }
+      const labelDescriptor = analysisLabel === 'All' ? 'all labels' : `label ${analysisLabel}`
+      openJsonModal(`Raw intensity JSON (${labelDescriptor}, ${analysisChannel})`, rows)
+    } catch (err) {
+      setRawExportError(err instanceof Error ? err.message : 'Failed to export JSON')
+    } finally {
+      setJsonExportMode(null)
+    }
+  }
+
   const handleExportHeatmapCsv = async () => {
     if (!dbName || isHeatmapExporting) return
     setIsHeatmapExporting(true)
@@ -850,6 +1103,40 @@ export default function BulkEnginePage() {
       setHeatmapExportError(err instanceof Error ? err.message : 'Failed to export CSV')
     } finally {
       setIsHeatmapExporting(false)
+    }
+  }
+
+  const handleExportHeatmapJson = async () => {
+    if (!dbName || isJsonExporting) return
+    setJsonExportMode('heatmap')
+    setHeatmapExportError(null)
+    try {
+      const heatmapChannel = analysisChannel === 'ph' ? 'fluo1' : analysisChannel
+      const params = new URLSearchParams({
+        dbname: dbName,
+        label: analysisLabel,
+        channel: heatmapChannel,
+      })
+      const res = await fetch(`${apiBase}/get-heatmap-vectors-csv?${params.toString()}`, {
+        headers: { accept: 'text/csv' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const csvText = await res.text()
+      if (!csvText.trim()) {
+        throw new Error('No heatmap vectors found for this label.')
+      }
+      const vectors = parseHeatmapCsv(csvText)
+      if (vectors.length === 0) {
+        throw new Error('No heatmap vectors found for this label.')
+      }
+      const labelDescriptor = analysisLabel === 'All' ? 'all labels' : `label ${analysisLabel}`
+      openJsonModal(`Heatmap vectors JSON (${labelDescriptor}, ${heatmapChannel})`, vectors)
+    } catch (err) {
+      setHeatmapExportError(err instanceof Error ? err.message : 'Failed to export JSON')
+    } finally {
+      setJsonExportMode(null)
     }
   }
 
@@ -1126,6 +1413,46 @@ export default function BulkEnginePage() {
       setAreaExportError(err instanceof Error ? err.message : 'Failed to export CSV')
     } finally {
       setIsAreaExporting(false)
+    }
+  }
+
+  const handleExportAreaJson = async () => {
+    if (!dbName || isJsonExporting) return
+    setJsonExportMode('cell-area')
+    setAreaExportError(null)
+    try {
+      const params = new URLSearchParams({ dbname: dbName, label: analysisLabel })
+      const res = await fetch(`${apiBase}/get-cell-areas?${params.toString()}`, {
+        headers: { accept: 'application/json' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const payload = (await res.json()) as unknown
+      if (!Array.isArray(payload)) {
+        throw new Error('Invalid response format')
+      }
+      const rows = payload
+        .filter(
+          (item): item is CellAreaPair =>
+            item &&
+            typeof item === 'object' &&
+            typeof (item as CellAreaPair).cell_id === 'string' &&
+            typeof (item as CellAreaPair).area === 'number',
+        )
+        .map((item) => ({
+          cell_id: item.cell_id,
+          area: item.area,
+        }))
+      if (rows.length === 0) {
+        throw new Error('No areas found for this label.')
+      }
+      const labelDescriptor = analysisLabel === 'All' ? 'all labels' : `label ${analysisLabel}`
+      openJsonModal(`Cell area JSON (${labelDescriptor})`, rows)
+    } catch (err) {
+      setAreaExportError(err instanceof Error ? err.message : 'Failed to export JSON')
+    } finally {
+      setJsonExportMode(null)
     }
   }
 
@@ -1661,6 +1988,16 @@ export default function BulkEnginePage() {
                         >
                           {isLengthExporting ? 'Exporting...' : 'Export CSV'}
                         </Button>
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="ink.900"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleExportLengthJson}
+                          isDisabled={!dbName || isJsonExporting || isLengthExporting}
+                        >
+                          {jsonExportMode === 'cell-length' ? 'Exporting...' : 'Export JSON'}
+                        </Button>
                       </HStack>
                       {lengthExportError && (
                         <Text fontSize="xs" color="violet.300">
@@ -1755,6 +2092,16 @@ export default function BulkEnginePage() {
                           isDisabled={!dbName || isAreaExporting}
                         >
                           {isAreaExporting ? 'Exporting...' : 'Export CSV'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="ink.900"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleExportAreaJson}
+                          isDisabled={!dbName || isJsonExporting || isAreaExporting}
+                        >
+                          {jsonExportMode === 'cell-area' ? 'Exporting...' : 'Export JSON'}
                         </Button>
                       </HStack>
                       {areaExportError && (
@@ -1881,6 +2228,18 @@ export default function BulkEnginePage() {
                         >
                           {isMedianExporting ? 'Exporting...' : 'Export CSV'}
                         </Button>
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="ink.900"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleExportNormalizedMedianJson}
+                          isDisabled={!dbName || isJsonExporting || isMedianExporting}
+                        >
+                          {jsonExportMode === 'normalized-median'
+                            ? 'Exporting...'
+                            : 'Export JSON'}
+                        </Button>
                       </HStack>
                       {medianExportError && (
                         <Text fontSize="xs" color="violet.300">
@@ -2006,6 +2365,16 @@ export default function BulkEnginePage() {
                         >
                           {isEntropyExporting ? 'Exporting...' : 'Export CSV'}
                         </Button>
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="ink.900"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleExportEntropyJson}
+                          isDisabled={!dbName || isJsonExporting || isEntropyExporting}
+                        >
+                          {jsonExportMode === 'entropy' ? 'Exporting...' : 'Export JSON'}
+                        </Button>
                       </HStack>
                       {entropyExportError && (
                         <Text fontSize="xs" color="violet.300">
@@ -2120,6 +2489,16 @@ export default function BulkEnginePage() {
                           isDisabled={!dbName || isHeatmapExporting}
                         >
                           {isHeatmapExporting ? 'Exporting...' : 'Export CSV'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="ink.900"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleExportHeatmapJson}
+                          isDisabled={!dbName || isJsonExporting || isHeatmapExporting}
+                        >
+                          {jsonExportMode === 'heatmap' ? 'Exporting...' : 'Export JSON'}
                         </Button>
                         <Button
                           size="sm"
@@ -2519,6 +2898,16 @@ export default function BulkEnginePage() {
                         >
                           {isRawExporting ? 'Exporting...' : 'Export CSV'}
                         </Button>
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="ink.900"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleExportRawJson}
+                          isDisabled={!dbName || isJsonExporting || isRawExporting}
+                        >
+                          {jsonExportMode === 'raw-data' ? 'Exporting...' : 'Export JSON'}
+                        </Button>
                       </HStack>
                       {rawExportError && (
                         <Text fontSize="xs" color="violet.300">
@@ -2539,6 +2928,89 @@ export default function BulkEnginePage() {
           )}
         </Stack>
       </Container>
+      {jsonModal && (
+        <Box
+          position="fixed"
+          inset="0"
+          bg="rgba(11, 13, 16, 0.55)"
+          zIndex={1400}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          px="4"
+          onClick={closeJsonModal}
+        >
+          <Box
+            bg="sand.100"
+            border="1px solid"
+            borderColor="sand.200"
+            borderRadius="xl"
+            p="4"
+            w="100%"
+            maxW={{ base: '90vw', md: '860px' }}
+            maxH="80vh"
+            display="flex"
+            flexDirection="column"
+            gap="3"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <HStack justify="space-between" align="center" spacing="3" flexWrap="wrap">
+              <Text fontSize="sm" fontWeight="600" color="ink.900">
+                {jsonModal.title}
+              </Text>
+              <HStack spacing="2">
+                <Button
+                  size="xs"
+                  variant="outline"
+                  borderColor="sand.200"
+                  color="ink.700"
+                  _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                  onClick={handleCopyJson}
+                >
+                  Copy JSON
+                </Button>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  borderColor="sand.200"
+                  color="ink.700"
+                  _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                  onClick={closeJsonModal}
+                >
+                  Close
+                </Button>
+              </HStack>
+            </HStack>
+            {jsonCopyStatus && (
+              <Text
+                fontSize="xs"
+                color={jsonCopyStatus.startsWith('Failed') ? 'violet.300' : 'ink.700'}
+              >
+                {jsonCopyStatus}
+              </Text>
+            )}
+            <Box
+              as="pre"
+              fontSize="xs"
+              color="ink.700"
+              bg="sand.50"
+              border="1px solid"
+              borderColor="sand.200"
+              borderRadius="md"
+              p="3"
+              overflowY="auto"
+              overflowX="auto"
+              whiteSpace="pre"
+              fontFamily="mono"
+              flex="1"
+            >
+              {jsonModal.content || 'No data available.'}
+            </Box>
+          </Box>
+        </Box>
+      )}
     </Box>
   )
 }
