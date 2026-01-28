@@ -1,7 +1,7 @@
 import csv
 import io
 import pickle
-from typing import Sequence
+from typing import Optional, Sequence, Union
 
 import cv2
 import numpy as np
@@ -13,9 +13,13 @@ def _find_minimum_distance_point(
     y_q: float,
     min_x: float,
     max_x: float,
+    *,
+    poly: Optional[np.poly1d] = None,
+    poly_der: Optional[np.poly1d] = None,
 ) -> tuple[float, tuple[float, float]]:
-    poly = np.poly1d(coefficients)
-    poly_der = np.polyder(poly)
+    if poly is None or poly_der is None:
+        poly = np.poly1d(coefficients)
+        poly_der = np.polyder(poly)
     g_prime = 2 * np.poly1d([1, -x_q]) + 2 * (poly - y_q) * poly_der
 
     candidates = [x_q]
@@ -44,8 +48,11 @@ def _find_minimum_distance_point(
 
 
 def _poly_fit(values: Sequence[Sequence[float]], degree: int = 1) -> np.ndarray:
-    u1_values = np.array([val[1] for val in values], dtype=float)
-    f_values = np.array([val[0] for val in values], dtype=float)
+    values_arr = np.asarray(values, dtype=float)
+    if values_arr.size == 0:
+        return np.array([])
+    u1_values = values_arr[:, 1]
+    f_values = values_arr[:, 0]
     W = np.vander(u1_values, degree + 1)
     try:
         coefficients = np.linalg.inv(W.T @ W) @ W.T @ f_values
@@ -55,25 +62,27 @@ def _poly_fit(values: Sequence[Sequence[float]], degree: int = 1) -> np.ndarray:
 
 
 def _basis_conversion(
-    contour: list[list[int]],
+    contour: Sequence[Sequence[int]],
     X: np.ndarray,
     center_x: float,
     center_y: float,
-    coordinates_inside_cell: list[list[int]],
+    coordinates_inside_cell: Union[Sequence[Sequence[int]], np.ndarray],
+    *,
+    as_array: bool = False,
 ) -> tuple[
-    list[float],
-    list[float],
-    list[float],
-    list[float],
+    Sequence[float],
+    Sequence[float],
+    Sequence[float],
+    Sequence[float],
     float,
     float,
     float,
     float,
-    list[list[float]],
-    list[list[float]],
+    Sequence[Sequence[float]],
+    Sequence[Sequence[float]],
 ]:
-    coords_arr = np.asarray(coordinates_inside_cell).reshape(-1, 2)
-    contour_arr = np.asarray(contour).reshape(-1, 2)
+    coords_arr = np.asarray(coordinates_inside_cell, dtype=float).reshape(-1, 2)
+    contour_arr = np.asarray(contour, dtype=float).reshape(-1, 2)
     center_arr = np.array([center_x, center_y])
 
     Sigma = np.cov(X)
@@ -96,6 +105,19 @@ def _basis_conversion(
     u2_contour = contour_U[:, 0]
     min_u1 = float(u1.min())
     max_u1 = float(u1.max())
+    if as_array:
+        return (
+            u1,
+            u2,
+            u1_contour,
+            u2_contour,
+            min_u1,
+            max_u1,
+            float(u1_c),
+            float(u2_c),
+            U,
+            contour_U,
+        )
     return (
         u1.tolist(),
         u2.tolist(),
@@ -121,10 +143,10 @@ def calculate_heatmap_path_vector(
     contour = pickle.loads(contour_raw)
     contour_array = np.asarray(contour)
     if contour_array.ndim == 3 and contour_array.shape[1] == 1:
-        contour_points = contour_array[:, 0, :].tolist()
+        contour_points = contour_array[:, 0, :]
         contour_for_mask = contour_array.astype(np.int32)
     elif contour_array.ndim == 2 and contour_array.shape[1] == 2:
-        contour_points = contour_array.tolist()
+        contour_points = contour_array
         contour_for_mask = contour_array.reshape(-1, 1, 2).astype(np.int32)
     else:
         raise ValueError("Invalid contour format")
@@ -132,19 +154,12 @@ def calculate_heatmap_path_vector(
     mask = np.zeros_like(image_fluo_gray)
     cv2.fillPoly(mask, [contour_for_mask], 255)
 
-    coords_inside_cell = np.column_stack(np.where(mask))
-    if coords_inside_cell.size == 0:
+    y_idx, x_idx = np.nonzero(mask)
+    if x_idx.size == 0:
         raise ValueError("No points inside contour")
-    points_inside_cell = image_fluo_gray[
-        coords_inside_cell[:, 0], coords_inside_cell[:, 1]
-    ]
-
-    X = np.array(
-        [
-            [i[1] for i in coords_inside_cell],
-            [i[0] for i in coords_inside_cell],
-        ]
-    )
+    points_inside_cell = image_fluo_gray[y_idx, x_idx].astype(float)
+    coords_inside_cell = np.column_stack((y_idx, x_idx))
+    X = np.vstack((x_idx, y_idx))
 
     (
         u1,
@@ -162,39 +177,60 @@ def calculate_heatmap_path_vector(
         X,
         image_fluo.shape[0] / 2,
         image_fluo.shape[1] / 2,
-        coords_inside_cell.tolist(),
+        coords_inside_cell,
+        as_array=True,
     )
 
     theta = _poly_fit(U, degree=degree)
+    if theta.size == 0:
+        return []
+    poly = np.poly1d(theta)
+    poly_der = np.polyder(poly)
 
-    raw_points: list[tuple[float, float]] = []
-    for u1_val, u2_val, intensity in zip(u1, u2, points_inside_cell):
+    projected_u1 = np.empty_like(points_inside_cell, dtype=float)
+    for idx, (u1_val, u2_val) in enumerate(zip(u1, u2)):
         _dist, min_point = _find_minimum_distance_point(
-            theta, float(u1_val), float(u2_val), float(min_u1), float(max_u1)
+            theta,
+            float(u1_val),
+            float(u2_val),
+            float(min_u1),
+            float(max_u1),
+            poly=poly,
+            poly_der=poly_der,
         )
-        raw_points.append((min_point[0], float(intensity)))
+        projected_u1[idx] = min_point[0]
 
-    if not raw_points:
+    if projected_u1.size == 0:
         return []
 
-    raw_points.sort(key=lambda pair: pair[0])
+    sort_idx = np.argsort(projected_u1, kind="mergesort")
+    projected_u1 = projected_u1[sort_idx]
+    points_inside_cell = points_inside_cell[sort_idx]
 
     split_num = 35
-    delta_l = (max(u1) - min(u1)) / split_num if split_num > 0 else 0
+    delta_l = (max_u1 - min_u1) / split_num if split_num > 0 else 0
     if delta_l == 0:
-        return raw_points
+        return list(zip(projected_u1.tolist(), points_inside_cell.tolist()))
 
-    first_point = raw_points[0]
-    last_point = raw_points[-1]
+    first_point = (float(projected_u1[0]), float(points_inside_cell[0]))
+    last_point = (float(projected_u1[-1]), float(points_inside_cell[-1]))
     path: list[tuple[float, float]] = [first_point]
-    for idx in range(1, int(split_num)):
-        x_0 = min(u1) + idx * delta_l
-        x_1 = min(u1) + (idx + 1) * delta_l
-        points = [point for point in raw_points if x_0 <= point[0] <= x_1]
-        if not points:
+
+    bin_idx = np.floor((projected_u1 - min_u1) / delta_l).astype(int)
+    bin_idx = np.clip(bin_idx, 0, split_num - 1)
+    max_val = np.full(split_num, -np.inf)
+    max_idx = np.full(split_num, -1, dtype=int)
+    for idx, (b_idx, intensity) in enumerate(zip(bin_idx, points_inside_cell)):
+        if b_idx == 0:
             continue
-        point = max(points, key=lambda pair: pair[1])
-        path.append(point)
+        if intensity > max_val[b_idx]:
+            max_val[b_idx] = intensity
+            max_idx[b_idx] = idx
+
+    for b_idx in range(1, int(split_num)):
+        idx = max_idx[b_idx]
+        if idx != -1:
+            path.append((float(projected_u1[idx]), float(points_inside_cell[idx])))
     path.append(last_point)
 
     return path
