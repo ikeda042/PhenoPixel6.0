@@ -82,6 +82,11 @@ Dilate (`delta > 0`) or erode (`delta < 0`) the stored contour.
 Params: `dbname`, `cell_id`, `delta`  
 Response: `{ "cell_id": "<id>", "contour": [[x, y], ...] }`
 
+**PATCH** `/elastic-contour-bulk`  
+Apply the elastic contour to all cells (or a label subset).  
+Params: `dbname`, `delta`, `label` (optional)  
+Response: `{ "total": 100, "updated": 98, "failed": 2, "failures": [{"cell_id": "...", "error": "..."}] }`
+
 ### Images
 
 **GET** `/get-cell-image`  

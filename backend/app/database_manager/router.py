@@ -261,6 +261,24 @@ def elastic_contour_endpoint(
     return {"cell_id": cell_id, "contour": contour}
 
 
+@router_database_manager.patch("/elastic-contour-bulk")
+def elastic_contour_bulk_endpoint(
+    dbname: Annotated[str, Query()] = ...,
+    delta: Annotated[int, Query()] = 0,
+    label: Annotated[str | None, Query()] = None,
+) -> dict:
+    try:
+        return DatabaseManagerCrud.apply_elastic_contour_bulk(dbname, delta, label)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router_database_manager.get("/get-cell-replot")
 def get_cell_replot_endpoint(
     dbname: Annotated[str, Query()] = ...,
