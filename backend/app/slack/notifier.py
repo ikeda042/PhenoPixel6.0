@@ -110,19 +110,32 @@ def _notify_slack_async(
     thread.start()
 
 
-def notify_slack_database_created(
+def notify_slack(
+    message: str,
+    *,
+    success_log: tuple[str, tuple[object, ...]] | None = None,
+) -> None:
+    webhook_url = _get_webhook_url()
+    if not webhook_url:
+        return
+
+    payload = json.dumps({"text": message}).encode("utf-8")
+    if success_log is None:
+        success_log = ("Slack notified", ())
+    _notify_slack_async(webhook_url, payload, success_log)
+
+
+def build_database_created_message(
     db_name: str,
     *,
     message: str | None = None,
     contour_count: int | None = None,
     param1: int | None = None,
     image_size: int | None = None,
-) -> None:
-    webhook_url = _get_webhook_url()
-    if not webhook_url:
-        return
-
-    base_path = _get_base_path()
+    base_path: str | None = None,
+) -> str:
+    if base_path is None:
+        base_path = _get_base_path()
     db_url = None
     cells_url = None
     if base_path:
@@ -152,35 +165,28 @@ def notify_slack_database_created(
     if db_url and cells_url is None:
         slack_message = f"{slack_message}\n{db_url}"
 
-    payload = json.dumps({"text": slack_message}).encode("utf-8")
-    _notify_slack_async(
-        webhook_url,
-        payload,
-        ("Slack notified for database creation: %s", (db_name,)),
-    )
+    return slack_message
 
 
-def notify_slack_bulk_engine_completed(
+def build_bulk_engine_completed_message(
     db_name: str,
     *,
-    task: str,
+    task_text: str,
     label: str | None = None,
     channel: str | None = None,
     degree: int | None = None,
     center_ratio: float | None = None,
     max_to_min_ratio: float | None = None,
-) -> None:
-    webhook_url = _get_webhook_url()
-    if not webhook_url:
-        return
-
-    base_path = _get_base_path()
+    base_path: str | None = None,
+) -> str:
+    if base_path is None:
+        base_path = _get_base_path()
     bulk_url = None
     if base_path:
         base_path = base_path.rstrip("/")
         bulk_url = f"{base_path}/bulk-engine?{urlencode({'dbname': db_name})}"
 
-    task_text = task.strip() if task else "bulkengine task"
+    task_text = task_text.strip() if task_text else "bulkengine task"
     slack_message = f"bulkengine\u306e{task_text}\u304c\u5b8c\u4e86\u3057\u307e\u3057\u305f\u3002database `{db_name}`"
     details: list[str] = []
     label_text = str(label).strip() if label is not None else ""
@@ -199,9 +205,4 @@ def notify_slack_bulk_engine_completed(
     if details:
         slack_message = f"{slack_message}\n" + "\n".join(details)
 
-    payload = json.dumps({"text": slack_message}).encode("utf-8")
-    _notify_slack_async(
-        webhook_url,
-        payload,
-        ("Slack notified for bulk engine: %s (%s)", (db_name, task_text)),
-    )
+    return slack_message

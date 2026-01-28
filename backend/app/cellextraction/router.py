@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.activity_tracker.crud import ACTION_CELL_EXTRACTION, record_activity_sync
 from app.cellextraction.crud import ExtractionCrudBase
-from app.slack.notifier import notify_slack_database_created
+from app.slack.notifier import build_database_created_message, notify_slack
 
 
 router_cellextraction = APIRouter(tags=["cellextraction"])
@@ -150,6 +150,22 @@ def _notify_slack_for_result(result: dict[str, Any]) -> None:
     param1 = result.get("param1")
     image_size = result.get("image_size")
     databases = result.get("databases")
+
+    def _send_database_created(
+        db_name: str,
+        contour_count: int | None = None,
+    ) -> None:
+        slack_message = build_database_created_message(
+            db_name,
+            contour_count=contour_count,
+            param1=param1,
+            image_size=image_size,
+        )
+        notify_slack(
+            slack_message,
+            success_log=("Slack notified for database creation: %s", (db_name,)),
+        )
+
     if isinstance(databases, list):
         for entry in databases:
             db_name = None
@@ -160,20 +176,11 @@ def _notify_slack_for_result(result: dict[str, Any]) -> None:
             elif isinstance(entry, str):
                 db_name = entry
             if db_name:
-                notify_slack_database_created(
-                    str(db_name),
-                    contour_count=contour_count,
-                    param1=param1,
-                    image_size=image_size,
-                )
+                _send_database_created(str(db_name), contour_count=contour_count)
         return
     db_name = result.get("db_name") or result.get("database")
     if db_name:
-        notify_slack_database_created(
-            str(db_name),
-            param1=param1,
-            image_size=image_size,
-        )
+        _send_database_created(str(db_name))
 
 
 def _watch_extraction_job(job_id: str, process, result_queue) -> None:
