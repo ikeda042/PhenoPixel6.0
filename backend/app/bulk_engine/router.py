@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 
 from app.activity_tracker.crud import ACTION_BULK_ENGINE, record_activity
 from app.bulk_engine.crud import BulkEngineCrud
-from app.slack.notifier import notify_slack_bulk_engine_completed
+from app.slack.notifier import build_bulk_engine_completed_message, notify_slack
 
 
 logger = logging.getLogger("uvicorn.error")
@@ -42,14 +42,19 @@ def _notify_bulk_engine_completed(
     max_to_min_ratio: float | None = None,
 ) -> None:
     try:
-        notify_slack_bulk_engine_completed(
+        task_text = task.strip() if task else "bulkengine task"
+        slack_message = build_bulk_engine_completed_message(
             db_name,
-            task=task,
+            task_text=task_text,
             label=label,
             channel=channel,
             degree=degree,
             center_ratio=center_ratio,
             max_to_min_ratio=max_to_min_ratio,
+        )
+        notify_slack(
+            slack_message,
+            success_log=("Slack notified for bulk engine: %s (%s)", (db_name, task_text)),
         )
     except Exception as exc:
         logger.warning("Slack notification failed: %s", exc)
