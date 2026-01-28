@@ -337,6 +337,36 @@ def apply_elastic_contour(
         session.close()
 
 
+def apply_elastic_contour_bulk(
+    db_name: str, delta: int = 0, label: str | None = None
+) -> dict:
+    if label is None:
+        cell_ids = get_cell_ids(db_name)
+    else:
+        cell_ids = get_cell_ids_by_label(db_name, label)
+    if not cell_ids:
+        raise LookupError("No cells found")
+
+    updated = 0
+    failed = 0
+    failures: list[dict[str, str]] = []
+    for cell_id in cell_ids:
+        try:
+            apply_elastic_contour(db_name, cell_id, delta)
+            updated += 1
+        except Exception as exc:
+            failed += 1
+            if len(failures) < 25:
+                failures.append({"cell_id": cell_id, "error": str(exc)})
+
+    return {
+        "total": len(cell_ids),
+        "updated": updated,
+        "failed": failed,
+        "failures": failures,
+    }
+
+
 def get_cell_ids_by_label(db_name: str, label: str) -> list[str]:
     label_value = label.strip()
     if not label_value:
@@ -1960,6 +1990,12 @@ class DatabaseManagerCrud:
         cls, db_name: str, cell_id: str, delta: float
     ) -> list[list[float]]:
         return apply_elastic_contour(db_name, cell_id, delta)
+
+    @classmethod
+    def apply_elastic_contour_bulk(
+        cls, db_name: str, delta: int, label: str | None = None
+    ) -> dict:
+        return apply_elastic_contour_bulk(db_name, delta, label)
 
     @classmethod
     def get_cell_ids_by_label(cls, db_name: str, label: str) -> list[str]:
