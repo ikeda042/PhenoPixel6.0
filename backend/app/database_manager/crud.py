@@ -2,7 +2,7 @@ import io
 import json
 from pathlib import Path
 import pickle
-from typing import AsyncIterator, Literal, Optional, Sequence
+from typing import AsyncIterator, Literal, Sequence
 import zipfile
 
 import aiofiles
@@ -1813,7 +1813,7 @@ def get_annotation_zip(
     db_name: str,
     image_type: Literal["ph", "fluo1", "fluo2"] = "ph",
     raw: bool = False,
-    downscale: Optional[float] = None,
+    downscale: float | None = None,
 ) -> bytes:
     session = get_database_session(db_name)
     try:

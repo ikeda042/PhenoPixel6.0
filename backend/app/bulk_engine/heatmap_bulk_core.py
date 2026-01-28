@@ -1,7 +1,7 @@
 import csv
 import io
 import pickle
-from typing import Optional, Sequence, Union
+from typing import Sequence, Union
 
 import cv2
 import numpy as np
@@ -14,8 +14,8 @@ def _find_minimum_distance_point(
     min_x: float,
     max_x: float,
     *,
-    poly: Optional[np.poly1d] = None,
-    poly_der: Optional[np.poly1d] = None,
+    poly: np.poly1d | None = None,
+    poly_der: np.poly1d | None = None,
 ) -> tuple[float, tuple[float, float]]:
     if poly is None or poly_der is None:
         poly = np.poly1d(coefficients)
