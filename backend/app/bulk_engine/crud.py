@@ -1,7 +1,7 @@
 import io
 import json
 import pickle
-from typing import Optional, Sequence
+from typing import Sequence
 
 import cv2
 import matplotlib
@@ -33,7 +33,7 @@ def _pca_length(points: np.ndarray) -> float:
     return float(proj.max() - proj.min())
 
 
-def _calc_cell_length_um(image_ph: Optional[bytes], contour_raw: bytes) -> float:
+def _calc_cell_length_um(image_ph: bytes | None, contour_raw: bytes) -> float:
     """
     Calculate the major-axis length (um) using PCA.
     Prefer pixels inside the contour; fall back to contour points.
@@ -83,7 +83,7 @@ def _get_points_inside_cell(image_raw: bytes, contour_raw: bytes) -> np.ndarray:
     return image_gray[coords[:, 0], coords[:, 1]].flatten()
 
 
-def _calc_normalized_median_intensity(image_raw: bytes, contour_raw: bytes) -> Optional[float]:
+def _calc_normalized_median_intensity(image_raw: bytes, contour_raw: bytes) -> float | None:
     points = _get_points_inside_cell(image_raw, contour_raw)
     if points.size == 0:
         return None
@@ -96,7 +96,7 @@ def _calc_normalized_median_intensity(image_raw: bytes, contour_raw: bytes) -> O
 
 
 def get_cell_lengths_by_label(
-    db_name: str, label: Optional[str] = None
+    db_name: str, label: str | None = None
 ) -> list[tuple[str, float]]:
     """
     Return cell lengths (um) for cells matching the manual_label.
@@ -144,7 +144,7 @@ def get_cell_lengths_by_label(
 
 
 def get_cell_areas_by_label(
-    db_name: str, label: Optional[str] = None
+    db_name: str, label: str | None = None
 ) -> list[tuple[str, float]]:
     """
     Return cell areas for cells matching the manual_label.
@@ -193,7 +193,7 @@ def get_cell_areas_by_label(
 
 
 def get_normalized_medians_by_label(
-    db_name: str, label: Optional[str] = None, channel: str = "ph"
+    db_name: str, label: str | None = None, channel: str = "ph"
 ) -> list[tuple[str, float]]:
     """
     Return normalized median intensity values for cells matching the manual_label.
@@ -251,7 +251,7 @@ def get_normalized_medians_by_label(
 
 
 def get_raw_intensities_by_label(
-    db_name: str, label: Optional[str] = None, channel: str = "ph"
+    db_name: str, label: str | None = None, channel: str = "ph"
 ) -> list[tuple[str, list[int]]]:
     """
     Return raw intensity values inside each cell contour for the specified channel.
@@ -434,7 +434,7 @@ def _transform_contour_replot(contour: np.ndarray) -> np.ndarray:
 
 
 def _collect_transformed_contours_by_label(
-    db_name: str, label: Optional[str] = None
+    db_name: str, label: str | None = None
 ) -> list[np.ndarray]:
     label_str = str(label).strip() if label is not None else ""
     apply_filter = bool(label_str) and label_str.lower() != "all"
@@ -478,7 +478,7 @@ def _collect_transformed_contours_by_label(
 
 
 def _collect_transformed_contours_with_ids(
-    db_name: str, label: Optional[str] = None
+    db_name: str, label: str | None = None
 ) -> dict[str, list[list[float]]]:
     label_str = str(label).strip() if label is not None else ""
     apply_filter = bool(label_str) and label_str.lower() != "all"
@@ -567,7 +567,7 @@ def _build_contours_grid_image(
 
 def _collect_heatmap_paths(
     db_name: str,
-    label: Optional[str] = None,
+    label: str | None = None,
     channel: str = "fluo1",
     degree: int = 4,
 ) -> list[list[tuple[float, float]]]:
@@ -796,7 +796,7 @@ def _build_heatmap_rel_plot(
 
 def get_heatmap_vectors_csv(
     db_name: str,
-    label: Optional[str] = None,
+    label: str | None = None,
     channel: str = "fluo1",
     degree: int = 4,
 ) -> bytes:
@@ -812,7 +812,7 @@ def get_heatmap_vectors_csv(
 
 def create_heatmap_abs_plot(
     db_name: str,
-    label: Optional[str] = None,
+    label: str | None = None,
     channel: str = "fluo1",
     degree: int = 4,
 ) -> bytes:
@@ -822,7 +822,7 @@ def create_heatmap_abs_plot(
 
 def create_heatmap_rel_plot(
     db_name: str,
-    label: Optional[str] = None,
+    label: str | None = None,
     channel: str = "fluo1",
     degree: int = 4,
 ) -> bytes:
@@ -832,7 +832,7 @@ def create_heatmap_rel_plot(
 
 def create_hu_separation_overlay(
     db_name: str,
-    label: Optional[str] = None,
+    label: str | None = None,
     channel: str = "fluo1",
     degree: int = 4,
     center_ratio: float = 0.15,
@@ -854,7 +854,7 @@ def create_hu_separation_overlay(
 
 def create_map256_strip(
     db_name: str,
-    label: Optional[str] = None,
+    label: str | None = None,
     channel: str = "fluo1",
     degree: int = 4,
 ) -> bytes:
@@ -928,7 +928,7 @@ def create_map256_strip(
 
 
 def create_contours_grid_plot(
-    db_name: str, label: Optional[str] = None
+    db_name: str, label: str | None = None
 ) -> bytes:
     contours = _collect_transformed_contours_by_label(db_name, label)
     if not contours:
@@ -937,7 +937,7 @@ def create_contours_grid_plot(
 
 
 def get_contours_grid_json(
-    db_name: str, label: Optional[str] = None
+    db_name: str, label: str | None = None
 ) -> bytes:
     contours_by_id = _collect_transformed_contours_with_ids(db_name, label)
     if not contours_by_id:
@@ -948,7 +948,7 @@ def get_contours_grid_json(
 
 
 def create_cell_length_boxplot(
-    db_name: str, label: Optional[str] = None
+    db_name: str, label: str | None = None
 ) -> bytes:
     lengths = get_cell_lengths_by_label(db_name, label)
     if not lengths:
@@ -969,25 +969,25 @@ def create_cell_length_boxplot(
 class BulkEngineCrud:
     @classmethod
     def get_cell_lengths_by_label(
-        cls, db_name: str, label: Optional[str] = None
+        cls, db_name: str, label: str | None = None
     ) -> list[tuple[str, float]]:
         return get_cell_lengths_by_label(db_name, label)
 
     @classmethod
     def get_cell_areas_by_label(
-        cls, db_name: str, label: Optional[str] = None
+        cls, db_name: str, label: str | None = None
     ) -> list[tuple[str, float]]:
         return get_cell_areas_by_label(db_name, label)
 
     @classmethod
     def get_normalized_medians_by_label(
-        cls, db_name: str, label: Optional[str] = None, channel: str = "ph"
+        cls, db_name: str, label: str | None = None, channel: str = "ph"
     ) -> list[tuple[str, float]]:
         return get_normalized_medians_by_label(db_name, label, channel)
 
     @classmethod
     def get_raw_intensities_by_label(
-        cls, db_name: str, label: Optional[str] = None, channel: str = "ph"
+        cls, db_name: str, label: str | None = None, channel: str = "ph"
     ) -> list[tuple[str, list[int]]]:
         return get_raw_intensities_by_label(db_name, label, channel)
 
@@ -995,7 +995,7 @@ class BulkEngineCrud:
     def get_heatmap_vectors_csv(
         cls,
         db_name: str,
-        label: Optional[str] = None,
+        label: str | None = None,
         channel: str = "fluo1",
         degree: int = 4,
     ) -> bytes:
@@ -1005,7 +1005,7 @@ class BulkEngineCrud:
     def create_heatmap_abs_plot(
         cls,
         db_name: str,
-        label: Optional[str] = None,
+        label: str | None = None,
         channel: str = "fluo1",
         degree: int = 4,
     ) -> bytes:
@@ -1015,7 +1015,7 @@ class BulkEngineCrud:
     def create_heatmap_rel_plot(
         cls,
         db_name: str,
-        label: Optional[str] = None,
+        label: str | None = None,
         channel: str = "fluo1",
         degree: int = 4,
     ) -> bytes:
@@ -1025,7 +1025,7 @@ class BulkEngineCrud:
     def create_hu_separation_overlay(
         cls,
         db_name: str,
-        label: Optional[str] = None,
+        label: str | None = None,
         channel: str = "fluo1",
         degree: int = 4,
         center_ratio: float = 0.15,
@@ -1044,7 +1044,7 @@ class BulkEngineCrud:
     def create_map256_strip(
         cls,
         db_name: str,
-        label: Optional[str] = None,
+        label: str | None = None,
         channel: str = "fluo1",
         degree: int = 4,
     ) -> bytes:
@@ -1052,33 +1052,33 @@ class BulkEngineCrud:
 
     @classmethod
     def create_contours_grid_plot(
-        cls, db_name: str, label: Optional[str] = None
+        cls, db_name: str, label: str | None = None
     ) -> bytes:
         return create_contours_grid_plot(db_name, label)
 
     @classmethod
     def get_contours_grid_json(
-        cls, db_name: str, label: Optional[str] = None
+        cls, db_name: str, label: str | None = None
     ) -> bytes:
         return get_contours_grid_json(db_name, label)
 
     @classmethod
-    def create_cell_length_boxplot(cls, db_name: str, label: Optional[str] = None) -> bytes:
+    def create_cell_length_boxplot(cls, db_name: str, label: str | None = None) -> bytes:
         return create_cell_length_boxplot(db_name, label)
 
     @classmethod
-    def create_cell_area_boxplot(cls, db_name: str, label: Optional[str] = None) -> bytes:
+    def create_cell_area_boxplot(cls, db_name: str, label: str | None = None) -> bytes:
         return create_cell_area_boxplot(db_name, label)
 
     @classmethod
     def create_normalized_median_boxplot(
-        cls, db_name: str, label: Optional[str] = None, channel: str = "ph"
+        cls, db_name: str, label: str | None = None, channel: str = "ph"
     ) -> bytes:
         return create_normalized_median_boxplot(db_name, label, channel)
 
 
 def create_cell_area_boxplot(
-    db_name: str, label: Optional[str] = None
+    db_name: str, label: str | None = None
 ) -> bytes:
     areas = get_cell_areas_by_label(db_name, label)
     if not areas:
@@ -1097,7 +1097,7 @@ def create_cell_area_boxplot(
 
 
 def create_normalized_median_boxplot(
-    db_name: str, label: Optional[str] = None, channel: str = "ph"
+    db_name: str, label: str | None = None, channel: str = "ph"
 ) -> bytes:
     medians = get_normalized_medians_by_label(db_name, label, channel)
     if not medians:
@@ -1123,7 +1123,7 @@ def _build_boxplot_image(
     point_color: str,
     median_color: str,
     box_color: str,
-    xlabel: Optional[str] = None,
+    xlabel: str | None = None,
 ) -> bytes:
     if len(data) != len(labels):
         raise ValueError("Data and labels must be the same length.")

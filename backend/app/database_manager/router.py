@@ -1,7 +1,7 @@
 import asyncio
 import io
 from concurrent.futures import ProcessPoolExecutor
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal
 
 import aiofiles
 from fastapi import APIRouter, File, HTTPException, Path, Query, UploadFile
@@ -398,7 +398,7 @@ async def get_annotation_zip_endpoint(
     dbname: Annotated[str, Query()] = ...,
     image_type: Annotated[str, Query(description="ph | fluo1 | fluo2")] = "ph",
     raw: Annotated[bool, Query()] = False,
-    downscale: Annotated[Optional[float], Query(ge=0.05, le=1.0)] = None,
+    downscale: Annotated[float | None, Query(ge=0.05, le=1.0)] = None,
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
