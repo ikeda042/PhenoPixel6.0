@@ -211,7 +211,13 @@ export default function DatabasesPage() {
   return (
     <Box minH="100vh" bg="sand.50" color="ink.900">
       <AppHeader>
-        <HStack spacing="3">
+        <HStack
+          as={RouterLink}
+          to="/"
+          spacing="3"
+          color="inherit"
+          _hover={{ textDecoration: 'none' }}
+        >
           <Box
             as="img"
             src="/favicon.png"
