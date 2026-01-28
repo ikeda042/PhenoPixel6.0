@@ -156,7 +156,13 @@ export default function App() {
 
       <Box position="relative">
         <AppHeader bg="sand.50/90">
-          <HStack spacing="3">
+          <HStack
+            as={RouterLink}
+            to="/"
+            spacing="3"
+            color="inherit"
+            _hover={{ textDecoration: 'none' }}
+          >
             <Box w="12px" h="12px" borderRadius="full" bg="tide.300" />
             <Heading size="md" letterSpacing="0.08em">
               PhenoPixel 6.0
