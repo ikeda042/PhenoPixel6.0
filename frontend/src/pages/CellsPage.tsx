@@ -352,7 +352,14 @@ export default function CellsPage() {
     return () => {
       isActive = false
     }
-  }, [apiBase, dbName, currentCellId, overlayOptions, modificationMode])
+  }, [
+    apiBase,
+    dbName,
+    currentCellId,
+    overlayOptions,
+    modificationMode,
+    contourRefreshKey,
+  ])
 
   useEffect(() => {
     if (!dbName || !currentCellId) {
