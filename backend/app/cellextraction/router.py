@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.activity_tracker.crud import ACTION_CELL_EXTRACTION, record_activity_sync
 from app.cellextraction.crud import ExtractionCrudBase
-from app.slack.notifier import build_database_created_message, notify_slack
+from app.slack.notifier import build_database_created_message, notify_slack_sync
 
 
 router_cellextraction = APIRouter(tags=["cellextraction"])
@@ -161,7 +161,7 @@ def _notify_slack_for_result(result: dict[str, Any]) -> None:
             param1=param1,
             image_size=image_size,
         )
-        notify_slack(
+        notify_slack_sync(
             slack_message,
             success_log=("Slack notified for database creation: %s", (db_name,)),
         )

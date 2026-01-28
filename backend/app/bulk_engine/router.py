@@ -2,7 +2,6 @@ import asyncio
 import io
 import logging
 from concurrent.futures import ProcessPoolExecutor
-from functools import partial
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -32,7 +31,7 @@ bulk_executor = ProcessPoolExecutor()
 heatmap_bulk_executor = ProcessPoolExecutor(max_workers=1)
 
 
-def _notify_bulk_engine_completed(
+async def _notify_bulk_engine_completed(
     db_name: str,
     task: str,
     label: str | None,
@@ -52,7 +51,7 @@ def _notify_bulk_engine_completed(
             center_ratio=center_ratio,
             max_to_min_ratio=max_to_min_ratio,
         )
-        notify_slack(
+        await notify_slack(
             slack_message,
             success_log=("Slack notified for bulk engine: %s (%s)", (db_name, task_text)),
         )
@@ -133,16 +132,14 @@ async def get_heatmap_abs_plot_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-    loop.run_in_executor(
-        None,
-        partial(
-            _notify_bulk_engine_completed,
+    asyncio.create_task(
+        _notify_bulk_engine_completed(
             dbname,
             "heatmap abs plot",
             label,
             channel,
             degree,
-        ),
+        )
     )
     return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
 
@@ -172,16 +169,14 @@ async def get_heatmap_rel_plot_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-    loop.run_in_executor(
-        None,
-        partial(
-            _notify_bulk_engine_completed,
+    asyncio.create_task(
+        _notify_bulk_engine_completed(
             dbname,
             "heatmap rel plot",
             label,
             channel,
             degree,
-        ),
+        )
     )
     return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
 
@@ -215,10 +210,8 @@ async def get_hu_separation_overlay_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-    loop.run_in_executor(
-        None,
-        partial(
-            _notify_bulk_engine_completed,
+    asyncio.create_task(
+        _notify_bulk_engine_completed(
             dbname,
             "hu separation overlay",
             label,
@@ -226,7 +219,7 @@ async def get_hu_separation_overlay_endpoint(
             degree,
             center_ratio,
             max_to_min_ratio,
-        ),
+        )
     )
     return StreamingResponse(io.BytesIO(overlay_bytes), media_type="image/png")
 
