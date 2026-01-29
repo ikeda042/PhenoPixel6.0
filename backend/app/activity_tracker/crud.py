@@ -4,7 +4,9 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Any
 
-from app.activity_tracker.async_databases import get_db
+from sqlalchemy import func, insert, select
+
+from app.activity_tracker.async_databases import activity_log, get_db
 
 ACTION_TOP_PAGE = "top_page"
 ACTION_CELL_EXTRACTION = "cell_extraction"
@@ -36,10 +38,11 @@ async def record_activity(action_name: str, created_at: datetime | None = None) 
     normalized = _normalize_action_name(action_name)
     timestamp = created_at or datetime.utcnow()
     async with get_db() as db:
-        await db.execute(
-            "INSERT INTO activity_log (created_at, action_name) VALUES (?, ?)",
-            (_format_timestamp(timestamp), normalized),
+        stmt = insert(activity_log).values(
+            created_at=_format_timestamp(timestamp),
+            action_name=normalized,
         )
+        await db.execute(stmt)
         await db.commit()
 
 
@@ -61,25 +64,23 @@ async def get_daily_activity_summary(
     end_date = datetime.utcnow().date()
     start_date = end_date - timedelta(days=days - 1)
 
-    params: list[Any] = [start_date.isoformat(), end_date.isoformat()]
-    filter_clause = ""
-    if action_name:
-        normalized = _normalize_action_name(action_name)
-        filter_clause = "AND action_name = ?"
-        params.append(normalized)
-
-    query = f"""
-        SELECT date(created_at) AS day, COUNT(*) AS count
-        FROM activity_log
-        WHERE date(created_at) BETWEEN ? AND ?
-        {filter_clause}
-        GROUP BY date(created_at)
-        ORDER BY date(created_at)
-    """
-
     async with get_db() as db:
-        cursor = await db.execute(query, params)
-        rows = await cursor.fetchall()
+        day_expr = func.date(activity_log.c.created_at).label("day")
+        stmt = (
+            select(day_expr, func.count().label("count"))
+            .where(
+                func.date(activity_log.c.created_at).between(
+                    start_date.isoformat(), end_date.isoformat()
+                )
+            )
+            .group_by(day_expr)
+            .order_by(day_expr)
+        )
+        if action_name:
+            normalized = _normalize_action_name(action_name)
+            stmt = stmt.where(activity_log.c.action_name == normalized)
+        result = await db.execute(stmt)
+        rows = result.mappings().all()
 
     counts_by_day = {row["day"]: row["count"] for row in rows}
     points: list[dict[str, Any]] = []
