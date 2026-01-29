@@ -1173,6 +1173,16 @@ def _build_fitc_aggregation_ratio_plot(
     value_text = f"{ratio:.3g}"
     text_y = min(ratio + 0.05, 0.96)
     ax.text(0, text_y, value_text, ha="center", va="bottom", fontsize=9)
+    ax.text(
+        0,
+        1.05,
+        f"FITC aggregation ratio = {value_text}",
+        ha="center",
+        va="center",
+        fontsize=8.5,
+        color="#2d3748",
+        clip_on=False,
+    )
     ax.grid(True, axis="y", alpha=0.3)
 
     buf = io.BytesIO()
