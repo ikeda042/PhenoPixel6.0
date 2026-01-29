@@ -445,6 +445,7 @@ def _colorize_fluo_image(
     if image_type == "fluo1":
         color[:, :, 1] = gray
     else:
+        color[:, :, 0] = gray
         color[:, :, 2] = gray
     return color
 
