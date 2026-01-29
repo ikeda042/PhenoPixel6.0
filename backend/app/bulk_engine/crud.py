@@ -1171,8 +1171,6 @@ def _build_fitc_aggregation_ratio_plot(
     ax.set_ylabel(f"Fraction below {threshold}")
     ax.set_title(title, fontsize=9)
     value_text = f"{ratio:.3g}"
-    text_y = min(ratio + 0.05, 0.96)
-    ax.text(0, text_y, value_text, ha="center", va="bottom", fontsize=9)
     ax.text(
         0,
         1.05,
