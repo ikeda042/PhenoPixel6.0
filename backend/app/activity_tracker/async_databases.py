@@ -3,43 +3,57 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import aiosqlite
+from sqlalchemy import Column, Index, Integer, MetaData, String, Table
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 DB_DIR = Path(__file__).resolve().parent / "data"
 DB_PATH = DB_DIR / "activity_tracker.db"
 
 _INITIALIZED = False
+_ENGINE = None
+_SESSION_MAKER: async_sessionmaker[AsyncSession] | None = None
 
-_SCHEMA = """
-PRAGMA journal_mode=WAL;
-CREATE TABLE IF NOT EXISTS activity_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_at TEXT NOT NULL,
-    action_name TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_activity_log_created_at
-    ON activity_log (created_at);
-CREATE INDEX IF NOT EXISTS idx_activity_log_action_name
-    ON activity_log (action_name);
-"""
+_METADATA = MetaData()
+
+activity_log = Table(
+    "activity_log",
+    _METADATA,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("created_at", String, nullable=False),
+    Column("action_name", String, nullable=False),
+    Index("idx_activity_log_created_at", "created_at"),
+    Index("idx_activity_log_action_name", "action_name"),
+)
+
+
+def _get_engine():
+    global _ENGINE
+    if _ENGINE is None:
+        _ENGINE = create_async_engine(
+            f"sqlite+aiosqlite:///{DB_PATH}", future=True
+        )
+    return _ENGINE
 
 
 async def init_db() -> None:
-    global _INITIALIZED
+    global _INITIALIZED, _SESSION_MAKER
     if _INITIALIZED:
         return
     DB_DIR.mkdir(parents=True, exist_ok=True)
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.executescript(_SCHEMA)
-        await db.commit()
+    engine = _get_engine()
+    async with engine.begin() as conn:
+        await conn.exec_driver_sql("PRAGMA journal_mode=WAL;")
+        await conn.run_sync(_METADATA.create_all)
+    _SESSION_MAKER = async_sessionmaker(engine, expire_on_commit=False)
     _INITIALIZED = True
 
 
 @asynccontextmanager
-async def get_db() -> aiosqlite.Connection:
+async def get_db() -> AsyncSession:
     await init_db()
-    db = await aiosqlite.connect(DB_PATH)
-    db.row_factory = aiosqlite.Row
+    if _SESSION_MAKER is None:
+        raise RuntimeError("Database session maker is not initialized")
+    db = _SESSION_MAKER()
     try:
         yield db
     finally:
