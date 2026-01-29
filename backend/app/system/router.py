@@ -1,6 +1,6 @@
+import asyncio
 import logging
 import os
-import subprocess
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -11,25 +11,28 @@ REPO_ROOT = Path(__file__).resolve().parents[2].parent
 
 
 @router_system.post("/system/git-pull")
-def git_pull():
+async def git_pull():
     if not (REPO_ROOT / ".git").exists():
         raise HTTPException(status_code=500, detail="Repository root not found")
 
     env = os.environ.copy()
     env["GIT_TERMINAL_PROMPT"] = "0"
-    result = subprocess.run(
-        ["git", "pull", "--ff-only"],
+    process = await asyncio.create_subprocess_exec(
+        "git",
+        "pull",
+        "--ff-only",
         cwd=REPO_ROOT,
         env=env,
-        text=True,
-        capture_output=True,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
-    stdout = result.stdout.strip()
-    stderr = result.stderr.strip()
+    stdout_bytes, stderr_bytes = await process.communicate()
+    stdout = stdout_bytes.decode().strip() if stdout_bytes else ""
+    stderr = stderr_bytes.decode().strip() if stderr_bytes else ""
     if stdout:
         logger.info("git pull stdout:\n%s", stdout)
     if stderr:
         logger.warning("git pull stderr:\n%s", stderr)
-    if result.returncode != 0:
+    if process.returncode != 0:
         raise HTTPException(status_code=500, detail=stderr or stdout or "git pull failed")
     return {"status": "ok", "output": stdout}
