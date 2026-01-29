@@ -1163,7 +1163,7 @@ def _build_fitc_aggregation_ratio_plot(
     threshold: float,
 ) -> bytes:
     fig, ax = plt.subplots(figsize=(4.6, 4.2), dpi=180)
-    ax.bar([0], [ratio], color="#2c7a7b", width=0.4)
+    ax.bar([0], [ratio], color="#2c7a7b", width=0.25)
     ax.set_ylim(0, 1)
     ax.set_xticks([0])
     ax.set_xticklabels([label_text])
