@@ -18,6 +18,7 @@ from app.bulk_engine.heatmap_bulk_core import (
 from app.bulk_engine.hu_separation_detector import build_hu_separation_overlay
 
 PIXEL_SIZE_UM = 0.065
+FITC_AGGREGATION_THRESHOLD = 0.7414
 
 
 def _pca_length(points: np.ndarray) -> float:
@@ -93,6 +94,21 @@ def _calc_normalized_median_intensity(image_raw: bytes, contour_raw: bytes) -> f
     normalized = points.astype(float) / max_val
     median_val = float(np.median(normalized))
     return round(median_val, 4)
+
+
+def _calc_fraction_below_threshold(
+    values: Sequence[float], threshold: float
+) -> tuple[float, int, int]:
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        raise LookupError("No values found for the specified label.")
+    arr = arr[np.isfinite(arr)]
+    total = int(arr.size)
+    if total == 0:
+        raise LookupError("No values found for the specified label.")
+    count_below = int((arr < threshold).sum())
+    ratio = count_below / total if total > 0 else 0.0
+    return ratio, count_below, total
 
 
 def get_cell_lengths_by_label(
@@ -1076,6 +1092,12 @@ class BulkEngineCrud:
     ) -> bytes:
         return create_normalized_median_boxplot(db_name, label, channel)
 
+    @classmethod
+    def create_fitc_aggregation_ratio_plot(
+        cls, db_name: str, label: str | None = None, channel: str = "fluo1"
+    ) -> bytes:
+        return create_fitc_aggregation_ratio_plot(db_name, label, channel)
+
 
 def create_cell_area_boxplot(
     db_name: str, label: str | None = None
@@ -1113,6 +1135,51 @@ def create_normalized_median_boxplot(
         median_color="#2b6cb0",
         box_color="#2d3748",
     )
+
+
+def create_fitc_aggregation_ratio_plot(
+    db_name: str, label: str | None = None, channel: str = "fluo1"
+) -> bytes:
+    medians = get_normalized_medians_by_label(db_name, label, channel)
+    if not medians:
+        raise LookupError("No cells found for the specified label.")
+    values = [median for _, median in medians]
+    ratio, _count_below, _total = _calc_fraction_below_threshold(
+        values, FITC_AGGREGATION_THRESHOLD
+    )
+    label_text = str(label) if label not in (None, "", "all", "All") else "All"
+    return _build_fitc_aggregation_ratio_plot(
+        ratio=ratio,
+        label_text=label_text,
+        title=f"{db_name} | label {label_text} | {channel}",
+        threshold=FITC_AGGREGATION_THRESHOLD,
+    )
+
+
+def _build_fitc_aggregation_ratio_plot(
+    ratio: float,
+    label_text: str,
+    title: str,
+    threshold: float,
+) -> bytes:
+    fig, ax = plt.subplots(figsize=(4.6, 4.2), dpi=180)
+    ax.bar([0], [ratio], color="#2c7a7b", width=0.4)
+    ax.set_ylim(0, 1)
+    ax.set_xticks([0])
+    ax.set_xticklabels([label_text])
+    ax.set_ylabel(f"Fraction below {threshold}")
+    ax.set_title(title, fontsize=9)
+    value_text = f"{ratio:.3g}"
+    text_y = min(ratio + 0.05, 0.96)
+    ax.text(0, text_y, value_text, ha="center", va="bottom", fontsize=9)
+    ax.grid(True, axis="y", alpha=0.3)
+
+    buf = io.BytesIO()
+    fig.tight_layout()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
 
 
 def _build_boxplot_image(

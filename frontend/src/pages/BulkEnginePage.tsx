@@ -99,6 +99,7 @@ export default function BulkEnginePage() {
   const bulkZoom = 0.75
   const previewDownscale = 0.5
   const scaledViewportHeight = `calc(100vh / ${bulkZoom})`
+  const fitcThreshold = 0.7414
 
   const [cells, setCells] = useState<BulkCell[]>([])
   const [selectedLabel, setSelectedLabel] = useState('1')
@@ -128,6 +129,10 @@ export default function BulkEnginePage() {
   const [isMedianExporting, setIsMedianExporting] = useState(false)
   const [medianExportError, setMedianExportError] = useState<string | null>(null)
   const [hasCalculatedMedian, setHasCalculatedMedian] = useState(false)
+  const [fitcPlotUrl, setFitcPlotUrl] = useState<string | null>(null)
+  const [fitcError, setFitcError] = useState<string | null>(null)
+  const [isFitcLoading, setIsFitcLoading] = useState(false)
+  const [hasCalculatedFitc, setHasCalculatedFitc] = useState(false)
   const [entropyPlotUrl, setEntropyPlotUrl] = useState<string | null>(null)
   const [entropyError, setEntropyError] = useState<string | null>(null)
   const [isEntropyLoading, setIsEntropyLoading] = useState(false)
@@ -167,6 +172,7 @@ export default function BulkEnginePage() {
   const lengthPlotUrlRef = useRef<string | null>(null)
   const areaPlotUrlRef = useRef<string | null>(null)
   const medianPlotUrlRef = useRef<string | null>(null)
+  const fitcPlotUrlRef = useRef<string | null>(null)
   const entropyPlotUrlRef = useRef<string | null>(null)
   const heatmapPlotUrlRef = useRef<string | null>(null)
   const heatmapRelUrlRef = useRef<string | null>(null)
@@ -306,7 +312,9 @@ export default function BulkEnginePage() {
 
   useEffect(() => {
     if (
-      (analysisMode === 'heatmap' || analysisMode === 'map256') &&
+      (analysisMode === 'heatmap' ||
+        analysisMode === 'map256' ||
+        analysisMode === 'fitc-aggregation') &&
       analysisChannel === 'ph'
     ) {
       setAnalysisChannel('fluo1')
@@ -403,6 +411,10 @@ export default function BulkEnginePage() {
       URL.revokeObjectURL(medianPlotUrlRef.current)
       medianPlotUrlRef.current = null
     }
+    if (fitcPlotUrlRef.current) {
+      URL.revokeObjectURL(fitcPlotUrlRef.current)
+      fitcPlotUrlRef.current = null
+    }
     if (entropyPlotUrlRef.current) {
       URL.revokeObjectURL(entropyPlotUrlRef.current)
       entropyPlotUrlRef.current = null
@@ -439,6 +451,9 @@ export default function BulkEnginePage() {
     setMedianError(null)
     setMedianExportError(null)
     setHasCalculatedMedian(false)
+    setFitcPlotUrl(null)
+    setFitcError(null)
+    setHasCalculatedFitc(false)
     setEntropyPlotUrl(null)
     setEntropyError(null)
     setEntropyExportError(null)
@@ -482,6 +497,10 @@ export default function BulkEnginePage() {
       if (medianPlotUrlRef.current) {
         URL.revokeObjectURL(medianPlotUrlRef.current)
         medianPlotUrlRef.current = null
+      }
+      if (fitcPlotUrlRef.current) {
+        URL.revokeObjectURL(fitcPlotUrlRef.current)
+        fitcPlotUrlRef.current = null
       }
       if (entropyPlotUrlRef.current) {
         URL.revokeObjectURL(entropyPlotUrlRef.current)
@@ -696,6 +715,39 @@ export default function BulkEnginePage() {
       setHasCalculatedMedian(true)
     } finally {
       setIsMedianLoading(false)
+    }
+  }
+
+  const handleCalcFitcAggregation = async () => {
+    if (!dbName || isFitcLoading) return
+    setIsFitcLoading(true)
+    setFitcError(null)
+    try {
+      const params = new URLSearchParams({
+        dbname: dbName,
+        label: analysisLabel,
+        channel: analysisChannel,
+      })
+      const res = await fetch(`${apiBase}/get-fitc-aggregation-plot?${params.toString()}`, {
+        headers: { accept: 'image/png' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const blob = await res.blob()
+      if (fitcPlotUrlRef.current) {
+        URL.revokeObjectURL(fitcPlotUrlRef.current)
+      }
+      const url = URL.createObjectURL(blob)
+      fitcPlotUrlRef.current = url
+      setFitcPlotUrl(url)
+      setHasCalculatedFitc(true)
+    } catch (err) {
+      setFitcError(err instanceof Error ? err.message : 'Failed to calculate FITC ratio')
+      setFitcPlotUrl(null)
+      setHasCalculatedFitc(true)
+    } finally {
+      setIsFitcLoading(false)
     }
   }
 
@@ -1919,6 +1971,7 @@ export default function BulkEnginePage() {
                         <option value="cell-length">Cell length</option>
                         <option value="cell-area">Cell area</option>
                         <option value="normalized-median">Normalized median</option>
+                        <option value="fitc-aggregation">FITC aggregation ratio</option>
                         <option value="entropy">Entropy</option>
                         <option value="heatmap">Heatmap</option>
                         <option value="contours">Contours</option>
@@ -2271,6 +2324,119 @@ export default function BulkEnginePage() {
                             as="img"
                             src={medianPlotUrl}
                             alt="Normalized median boxplot"
+                            width="100%"
+                            height="auto"
+                          />
+                        </Box>
+                      )}
+                    </Stack>
+                  )}
+                  {analysisMode === 'fitc-aggregation' && (
+                    <Stack spacing="3" mt="2">
+                      <Text fontSize="sm" fontWeight="600" color="ink.900">
+                        FITC aggregation ratio
+                      </Text>
+                      <HStack spacing="4" align="flex-start" flexWrap="wrap">
+                        <Box maxW="12rem">
+                          <Text fontSize="xs" letterSpacing="0.18em" color="ink.700" mb="1">
+                            Manual label
+                          </Text>
+                          <NativeSelect.Root>
+                            <NativeSelect.Field
+                              value={analysisLabel}
+                              onChange={(event) => setAnalysisLabel(event.target.value)}
+                              bg="sand.50"
+                              border="1px solid"
+                              borderColor="sand.200"
+                              fontSize="sm"
+                              h="2.25rem"
+                              color="ink.900"
+                              _focusVisible={{
+                                borderColor: 'tide.400',
+                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              }}
+                            >
+                              {analysisLabelOptions.map((option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator color="ink.700" />
+                          </NativeSelect.Root>
+                        </Box>
+                        <Box maxW="10rem">
+                          <Text fontSize="xs" letterSpacing="0.18em" color="ink.700" mb="1">
+                            Channel
+                          </Text>
+                          <NativeSelect.Root>
+                            <NativeSelect.Field
+                              value={analysisChannel}
+                              onChange={(event) => setAnalysisChannel(event.target.value)}
+                              bg="sand.50"
+                              border="1px solid"
+                              borderColor="sand.200"
+                              fontSize="sm"
+                              h="2.25rem"
+                              color="ink.900"
+                              _focusVisible={{
+                                borderColor: 'tide.400',
+                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              }}
+                            >
+                              {heatmapChannelOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator color="ink.700" />
+                          </NativeSelect.Root>
+                        </Box>
+                      </HStack>
+                      <Text fontSize="xs" color="ink.700">
+                        Threshold: {fitcThreshold}
+                      </Text>
+                      <Text fontSize="xs" color="ink.700" mt="3">
+                        Execution
+                      </Text>
+                      <HStack spacing="3" flexWrap="wrap">
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="ink.900"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleCalcFitcAggregation}
+                          isDisabled={!dbName || isFitcLoading}
+                        >
+                          {isFitcLoading ? 'Calculating...' : 'Calc ratio'}
+                        </Button>
+                      </HStack>
+                      <Text fontSize="xs" color="ink.700" mt="3">
+                        Result
+                      </Text>
+                      {fitcError && (
+                        <Text fontSize="xs" color="violet.300">
+                          {fitcError}
+                        </Text>
+                      )}
+                      {!fitcError && hasCalculatedFitc && !fitcPlotUrl && (
+                        <Text fontSize="sm" color="ink.700">
+                          No values found for this label.
+                        </Text>
+                      )}
+                      {fitcPlotUrl && (
+                        <Box
+                          bg="sand.50"
+                          border="1px solid"
+                          borderColor="sand.200"
+                          borderRadius="md"
+                          p="2"
+                        >
+                          <Box
+                            as="img"
+                            src={fitcPlotUrl}
+                            alt="FITC aggregation ratio bar chart"
                             width="100%"
                             height="auto"
                           />
