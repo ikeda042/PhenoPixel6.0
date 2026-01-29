@@ -21,7 +21,7 @@ logger = logging.getLogger("uvicorn.error")
 ND2_DIR = Path(__file__).resolve().parents[1] / "nd2files"
 _jobs: dict[str, dict[str, Any]] = {}
 _jobs_lock = Lock()
-_DEFAULT_MAX_CONCURRENCY = 2
+_DEFAULT_MAX_CONCURRENCY = 5
 
 
 def _get_max_concurrency() -> int:
