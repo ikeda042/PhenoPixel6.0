@@ -1574,8 +1574,11 @@ def get_cell_overlay(
         overlay[:, :, 1] = green
         if norm2 is not None:
             red = overlay[:, :, 2]
+            blue = overlay[:, :, 0]
             red[mask_bool] = np.maximum(red[mask_bool], norm2[mask_bool])
+            blue[mask_bool] = np.maximum(blue[mask_bool], norm2[mask_bool])
             overlay[:, :, 2] = red
+            overlay[:, :, 0] = blue
 
         if draw_scale_bar:
             overlay = _draw_scale_bar_with_centered_text(overlay)
