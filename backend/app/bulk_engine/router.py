@@ -427,6 +427,32 @@ async def get_normalized_medians_plot(
     return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
 
 
+@router_bulk_engine.get("/get-fitc-aggregation-plot")
+async def get_fitc_aggregation_plot(
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        plot_bytes = await loop.run_in_executor(
+            bulk_executor,
+            BulkEngineCrud.create_fitc_aggregation_ratio_plot,
+            dbname,
+            label,
+            channel,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(plot_bytes), media_type="image/png")
+
+
 @router_bulk_engine.get("/get-raw-intensities", response_model=list[RawIntensity])
 async def get_raw_intensities(
     dbname: Annotated[str, Query()] = ...,
