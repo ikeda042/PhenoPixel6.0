@@ -25,7 +25,7 @@ SUPPORTED_CHANNELS = ["ph", "fluo1", "fluo2"]
 META_FILENAME = "meta.json"
 _PROCESS_POOL: ProcessPoolExecutor | None = None
 _PROCESS_POOL_LOCK = Lock()
-_DEFAULT_MAX_WORKERS = 2
+_DEFAULT_MAX_WORKERS = 4
 
 
 class ParseNd2Request(BaseModel):
