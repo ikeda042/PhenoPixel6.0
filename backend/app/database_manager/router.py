@@ -154,6 +154,7 @@ def get_cell_image_endpoint(
     image_type: Annotated[str, Query(description="ph | fluo1 | fluo2")] = ...,
     draw_contour: Annotated[bool, Query()] = False,
     draw_scale_bar: Annotated[bool, Query()] = False,
+    gain: Annotated[float, Query(gt=0)] = 1.0,
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_image(
@@ -162,6 +163,7 @@ def get_cell_image_endpoint(
             image_type,
             draw_contour=draw_contour,
             draw_scale_bar=draw_scale_bar,
+            gain=gain,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -269,42 +271,6 @@ def elastic_contour_bulk_endpoint(
 ) -> dict:
     try:
         return DatabaseManagerCrud.apply_elastic_contour_bulk(dbname, delta, label)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Database not found")
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@router_database_manager.patch("/fluo-gain")
-def fluo_gain_endpoint(
-    dbname: Annotated[str, Query()] = ...,
-    cell_id: Annotated[str, Query()] = ...,
-    gain: Annotated[float, Query(gt=0)] = 1.0,
-) -> dict:
-    try:
-        return DatabaseManagerCrud.apply_fluo_gain(dbname, cell_id, gain)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Database not found")
-    except LookupError:
-        raise HTTPException(status_code=404, detail="Cell image not found")
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@router_database_manager.patch("/fluo-gain-bulk")
-def fluo_gain_bulk_endpoint(
-    dbname: Annotated[str, Query()] = ...,
-    gain: Annotated[float, Query(gt=0)] = 1.0,
-    label: Annotated[str | None, Query()] = None,
-) -> dict:
-    try:
-        return DatabaseManagerCrud.apply_fluo_gain_bulk(dbname, gain, label)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
     except LookupError as exc:

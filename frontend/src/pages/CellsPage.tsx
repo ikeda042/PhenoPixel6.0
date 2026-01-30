@@ -150,6 +150,7 @@ export default function CellsPage() {
   const [elasticDelta, setElasticDelta] = useState(0)
   const [gainValue, setGainValue] = useState(1)
   const [gainInput, setGainInput] = useState('1')
+  const [appliedGain, setAppliedGain] = useState(1)
   const [isApplyingModification, setIsApplyingModification] = useState(false)
   const [isApplyingBulkModification, setIsApplyingBulkModification] = useState(false)
   const [modificationError, setModificationError] = useState<string | null>(null)
@@ -300,6 +301,12 @@ export default function CellsPage() {
         draw_contour: String(overlayOptions.contour),
         draw_scale_bar: String(overlayOptions.scale),
       })
+      if (
+        modificationMode === 'gain' &&
+        (channel === 'fluo1' || channel === 'fluo2')
+      ) {
+        params.set('gain', String(appliedGain))
+      }
       const res = await fetch(
         `${apiBase}/${endpoint}?${params.toString()}`,
         { headers: { accept: 'image/png' } },
@@ -361,6 +368,7 @@ export default function CellsPage() {
     overlayOptions,
     modificationMode,
     contourRefreshKey,
+    appliedGain,
   ])
 
   useEffect(() => {
@@ -824,18 +832,7 @@ export default function CellsPage() {
         }
         setContourRefreshKey((prev) => prev + 1)
       } else if (modificationMode === 'gain') {
-        const params = new URLSearchParams({
-          dbname: dbName,
-          cell_id: currentCellId,
-          gain: String(parsedGain),
-        })
-        const res = await fetch(`${apiBase}/fluo-gain?${params.toString()}`, {
-          method: 'PATCH',
-          headers: { accept: 'application/json' },
-        })
-        if (!res.ok) {
-          throw new Error(`Request failed (${res.status})`)
-        }
+        setAppliedGain(parsedGain)
         setContourRefreshKey((prev) => prev + 1)
       }
     } catch (err) {
@@ -850,66 +847,35 @@ export default function CellsPage() {
   const handleApplyBulkModification = async () => {
     if (!dbName || isApplyingModification || isApplyingBulkModification) return
     if (cellCount === 0) return
-    if (modificationMode === 'gain' && !isGainValid) {
-      setModificationError('Gain must be greater than 0.')
-      return
-    }
+    if (modificationMode !== 'elastic') return
     setIsApplyingBulkModification(true)
     setModificationError(null)
     try {
-      if (modificationMode === 'elastic') {
-        const params = new URLSearchParams({
-          dbname: dbName,
-          delta: String(elasticDelta),
-        })
-        if (selectedLabel !== 'All') {
-          params.set('label', selectedLabel)
-        }
-        const res = await fetch(`${apiBase}/elastic-contour-bulk?${params.toString()}`, {
-          method: 'PATCH',
-          headers: { accept: 'application/json' },
-        })
-        if (!res.ok) {
-          throw new Error(`Request failed (${res.status})`)
-        }
-        const payload = (await res.json().catch(() => null)) as
-          | { total?: number; updated?: number; failed?: number }
-          | null
-        if (payload?.failed) {
-          const total = payload.total ?? cellCount
-          const updated = payload.updated ?? Math.max(total - payload.failed, 0)
-          setModificationError(
-            `Applied to ${updated} / ${total} cells. ${payload.failed} failed.`,
-          )
-        }
-        setContourRefreshKey((prev) => prev + 1)
-      } else if (modificationMode === 'gain') {
-        const params = new URLSearchParams({
-          dbname: dbName,
-          gain: String(parsedGain),
-        })
-        if (selectedLabel !== 'All') {
-          params.set('label', selectedLabel)
-        }
-        const res = await fetch(`${apiBase}/fluo-gain-bulk?${params.toString()}`, {
-          method: 'PATCH',
-          headers: { accept: 'application/json' },
-        })
-        if (!res.ok) {
-          throw new Error(`Request failed (${res.status})`)
-        }
-        const payload = (await res.json().catch(() => null)) as
-          | { total?: number; updated?: number; failed?: number }
-          | null
-        if (payload?.failed) {
-          const total = payload.total ?? cellCount
-          const updated = payload.updated ?? Math.max(total - payload.failed, 0)
-          setModificationError(
-            `Applied to ${updated} / ${total} cells. ${payload.failed} failed.`,
-          )
-        }
-        setContourRefreshKey((prev) => prev + 1)
+      const params = new URLSearchParams({
+        dbname: dbName,
+        delta: String(elasticDelta),
+      })
+      if (selectedLabel !== 'All') {
+        params.set('label', selectedLabel)
       }
+      const res = await fetch(`${apiBase}/elastic-contour-bulk?${params.toString()}`, {
+        method: 'PATCH',
+        headers: { accept: 'application/json' },
+      })
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`)
+      }
+      const payload = (await res.json().catch(() => null)) as
+        | { total?: number; updated?: number; failed?: number }
+        | null
+      if (payload?.failed) {
+        const total = payload.total ?? cellCount
+        const updated = payload.updated ?? Math.max(total - payload.failed, 0)
+        setModificationError(
+          `Applied to ${updated} / ${total} cells. ${payload.failed} failed.`,
+        )
+      }
+      setContourRefreshKey((prev) => prev + 1)
     } catch (err) {
       setModificationError(
         err instanceof Error ? err.message : 'Failed to apply modification',
@@ -1572,26 +1538,6 @@ export default function CellsPage() {
                             }
                           >
                             {isApplyingModification ? 'Applying...' : 'Apply'}
-                          </Button>
-                        </Box>
-                        <Box minW="8rem" display="flex" alignItems="center">
-                          <Button
-                            size="sm"
-                            h={{ base: '2.25rem', lg: '2rem' }}
-                            variant="outline"
-                            borderColor="tide.400"
-                            color="tide.400"
-                            _hover={{ bg: 'tide.400', color: 'ink.900' }}
-                            onClick={handleApplyBulkModification}
-                            isDisabled={
-                              !dbName ||
-                              cellCount === 0 ||
-                              isLoadingIds ||
-                              isApplyingAnyModification ||
-                              !isGainValid
-                            }
-                          >
-                            {isApplyingBulkModification ? 'Applying all...' : 'Apply bulk'}
                           </Button>
                         </Box>
                       </>

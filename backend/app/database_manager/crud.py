@@ -337,95 +337,6 @@ def apply_elastic_contour(
         session.close()
 
 
-def _apply_gain_to_image(image_raw: bytes, gain: float) -> bytes:
-    if gain == 1:
-        return image_raw
-    img = cv2.imdecode(np.frombuffer(image_raw, np.uint8), cv2.IMREAD_GRAYSCALE)
-    if img is None:
-        raise ValueError("Failed to decode image")
-    scaled = img.astype(np.float32) * float(gain)
-    scaled = np.clip(scaled, 0, 255).astype(np.uint8)
-    return _encode_image(scaled)
-
-
-def apply_fluo_gain(db_name: str, cell_id: str, gain: float = 1.0) -> dict:
-    if not np.isfinite(gain) or gain <= 0:
-        raise ValueError("Gain must be greater than 0")
-    session = get_database_session(db_name)
-    try:
-        bind = session.get_bind()
-        if bind is None:
-            raise RuntimeError("Database session is not bound")
-        metadata = MetaData()
-        cells = Table("cells", metadata, autoload_with=bind)
-        stmt = (
-            select(cells.c.img_fluo1, cells.c.img_fluo2)
-            .where(cells.c.cell_id == cell_id)
-            .limit(1)
-        )
-        row = session.execute(stmt).first()
-        if row is None:
-            raise LookupError("Cell image not found")
-
-        fluo1_raw, fluo2_raw = row
-        if fluo1_raw is None and fluo2_raw is None:
-            raise LookupError("Cell image not found")
-
-        updates: dict = {}
-        updated_channels: list[str] = []
-        if fluo1_raw is not None:
-            updates["img_fluo1"] = _apply_gain_to_image(bytes(fluo1_raw), gain)
-            updated_channels.append("fluo1")
-        if fluo2_raw is not None:
-            updates["img_fluo2"] = _apply_gain_to_image(bytes(fluo2_raw), gain)
-            updated_channels.append("fluo2")
-        if not updates:
-            raise LookupError("Cell image not found")
-
-        update_stmt = (
-            update(cells)
-            .where(cells.c.cell_id == cell_id)
-            .values(**updates)
-        )
-        result = session.execute(update_stmt)
-        if result.rowcount == 0:
-            raise LookupError("Cell image not found")
-        session.commit()
-        return {"cell_id": cell_id, "channels": updated_channels}
-    finally:
-        session.close()
-
-
-def apply_fluo_gain_bulk(
-    db_name: str, gain: float = 1.0, label: str | None = None
-) -> dict:
-    if label is None:
-        cell_ids = get_cell_ids(db_name)
-    else:
-        cell_ids = get_cell_ids_by_label(db_name, label)
-    if not cell_ids:
-        raise LookupError("No cells found")
-
-    updated = 0
-    failed = 0
-    failures: list[dict[str, str]] = []
-    for cell_id in cell_ids:
-        try:
-            apply_fluo_gain(db_name, cell_id, gain)
-            updated += 1
-        except Exception as exc:
-            failed += 1
-            if len(failures) < 25:
-                failures.append({"cell_id": cell_id, "error": str(exc)})
-
-    return {
-        "total": len(cell_ids),
-        "updated": updated,
-        "failed": failed,
-        "failures": failures,
-    }
-
-
 def apply_elastic_contour_bulk(
     db_name: str, delta: int = 0, label: str | None = None
 ) -> dict:
@@ -1458,7 +1369,10 @@ def get_cell_image(
     image_type: Literal["ph", "fluo1", "fluo2"],
     draw_contour: bool = False,
     draw_scale_bar: bool = False,
+    gain: float = 1.0,
 ) -> bytes:
+    if not np.isfinite(gain) or gain <= 0:
+        raise ValueError("Gain must be greater than 0")
     session = get_database_session(db_name)
     try:
         bind = session.get_bind()
@@ -1494,6 +1408,10 @@ def get_cell_image(
 
         image = _decode_image(image_bytes)
         if image_type in ("fluo1", "fluo2"):
+            if gain != 1:
+                gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                scaled = gray.astype(np.float32) * float(gain)
+                image = np.clip(scaled, 0, 255).astype(np.uint8)
             image = _colorize_fluo_image(image, image_type)
         if draw_contour:
             contour_raw = row[1] if len(row) > 1 else None
@@ -2089,18 +2007,6 @@ class DatabaseManagerCrud:
         cls, db_name: str, delta: int, label: str | None = None
     ) -> dict:
         return apply_elastic_contour_bulk(db_name, delta, label)
-
-    @classmethod
-    def apply_fluo_gain(
-        cls, db_name: str, cell_id: str, gain: float = 1.0
-    ) -> dict:
-        return apply_fluo_gain(db_name, cell_id, gain)
-
-    @classmethod
-    def apply_fluo_gain_bulk(
-        cls, db_name: str, gain: float = 1.0, label: str | None = None
-    ) -> dict:
-        return apply_fluo_gain_bulk(db_name, gain, label)
 
     @classmethod
     def get_cell_ids_by_label(cls, db_name: str, label: str) -> list[str]:
