@@ -378,7 +378,7 @@ def bulk_delete_nd2_files(payload: Nd2BulkDeleteRequest) -> JSONResponse:
 
 
 @router_nd2.get("/nd2_files/{filename}/download")
-def download_nd2_file(filename: Annotated[str, ApiPath()]) -> FileResponse:
+async def download_nd2_file(filename: Annotated[str, ApiPath()]) -> FileResponse:
     sanitized = _sanitize_nd2_filename(filename)
     file_path = _ensure_upload_dir() / sanitized
     if not file_path.is_file():
