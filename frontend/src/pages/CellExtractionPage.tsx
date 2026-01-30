@@ -9,6 +9,7 @@ import {
   BreadcrumbList,
   BreadcrumbRoot,
   BreadcrumbSeparator,
+  Checkbox,
   Button,
   Container,
   Flex,
@@ -78,6 +79,7 @@ export default function CellExtractionPage() {
   const [layerMode, setLayerMode] = useState(layerOptions[1].value)
   const [param1Input, setParam1Input] = useState(String(DEFAULT_PARAM1))
   const [imageSizeInput, setImageSizeInput] = useState(String(DEFAULT_IMAGE_SIZE))
+  const [autoAnnotation, setAutoAnnotation] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
@@ -115,6 +117,7 @@ export default function CellExtractionPage() {
         layer_mode: layerMode,
         param1: param1Value,
         image_size: imageSizeValue,
+        auto_annotation: autoAnnotation,
       }
       const res = await fetch(`${apiBase}/extract-cells`, {
         method: 'POST',
@@ -138,7 +141,7 @@ export default function CellExtractionPage() {
       setIsSubmitting(false)
       setJobStatus('failed')
     }
-  }, [apiBase, filename, imageSizeInput, layerMode, param1Input])
+  }, [apiBase, autoAnnotation, filename, imageSizeInput, layerMode, param1Input])
 
   useEffect(() => {
     if (!jobId || jobStatus !== 'running') return
@@ -459,6 +462,35 @@ export default function CellExtractionPage() {
                         boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
                       }}
                     />
+                  </Stack>
+
+                  <Stack spacing="2">
+                    <Text fontSize="sm" color="ink.700">
+                      Auto Annotation
+                    </Text>
+                    <Checkbox.Root
+                      checked={autoAnnotation}
+                      onCheckedChange={(details) =>
+                        setAutoAnnotation(details.checked === true)
+                      }
+                      colorPalette="tide"
+                      display="flex"
+                      alignItems="center"
+                      gap="2"
+                    >
+                      <Checkbox.HiddenInput />
+                      <Checkbox.Control
+                        borderColor="tide.400"
+                        _checked={{
+                          bg: 'tide.500',
+                          borderColor: 'tide.500',
+                          color: 'ink.900',
+                        }}
+                      />
+                      <Checkbox.Label fontSize="sm" color="ink.700">
+                        Auto Annotation (Beta)
+                      </Checkbox.Label>
+                    </Checkbox.Root>
                   </Stack>
                 </Box>
 
