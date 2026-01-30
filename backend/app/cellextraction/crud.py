@@ -159,7 +159,7 @@ def screen_contour(contour_blob: bytes) -> bool:
         variance is not None
         and variance <= 120
         and convexity is not None
-        and convexity < 0.85
+        and convexity > 0.85
     )
 
 
