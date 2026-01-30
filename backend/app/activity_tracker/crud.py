@@ -36,6 +36,8 @@ def _format_timestamp(timestamp: datetime) -> str:
 
 async def record_activity(action_name: str, created_at: datetime | None = None) -> None:
     normalized = _normalize_action_name(action_name)
+    if normalized == ACTION_TOP_PAGE:
+        return
     timestamp = created_at or datetime.utcnow()
     async with get_db() as db:
         stmt = insert(activity_log).values(
@@ -79,6 +81,8 @@ async def get_daily_activity_summary(
         if action_name:
             normalized = _normalize_action_name(action_name)
             stmt = stmt.where(activity_log.c.action_name == normalized)
+        else:
+            stmt = stmt.where(activity_log.c.action_name != ACTION_TOP_PAGE)
         result = await db.execute(stmt)
         rows = result.mappings().all()
 
