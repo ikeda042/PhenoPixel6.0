@@ -8,7 +8,7 @@ import aiofiles
 import nd2reader
 import numpy as np
 from fastapi import APIRouter, File, HTTPException, UploadFile, Path as ApiPath
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 router_nd2 = APIRouter(tags=["nd2files"])
@@ -374,6 +374,19 @@ def bulk_delete_nd2_files(payload: Nd2BulkDeleteRequest) -> JSONResponse:
 
     return JSONResponse(
         content={"deleted": deleted, "missing": missing, "invalid": invalid}
+    )
+
+
+@router_nd2.get("/nd2_files/{filename}/download")
+def download_nd2_file(filename: Annotated[str, ApiPath()]) -> FileResponse:
+    sanitized = _sanitize_nd2_filename(filename)
+    file_path = _ensure_upload_dir() / sanitized
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(
+        file_path,
+        media_type="application/octet-stream",
+        filename=sanitized,
     )
 
 
