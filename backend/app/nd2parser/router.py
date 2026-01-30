@@ -7,7 +7,7 @@ import shutil
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from threading import Lock
-from typing import Annotated
+from typing import Annotated, Any
 
 import nd2reader
 import numpy as np
@@ -75,7 +75,7 @@ def _get_process_pool() -> ProcessPoolExecutor:
     return _PROCESS_POOL
 
 
-async def _run_in_process_pool(func, *args):
+async def _run_in_process_pool(func, *args) -> Any:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_get_process_pool(), func, *args)
 
@@ -518,7 +518,7 @@ def _parse_nd2_file(nd2_path: str | Path, output_dir: str | Path) -> dict:
 
 
 @router_nd2parser.post("/nd2parser/parse")
-async def parse_nd2(payload: ParseNd2Request):
+async def parse_nd2(payload: ParseNd2Request) -> JSONResponse:
     sanitized = _sanitize_nd2_filename(payload.nd2file)
     nd2_path = ND2_DIR / sanitized
     if not nd2_path.is_file():
@@ -540,7 +540,7 @@ async def parse_nd2(payload: ParseNd2Request):
 
 
 @router_nd2parser.get("/nd2parser/metadata")
-def get_nd2_metadata(nd2file: Annotated[str, Query()] = ...):
+def get_nd2_metadata(nd2file: Annotated[str, Query()] = ...) -> JSONResponse:
     sanitized = _sanitize_nd2_filename(nd2file)
     output_dir = _get_output_dir(sanitized)
     return JSONResponse(content=_load_metadata(output_dir))
@@ -553,7 +553,7 @@ async def get_nd2_image(
     frame: Annotated[int, Query(ge=0)] = ...,
     mode: Annotated[str, Query()] = "none",
     brightness: Annotated[float, Query(gt=0)] = 1.0,
-):
+) -> StreamingResponse:
     sanitized = _sanitize_nd2_filename(nd2file)
     output_dir = _get_output_dir(sanitized)
     meta = _load_metadata(output_dir)
@@ -588,7 +588,7 @@ async def export_nd2_region(
     center_y: Annotated[int, Query()] = ...,
     mode: Annotated[str, Query()] = "none",
     brightness: Annotated[float, Query(gt=0)] = 1.0,
-):
+) -> StreamingResponse:
     sanitized = _sanitize_nd2_filename(nd2file)
     output_dir = _get_output_dir(sanitized)
     meta = _load_metadata(output_dir)

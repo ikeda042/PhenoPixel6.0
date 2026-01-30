@@ -4,7 +4,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from sqlalchemy import Column, Index, Integer, MetaData, String, Table
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 DB_DIR = Path(__file__).resolve().parent / "data"
 DB_PATH = DB_DIR / "activity_tracker.db"
@@ -26,7 +31,7 @@ activity_log = Table(
 )
 
 
-def _get_engine():
+def _get_engine() -> AsyncEngine:
     global _ENGINE
     if _ENGINE is None:
         _ENGINE = create_async_engine(

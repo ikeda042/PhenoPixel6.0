@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, AsyncIterator
 
 import aiofiles
 from aiofiles import os as aioos
@@ -39,7 +39,9 @@ async def get_folder_names() -> list[str]:
     return await _list_extracted_folders()
 
 
-async def _read_file_chunks(path: Path, chunk_size: int = 1024 * 1024):
+async def _read_file_chunks(
+    path: Path, chunk_size: int = 1024 * 1024
+) -> AsyncIterator[bytes]:
     async with aiofiles.open(path, "rb") as file_handle:
         while True:
             chunk = await file_handle.read(chunk_size)
@@ -52,7 +54,7 @@ async def _read_file_chunks(path: Path, chunk_size: int = 1024 * 1024):
 async def get_extracted_image(
     folder: Annotated[str, Query()] = ...,
     n: Annotated[int, Query(ge=0)] = ...,
-):
+) -> StreamingResponse:
     folder_name = _sanitize_folder(folder)
     folder_path = EXTRACTED_DATA_DIR / folder_name
     if not folder_path.is_dir():
@@ -66,7 +68,7 @@ async def get_extracted_image(
 @router_extracted_data.get("/get-extracted-image-count")
 async def get_extracted_image_count(
     folder: Annotated[str, Query()] = ...,
-):
+) -> dict[str, int]:
     folder_name = _sanitize_folder(folder)
     folder_path = EXTRACTED_DATA_DIR / folder_name
     if not folder_path.is_dir():
