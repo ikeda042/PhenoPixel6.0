@@ -79,7 +79,7 @@ export default function CellExtractionPage() {
   const [layerMode, setLayerMode] = useState(layerOptions[1].value)
   const [param1Input, setParam1Input] = useState(String(DEFAULT_PARAM1))
   const [imageSizeInput, setImageSizeInput] = useState(String(DEFAULT_IMAGE_SIZE))
-  const [autoAnnotation, setAutoAnnotation] = useState(false)
+  const [autoAnnotation, setAutoAnnotation] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
