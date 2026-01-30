@@ -51,19 +51,8 @@ const replotChannelOptions: { value: ReplotChannel; label: string }[] = [
   { value: 'overlay', label: 'Overlay' },
 ]
 
-const isNumericLabel = (label: string) => /^\d+$/.test(label)
-
-const sortLabels = (labels: string[]) =>
-  [...labels].sort((a, b) => {
-    if (a === 'N/A') return b === 'N/A' ? 0 : -1
-    if (b === 'N/A') return 1
-    const aNumeric = isNumericLabel(a)
-    const bNumeric = isNumericLabel(b)
-    if (aNumeric && bNumeric) return Number(a) - Number(b)
-    if (aNumeric) return -1
-    if (bNumeric) return 1
-    return a.localeCompare(b)
-  })
+const LABEL_FILTER_OPTIONS = ['N/A', '1', '2', '3'] as const
+const DEFAULT_LABEL_OPTIONS = ['All', ...LABEL_FILTER_OPTIONS]
 
 const normalizeManualLabel = (label: string | null) => {
   const trimmed = (label ?? '').trim()
@@ -103,7 +92,7 @@ export default function CellsPage() {
   const [isLoadingLabel, setIsLoadingLabel] = useState(false)
   const [isUpdatingLabel, setIsUpdatingLabel] = useState(false)
   const [manualLabelError, setManualLabelError] = useState<string | null>(null)
-  const [labelOptions, setLabelOptions] = useState<string[]>(['All'])
+  const [labelOptions, setLabelOptions] = useState<string[]>(DEFAULT_LABEL_OPTIONS)
   const [selectedLabel, setSelectedLabel] = useState('All')
   const [overlayOptions, setOverlayOptions] = useState<OverlayOptions>({
     contour: true,
@@ -207,30 +196,8 @@ export default function CellsPage() {
   }, [currentCellId, dbName, searchParams, setSearchParams])
 
   const fetchLabelOptions = useCallback(async () => {
-    if (!dbName) {
-      setLabelOptions(['All'])
-      return
-    }
-    try {
-      const res = await fetch(
-        `${apiBase}/get-manual-labels?dbname=${encodeURIComponent(dbName)}`,
-        { headers: { accept: 'application/json' } },
-      )
-      if (!res.ok) {
-        throw new Error(`Request failed (${res.status})`)
-      }
-      const data = (await res.json()) as string[]
-      const cleaned = Array.isArray(data)
-        ? data
-            .map((label) => String(label).trim())
-            .filter((label) => label.length > 0)
-        : []
-      const unique = Array.from(new Set(cleaned))
-      setLabelOptions(['All', ...sortLabels(unique)])
-    } catch (err) {
-      setLabelOptions(['All'])
-    }
-  }, [apiBase, dbName])
+    setLabelOptions(DEFAULT_LABEL_OPTIONS)
+  }, [])
 
   useEffect(() => {
     void fetchLabelOptions()
