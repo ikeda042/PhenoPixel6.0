@@ -115,7 +115,7 @@ export default function CellsPage() {
     | 'heatmap'
     | 'distribution'
     | 'map256'
-  >('overlay')
+  >('overlay-fluo')
   const [contourData, setContourData] = useState<number[][]>([])
   const [isLoadingContour, setIsLoadingContour] = useState(false)
   const [contourError, setContourError] = useState<string | null>(null)
