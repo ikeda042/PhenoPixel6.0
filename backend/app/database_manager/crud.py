@@ -1237,7 +1237,7 @@ def _generate_heatmap_image(path: Sequence[Sequence[float]]) -> bytes:
     fig, ax = plt.subplots(figsize=(6, 6))
     if hasattr(ax, "set_box_aspect"):
         ax.set_box_aspect(1)
-    cax = ax.imshow(data, cmap="jet", interpolation="nearest", aspect="auto")
+    cax = ax.imshow(data, cmap="inferno", interpolation="nearest", aspect="auto")
     fig.colorbar(cax, ax=ax)
     ax.set_ylabel("Relative position")
     buf = io.BytesIO()
