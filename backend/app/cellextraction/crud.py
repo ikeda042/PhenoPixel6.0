@@ -78,9 +78,89 @@ def second_pca_variance_from_blob(contour_blob: bytes) -> Optional[float]:
     return float(max(eigvals[0], 0.0))
 
 
+def convexity_from_contour(contour: object) -> Optional[float]:
+    """
+    Compute convexity = hull_perimeter / perimeter from a contour-like object.
+    Returns None if the contour is invalid or the perimeter is zero.
+    """
+    arr = np.asarray(contour)
+    if arr.size == 0:
+        return None
+
+    arr = np.squeeze(arr)
+
+    if arr.ndim == 1:
+        if arr.size < 4 or arr.size % 2 != 0:
+            return None
+        arr = arr.reshape(-1, 2)
+    elif arr.ndim == 2:
+        if arr.shape[0] == 2 and arr.shape[1] != 2:
+            arr = arr.T
+    elif arr.ndim == 3 and arr.shape[-1] == 2:
+        arr = arr.reshape(-1, 2)
+    else:
+        return None
+
+    if arr.shape[1] < 2:
+        return None
+    if arr.shape[1] > 2:
+        arr = arr[:, :2]
+
+    if arr.shape[0] < 2:
+        return None
+
+    points = arr.astype(float, copy=False)
+    diffs = np.diff(points, axis=0)
+    perimeter = float(
+        np.hypot(diffs[:, 0], diffs[:, 1]).sum()
+        + np.hypot(*(points[0] - points[-1]))
+    )
+    if perimeter == 0.0:
+        return None
+
+    unique = np.unique(points, axis=0)
+    if unique.shape[0] <= 1:
+        return None
+    if unique.shape[0] == 2:
+        hull = unique
+    else:
+        order = np.lexsort((unique[:, 1], unique[:, 0]))
+        pts = unique[order]
+
+        def cross(o: np.ndarray, a: np.ndarray, b: np.ndarray) -> float:
+            return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+        lower = []
+        for p in pts:
+            while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+                lower.pop()
+            lower.append(p)
+
+        upper = []
+        for p in reversed(pts):
+            while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+                upper.pop()
+            upper.append(p)
+
+        hull = np.vstack((lower[:-1], upper[:-1]))
+
+    hull_diffs = np.diff(hull, axis=0)
+    hull_perimeter = float(
+        np.hypot(hull_diffs[:, 0], hull_diffs[:, 1]).sum()
+        + np.hypot(*(hull[0] - hull[-1]))
+    )
+    return hull_perimeter / perimeter
+
+
 def screen_contour(contour_blob: bytes) -> bool:
     variance = second_pca_variance_from_blob(contour_blob)
-    return variance is not None and variance <= 120
+    convexity = convexity_from_contour(pickle.loads(contour_blob))
+    return (
+        variance is not None
+        and variance <= 120
+        and convexity is not None
+        and convexity < 0.85
+    )
 
 
 class FrameSplitConfig(BaseModel):
