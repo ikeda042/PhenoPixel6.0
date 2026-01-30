@@ -5,10 +5,6 @@
   font-size: 138%;
 }
 
-:root.light {
-  color-scheme: light;
-}
-
 *,
 *::before,
 *::after {

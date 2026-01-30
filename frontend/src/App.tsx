@@ -23,7 +23,6 @@ import { keyframes } from '@emotion/react'
 import { Link as RouterLink } from 'react-router-dom'
 import AppHeader from './components/AppHeader'
 import ReloadButton from './components/ReloadButton'
-import ThemeToggle from './components/ThemeToggle'
 
 const fadeUp = keyframes`
   from { opacity: 0; transform: translate3d(0, 18px, 0); }
@@ -143,12 +142,7 @@ export default function App() {
       <Box
         position="absolute"
         inset="0"
-        bgImage={{
-          _dark:
-            'linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px)',
-          _light:
-            'linear-gradient(to right, rgba(11, 13, 16, 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(11, 13, 16, 0.08) 1px, transparent 1px)',
-        }}
+        bgImage="linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px)"
         bgSize="48px 48px"
         opacity="0.35"
         pointerEvents="none"
@@ -212,7 +206,6 @@ export default function App() {
               />
             </InputGroup>
             <ReloadButton />
-            <ThemeToggle />
           </HStack>
         </AppHeader>
 

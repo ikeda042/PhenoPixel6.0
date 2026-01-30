@@ -24,7 +24,6 @@ import {
 } from '@chakra-ui/react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
-import ThemeToggle from '../components/ThemeToggle'
 import { Search, Trash2 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 
@@ -383,7 +382,6 @@ export default function Nd2FilesPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
-          <ThemeToggle />
         </HStack>
       </AppHeader>
 

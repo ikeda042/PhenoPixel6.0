@@ -24,7 +24,6 @@ import {
 import { Download, Search, Trash2 } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
-import ThemeToggle from '../components/ThemeToggle'
 import { getApiBase } from '../utils/apiBase'
 
 const SearchGlyph = () => (
@@ -257,7 +256,6 @@ export default function DatabasesPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
-          <ThemeToggle />
         </HStack>
       </AppHeader>
 
