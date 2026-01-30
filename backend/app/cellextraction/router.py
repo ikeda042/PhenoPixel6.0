@@ -40,6 +40,7 @@ class ExtractCellsRequest(BaseModel):
     layer_mode: str
     param1: int = Field(130, ge=0)
     image_size: int = Field(200, ge=1)
+    auto_annotation: bool = False
 
 
 def _sanitize_nd2_filename(filename: str) -> str:
@@ -81,6 +82,7 @@ def _run_extraction(
     param1: int,
     image_size: int,
     reverse_layers: bool,
+    auto_annotation: bool,
     result_queue,
 ) -> None:
     try:
@@ -90,6 +92,7 @@ def _run_extraction(
             param1=param1,
             image_size=image_size,
             reverse_layers=reverse_layers,
+            auto_annotation=auto_annotation,
         )
         num_tiff, ulid, created_databases = extractor.main()
         result_queue.put(
@@ -276,6 +279,7 @@ def extract_cells(payload: ExtractCellsRequest) -> dict[str, Any]:
             payload.param1,
             payload.image_size,
             reverse_layers,
+            payload.auto_annotation,
             result_queue,
         ),
     )

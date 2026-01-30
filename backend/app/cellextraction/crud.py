@@ -5,7 +5,7 @@ import random
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator, Literal
+from typing import Generator, Literal, Optional
 
 import cv2
 import nd2reader
@@ -29,6 +29,58 @@ TEMPDATA_DIR = APP_DIR / "tempdata"
 
 def _get_temp_dir(ulid: str) -> str:
     return str(TEMPDATA_DIR / f"TempData{ulid}")
+
+
+def second_pca_variance_from_blob(contour_blob: bytes) -> Optional[float]:
+    """
+    Deserialize a contour BLOB and return the variance of the second PCA axis
+    (smaller eigenvalue). Returns None if the contour is invalid.
+    """
+    try:
+        contour = pickle.loads(contour_blob)
+    except Exception:
+        return None
+
+    # Accept common contour layouts, including OpenCV-style (N, 1, 2).
+    arr = np.asarray(contour)
+    if arr.size == 0:
+        return None
+
+    arr = np.squeeze(arr)
+
+    if arr.ndim == 1:
+        if arr.size < 4 or arr.size % 2 != 0:
+            return None
+        arr = arr.reshape(-1, 2)
+    elif arr.ndim == 2:
+        if arr.shape[0] == 2 and arr.shape[1] != 2:
+            arr = arr.T
+    elif arr.ndim == 3 and arr.shape[-1] == 2:
+        arr = arr.reshape(-1, 2)
+    else:
+        return None
+
+    if arr.shape[1] < 2:
+        return None
+    if arr.shape[1] > 2:
+        arr = arr[:, :2]
+
+    if arr.shape[0] < 2:
+        return None
+
+    points = arr.astype(float, copy=False)
+    centered = points - points.mean(axis=0, keepdims=True)
+    cov = np.cov(centered, rowvar=False)
+    if cov.shape != (2, 2):
+        return None
+
+    eigvals = np.linalg.eigvalsh(cov)
+    return float(max(eigvals[0], 0.0))
+
+
+def screen_contour(contour_blob: bytes) -> bool:
+    variance = second_pca_variance_from_blob(contour_blob)
+    return variance is not None and variance <= 120
 
 
 class FrameSplitConfig(BaseModel):
@@ -475,6 +527,7 @@ class ExtractionCrudBase:
         param1: int = 130,
         image_size: int = 200,
         reverse_layers: bool = False,
+        auto_annotation: bool = False,
         user_id: str | None = None,
         frame_splits: list[FrameSplitConfig] | None = None,
     ) -> None:
@@ -488,6 +541,7 @@ class ExtractionCrudBase:
         self.param1 = param1
         self.image_size = image_size
         self.reverse_layers = reverse_layers
+        self.auto_annotation = auto_annotation
         self.ulid = get_ulid()
         self.temp_dir = _get_temp_dir(self.ulid)
         self.user_id = user_id
@@ -567,16 +621,20 @@ class ExtractionCrudBase:
             img_fluo2_gray = cv2.cvtColor(img_fluo2, cv2.COLOR_BGR2GRAY)
             img_fluo2_data = cv2.imencode(".png", img_fluo2_gray)[1].tobytes()
         cv2.drawContours(img_ph, [contour], -1, (0, 255, 0), 1, cv2.LINE_AA)
+        contour_blob = pickle.dumps(contour)
+        manual_label: int | str = "N/A"
+        if self.auto_annotation:
+            manual_label = 1 if screen_contour(contour_blob) else "N/A"
         cell = Cell(
             cell_id=cell_id,
             label_experiment="",
-            manual_label="N/A",
+            manual_label=manual_label,
             perimeter=perimeter,
             area=area,
             img_ph=img_ph_data,
             img_fluo1=img_fluo1_data,
             img_fluo2=img_fluo2_data,
-            contour=pickle.dumps(contour),
+            contour=contour_blob,
             center_x=center_x,
             center_y=center_y,
             user_id=user_id,
