@@ -195,6 +195,21 @@ export default function Nd2FilesPage() {
     [apiBase],
   )
 
+  const handleDownload = useCallback(
+    (file: string) => {
+      const url = `${apiBase}/nd2_files/${encodeURIComponent(file)}/download`
+      const link = document.createElement('a')
+      link.href = url
+      link.download = file
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    },
+    [apiBase],
+  )
+
   const handleMetadataClose = useCallback(() => {
     metadataRequestRef.current += 1
     setMetadataFile(null)
@@ -610,6 +625,17 @@ export default function Nd2FilesPage() {
                       isDisabled={isBulkDeleting}
                     >
                       Metadata
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      borderColor="sand.200"
+                      color="ink.700"
+                      _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                      onClick={() => handleDownload(file)}
+                      isDisabled={isBulkDeleting}
+                    >
+                      Download
                     </Button>
                     <Button
                       size="xs"
