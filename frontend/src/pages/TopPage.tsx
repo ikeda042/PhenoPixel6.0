@@ -454,9 +454,6 @@ export default function TopPage() {
                       Activity
                     </Text>
                     <Heading size="md">Weekly usage</Heading>
-                    <Text fontSize="sm" color="ink.700">
-                      Tracks top page visits, cell extraction, and bulk engine usage.
-                    </Text>
                   </Box>
                   <Badge
                     bg="sand.200"
