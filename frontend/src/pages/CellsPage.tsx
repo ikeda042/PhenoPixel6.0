@@ -16,6 +16,7 @@ import {
   Grid,
   Heading,
   HStack,
+  IconButton,
   Input,
   NativeSelect,
   Slider,
@@ -23,7 +24,7 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Download } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
 import { getApiBase } from '../utils/apiBase'
@@ -79,6 +80,13 @@ const sortCellIds = (ids: string[]) =>
     if (parsedB) return 1
     return a.localeCompare(b)
   })
+
+const toSafeFilenamePart = (value: string, fallback: string) => {
+  const trimmed = value.trim()
+  if (!trimmed) return fallback
+  const safe = trimmed.replace(/\.db$/i, '').replace(/[^a-zA-Z0-9_-]/g, '_')
+  return safe || fallback
+}
 
 export default function CellsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -943,6 +951,23 @@ export default function CellsPage() {
     setCurrentIndex((prev) => Math.min(prev + 1, Math.max(cellCount - 1, 0)))
   }
 
+  const handleDownloadImage = useCallback(
+    (channel: ChannelKey) => {
+      const url = images[channel]
+      if (!url) return
+      const safeDb = toSafeFilenamePart(dbName, 'db')
+      const safeCell = toSafeFilenamePart(currentCellId, 'cell')
+      const filename = `cell-${safeDb}-${safeCell}-${channel}.png`
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = filename
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+    },
+    [dbName, currentCellId, images],
+  )
+
   const isApplyingAnyModification = isApplyingModification || isApplyingBulkModification
   const parsedGain = Number(gainInput)
   const isGainValid =
@@ -1537,14 +1562,27 @@ export default function CellsPage() {
                     borderColor="sand.200"
                     p={{ base: 3, lg: 2 }}
                   >
-                    <Text
-                      fontSize="xs"
-                      letterSpacing="0.18em"
-                      color="ink.700"
-                      mb={{ base: 3, lg: 2 }}
-                    >
-                      {channel.label}
-                    </Text>
+                    <HStack spacing="2" align="center" mb={{ base: 3, lg: 2 }}>
+                      <Text
+                        fontSize="xs"
+                        letterSpacing="0.18em"
+                        color="ink.700"
+                      >
+                        {channel.label}
+                      </Text>
+                      <IconButton
+                        aria-label={`Download ${channel.label} image`}
+                        size="xs"
+                        variant="ghost"
+                        color="teal.500"
+                        _hover={{ bg: 'sand.200', color: 'teal.600' }}
+                        _active={{ bg: 'sand.300' }}
+                        isDisabled={isLoadingImages || !images[channel.key]}
+                        onClick={() => handleDownloadImage(channel.key)}
+                      >
+                        <Download size={14} />
+                      </IconButton>
+                    </HStack>
                     <AspectRatio
                       ratio={1}
                       bg="sand.200"
