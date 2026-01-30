@@ -42,19 +42,19 @@ npm run dev
 
 ## Docker Deploy (Traefik)
 
-`docker/compose.yaml` で Traefik + backend を起動します。
+Use `docker/compose.yaml` to start Traefik + backend.
 
-1) `backend/.env` を作成（`backend/.env.template` を参考）
-2) `SERVER_HOST` と `TRAEFIK_ACME_EMAIL` を設定
-3) 起動:
+1) Create `backend/.env` (use `backend/.env.template` as a reference)
+2) Set `SERVER_HOST` and `TRAEFIK_ACME_EMAIL`
+3) Start:
 
 ```sh
 cd docker
 docker compose -f compose.yaml up -d --build
 ```
 
-Traefik は `80/443` を使用します。`SERVER_HOST` で設定したホスト名に
-アクセスし、API は `/api/v1` 以下に公開されます。
+Traefik uses `80/443`. Access the hostname set in `SERVER_HOST`, and the API
+is exposed under `/api/v1`.
 
 ## Tech Stack
 
