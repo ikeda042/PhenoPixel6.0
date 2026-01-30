@@ -1369,7 +1369,10 @@ def get_cell_image(
     image_type: Literal["ph", "fluo1", "fluo2"],
     draw_contour: bool = False,
     draw_scale_bar: bool = False,
+    gain: float = 1.0,
 ) -> bytes:
+    if not np.isfinite(gain) or gain <= 0:
+        raise ValueError("Gain must be greater than 0")
     session = get_database_session(db_name)
     try:
         bind = session.get_bind()
@@ -1405,6 +1408,10 @@ def get_cell_image(
 
         image = _decode_image(image_bytes)
         if image_type in ("fluo1", "fluo2"):
+            if gain != 1:
+                gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                scaled = gray.astype(np.float32) * float(gain)
+                image = np.clip(scaled, 0, 255).astype(np.uint8)
             image = _colorize_fluo_image(image, image_type)
         if draw_contour:
             contour_raw = row[1] if len(row) > 1 else None

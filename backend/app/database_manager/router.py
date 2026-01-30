@@ -154,6 +154,7 @@ def get_cell_image_endpoint(
     image_type: Annotated[str, Query(description="ph | fluo1 | fluo2")] = ...,
     draw_contour: Annotated[bool, Query()] = False,
     draw_scale_bar: Annotated[bool, Query()] = False,
+    gain: Annotated[float, Query(gt=0)] = 1.0,
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_image(
@@ -162,6 +163,7 @@ def get_cell_image_endpoint(
             image_type,
             draw_contour=draw_contour,
             draw_scale_bar=draw_scale_bar,
+            gain=gain,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")

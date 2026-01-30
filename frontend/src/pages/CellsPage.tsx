@@ -144,10 +144,13 @@ export default function CellsPage() {
   const [distributionChannel, setDistributionChannel] = useState<ChannelKey>('fluo1')
   const [replotChannel, setReplotChannel] = useState<ReplotChannel>('fluo1')
   const [contourRefreshKey, setContourRefreshKey] = useState(0)
-  const [modificationMode, setModificationMode] = useState<'elastic' | 'optical-boost'>(
-    'elastic',
-  )
+  const [modificationMode, setModificationMode] = useState<
+    'elastic' | 'optical-boost' | 'gain'
+  >('elastic')
   const [elasticDelta, setElasticDelta] = useState(0)
+  const [gainValue, setGainValue] = useState(1)
+  const [gainInput, setGainInput] = useState('1')
+  const [appliedGain, setAppliedGain] = useState(1)
   const [isApplyingModification, setIsApplyingModification] = useState(false)
   const [isApplyingBulkModification, setIsApplyingBulkModification] = useState(false)
   const [modificationError, setModificationError] = useState<string | null>(null)
@@ -298,6 +301,12 @@ export default function CellsPage() {
         draw_contour: String(overlayOptions.contour),
         draw_scale_bar: String(overlayOptions.scale),
       })
+      if (
+        modificationMode === 'gain' &&
+        (channel === 'fluo1' || channel === 'fluo2')
+      ) {
+        params.set('gain', String(appliedGain))
+      }
       const res = await fetch(
         `${apiBase}/${endpoint}?${params.toString()}`,
         { headers: { accept: 'image/png' } },
@@ -359,6 +368,7 @@ export default function CellsPage() {
     overlayOptions,
     modificationMode,
     contourRefreshKey,
+    appliedGain,
   ])
 
   useEffect(() => {
@@ -800,6 +810,10 @@ export default function CellsPage() {
     if (!dbName || !currentCellId || isApplyingModification || isApplyingBulkModification) {
       return
     }
+    if (modificationMode === 'gain' && !isGainValid) {
+      setModificationError('Gain must be greater than 0.')
+      return
+    }
     setIsApplyingModification(true)
     setModificationError(null)
     try {
@@ -817,6 +831,9 @@ export default function CellsPage() {
           throw new Error(`Request failed (${res.status})`)
         }
         setContourRefreshKey((prev) => prev + 1)
+      } else if (modificationMode === 'gain') {
+        setAppliedGain(parsedGain)
+        setContourRefreshKey((prev) => prev + 1)
       }
     } catch (err) {
       setModificationError(
@@ -830,6 +847,7 @@ export default function CellsPage() {
   const handleApplyBulkModification = async () => {
     if (!dbName || isApplyingModification || isApplyingBulkModification) return
     if (cellCount === 0) return
+    if (modificationMode !== 'elastic') return
     setIsApplyingBulkModification(true)
     setModificationError(null)
     try {
@@ -959,6 +977,9 @@ export default function CellsPage() {
   }
 
   const isApplyingAnyModification = isApplyingModification || isApplyingBulkModification
+  const parsedGain = Number(gainInput)
+  const isGainValid =
+    gainInput.trim() !== '' && Number.isFinite(parsedGain) && parsedGain > 0
   const isNavigatorDisabled = cellCount === 0 || isLoadingIds
   const isOverlayMode =
     contourMode === 'overlay' ||
@@ -1367,7 +1388,7 @@ export default function CellsPage() {
                             value={modificationMode}
                             onChange={(event) =>
                               setModificationMode(
-                                event.target.value as 'elastic' | 'optical-boost',
+                                event.target.value as 'elastic' | 'optical-boost' | 'gain',
                               )
                             }
                             bg="sand.50"
@@ -1382,6 +1403,7 @@ export default function CellsPage() {
                             }}
                           >
                             <option value="elastic">Elastic contour</option>
+                            <option value="gain">Gain</option>
                             <option value="optical-boost">Optical boost</option>
                           </NativeSelect.Field>
                           <NativeSelect.Indicator color="ink.700" />
@@ -1448,6 +1470,74 @@ export default function CellsPage() {
                             }
                           >
                             {isApplyingBulkModification ? 'Applying all...' : 'Apply bulk'}
+                          </Button>
+                        </Box>
+                      </>
+                    )}
+                    {modificationMode === 'gain' && (
+                      <>
+                        <Box minW="9rem">
+                          <Stack spacing="1">
+                            <Text fontSize="xs" color="ink.700">
+                              Gain (x)
+                            </Text>
+                            <Input
+                              type="number"
+                              min={0.01}
+                              step={0.1}
+                              value={gainInput}
+                              onChange={(event) => {
+                                const nextValue = event.target.value
+                                setGainInput(nextValue)
+                                if (nextValue.trim() === '') return
+                                const next = Number(nextValue)
+                                if (!Number.isFinite(next) || next <= 0) return
+                                setGainValue(next)
+                              }}
+                              onBlur={() => {
+                                const trimmed = gainInput.trim()
+                                if (trimmed === '') {
+                                  setGainInput(String(gainValue))
+                                  return
+                                }
+                                const next = Number(trimmed)
+                                if (!Number.isFinite(next) || next <= 0) {
+                                  setGainInput(String(gainValue))
+                                  return
+                                }
+                                const normalized = Math.max(0.01, next)
+                                setGainValue(normalized)
+                                setGainInput(String(normalized))
+                              }}
+                              bg="sand.50"
+                              border="1px solid"
+                              borderColor="sand.200"
+                              fontSize="sm"
+                              h={{ base: '2.25rem', lg: '2rem' }}
+                              color="ink.900"
+                              _focusVisible={{
+                                borderColor: 'tide.400',
+                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              }}
+                            />
+                          </Stack>
+                        </Box>
+                        <Box minW="6rem" display="flex" alignItems="center">
+                          <Button
+                            size="sm"
+                            h={{ base: '2.25rem', lg: '2rem' }}
+                            bg="tide.500"
+                            color="ink.900"
+                            _hover={{ bg: 'tide.400' }}
+                            onClick={handleApplyModification}
+                            isDisabled={
+                              !dbName ||
+                              !currentCellId ||
+                              isApplyingAnyModification ||
+                              !isGainValid
+                            }
+                          >
+                            {isApplyingModification ? 'Applying...' : 'Apply'}
                           </Button>
                         </Box>
                       </>
