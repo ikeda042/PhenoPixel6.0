@@ -5,7 +5,7 @@ import random
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Generator, Literal
 
 import cv2
 import nd2reader
@@ -14,7 +14,8 @@ from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from PIL import Image
 from sqlalchemy import BLOB, Column, FLOAT, Integer, String, create_engine, text
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.sql import select
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
@@ -45,7 +46,7 @@ class FrameSplitConfig(BaseModel):
 
     @field_validator("frame_end")
     @classmethod
-    def validate_range(cls, value: int, info: ValidationInfo):
+    def validate_range(cls, value: int, info: ValidationInfo) -> int:
         frame_start = info.data.get("frame_start")
         if frame_start is not None and value < frame_start:
             raise ValueError("frame_end must be greater than or equal to frame_start")
@@ -88,7 +89,7 @@ class Cell(Base):
     user_id = Column(String, nullable=True)
 
 
-def get_session(dbname: str):
+def get_session(dbname: str) -> Generator[Session, None, None]:
     engine = create_engine(
         f"sqlite:///{dbname}",
         echo=False,
@@ -102,7 +103,7 @@ def get_session(dbname: str):
         session.close()
 
 
-def create_database(dbname: str):
+def create_database(dbname: str) -> Engine:
     db_dir = os.path.dirname(dbname)
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
@@ -119,7 +120,7 @@ def create_database(dbname: str):
 
 class SyncChores:
     @staticmethod
-    def process_image(array):
+    def process_image(array) -> np.ndarray:
         """
         画像処理関数：正規化とスケーリングを行う。
         """
@@ -130,7 +131,7 @@ class SyncChores:
         return array.astype(np.uint8)
 
     @staticmethod
-    def save_images(num_frames, file_name, num_channels, ulid):
+    def save_images(num_frames, file_name, num_channels, ulid) -> None:
         """
         画像を保存し、MultipageTIFFとして出力する。
         """
@@ -266,7 +267,7 @@ class SyncChores:
         return num_pages
 
     @staticmethod
-    def cleanup(directory: str):
+    def cleanup(directory: str) -> None:
         """
         指定されたディレクトリを削除する。
         """
@@ -278,7 +279,7 @@ class SyncChores:
         os.rmdir(directory)
 
     @staticmethod
-    def get_contour_center(contour):
+    def get_contour_center(contour) -> tuple[int, int]:
         # 輪郭のモーメントを計算して重心を求める
         M = cv2.moments(contour)
         cx = int(M["m10"] / M["m00"])
@@ -286,7 +287,7 @@ class SyncChores:
         return cx, cy
 
     @staticmethod
-    def crop_contours(image, contours, output_size):
+    def crop_contours(image, contours, output_size) -> list[np.ndarray]:
         cropped_images = []
         for contour in contours:
             # 各輪郭の中心座標を取得
@@ -476,7 +477,7 @@ class ExtractionCrudBase:
         reverse_layers: bool = False,
         user_id: str | None = None,
         frame_splits: list[FrameSplitConfig] | None = None,
-    ):
+    ) -> None:
         self.nd2_path = nd2_path
         self.nd2_path = self.nd2_path.replace("\\", "/")
         basename = os.path.basename(self.nd2_path)
@@ -493,13 +494,15 @@ class ExtractionCrudBase:
         self.frame_splits = list(frame_splits or [])
         self.contour_dir = str(EXTRACTED_DATA_DIR / self.nd2_stem)
 
-    def load_image(self, path):
+    def load_image(self, path) -> np.ndarray:
         with open(path, "rb") as f:
             data = f.read()
         img_array = np.frombuffer(data, dtype=np.uint8)
         return cv2.imdecode(img_array, cv2.IMREAD_UNCHANGED)
 
-    def process_image(self, img_ph, img_fluo1=None, img_fluo2=None):
+    def process_image(
+        self, img_ph, img_fluo1=None, img_fluo2=None
+    ) -> tuple[np.ndarray | None, np.ndarray, np.ndarray | None, np.ndarray | None]:
         img_ph_gray = cv2.cvtColor(img_ph, cv2.COLOR_BGR2GRAY)
         img_fluo1_gray = img_fluo2_gray = None
         if img_fluo1 is not None:
@@ -716,7 +719,7 @@ class ExtractionCrudBase:
             engine.dispose()
         return inserted_count
 
-    def main(self):
+    def main(self) -> tuple[int, str, list[dict[str, int | str]]]:
         chores = SyncChores()
         default_db_path = str(DATABASES_DIR / f"{self.file_prefix}.db")
 

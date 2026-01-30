@@ -41,7 +41,9 @@ app.include_router(router_activity_tracker, prefix=API_PREFIX)
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
+async def http_exception_handler(
+    request: Request, exc: HTTPException
+) -> JSONResponse:
     if exc.status_code >= 500:
         logger.error(
             "HTTP %s %s %s: %s",
@@ -58,18 +60,20 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
+async def unhandled_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
     logger.exception("Unhandled error on %s %s", request.method, request.url.path)
     return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 
 @app.get(f"{API_PREFIX}/")
-def read_root():
+def read_root() -> dict[str, str]:
     return {"message": "Hello from PhenoPixel"}
 
 
 @app.get(f"{API_PREFIX}/health")
-def read_health():
+def read_health() -> dict[str, str]:
     return {"status": "ok"}
 
 
@@ -79,11 +83,11 @@ if FRONTEND_INDEX.is_file():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
     @app.get("/", include_in_schema=False)
-    def serve_index():
+    def serve_index() -> FileResponse:
         return FileResponse(FRONTEND_INDEX)
 
     @app.get("/{full_path:path}", include_in_schema=False)
-    def serve_spa(full_path: str):
+    def serve_spa(full_path: str) -> FileResponse:
         if full_path.startswith(API_PREFIX.lstrip("/")):
             raise HTTPException(status_code=404, detail="Not Found")
         file_path = FRONTEND_DIST_DIR / full_path

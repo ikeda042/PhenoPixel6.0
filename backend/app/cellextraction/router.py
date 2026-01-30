@@ -122,7 +122,9 @@ def _register_job(job_id: str, process, result_queue) -> None:
         }
 
 
-def _finalize_job(job_id: str, status: str, result: dict[str, Any] | None, error: str | None):
+def _finalize_job(
+    job_id: str, status: str, result: dict[str, Any] | None, error: str | None
+) -> None:
     with _jobs_lock:
         job = _jobs.get(job_id)
         if not job:
@@ -235,7 +237,7 @@ def _watch_extraction_job(job_id: str, process, result_queue) -> None:
 
 
 @router_cellextraction.get("/extract-cells/{job_id}")
-def get_extract_cells_status(job_id: Annotated[str, ApiPath()]):
+def get_extract_cells_status(job_id: Annotated[str, ApiPath()]) -> dict[str, Any]:
     job = _get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -248,7 +250,7 @@ def get_extract_cells_status(job_id: Annotated[str, ApiPath()]):
 
 
 @router_cellextraction.post("/extract-cells", status_code=202)
-def extract_cells(payload: ExtractCellsRequest):
+def extract_cells(payload: ExtractCellsRequest) -> dict[str, Any]:
     sanitized = _sanitize_nd2_filename(payload.filename)
     nd2_path = ND2_DIR / sanitized
     if not nd2_path.is_file():

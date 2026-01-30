@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2].parent
 
 
 @router_system.post("/system/git-pull")
-async def git_pull():
+async def git_pull() -> dict[str, str]:
     if not (REPO_ROOT / ".git").exists():
         raise HTTPException(status_code=500, detail="Repository root not found")
 

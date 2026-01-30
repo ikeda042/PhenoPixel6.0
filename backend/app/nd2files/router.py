@@ -309,7 +309,9 @@ def _extract_nd2_metadata(file_path: Path) -> dict[str, Any]:
 
 
 @router_nd2.post("/nd2_files")
-async def upload_nd2_file(file: Annotated[UploadFile, File()] = ...):
+async def upload_nd2_file(
+    file: Annotated[UploadFile, File()] = ...
+) -> JSONResponse:
     sanitized = _sanitize_nd2_filename(file.filename or "")
     file_path = _ensure_upload_dir() / sanitized
     try:
@@ -322,13 +324,13 @@ async def upload_nd2_file(file: Annotated[UploadFile, File()] = ...):
 
 
 @router_nd2.get("/nd2_files")
-async def get_nd2_files():
+async def get_nd2_files() -> JSONResponse:
     upload_dir = _ensure_upload_dir()
     return JSONResponse(content={"files": _list_nd2_files(upload_dir)})
 
 
 @router_nd2.delete("/nd2_files/{filename}")
-def delete_nd2_file(filename: Annotated[str, ApiPath()]):
+def delete_nd2_file(filename: Annotated[str, ApiPath()]) -> JSONResponse:
     sanitized = _sanitize_nd2_filename(filename)
     file_path = _ensure_upload_dir() / sanitized
     if not file_path.exists():
@@ -341,7 +343,7 @@ def delete_nd2_file(filename: Annotated[str, ApiPath()]):
 
 
 @router_nd2.post("/nd2_files/bulk-delete")
-def bulk_delete_nd2_files(payload: Nd2BulkDeleteRequest):
+def bulk_delete_nd2_files(payload: Nd2BulkDeleteRequest) -> JSONResponse:
     if not payload.filenames:
         raise HTTPException(status_code=400, detail="No filenames provided")
 
@@ -376,7 +378,7 @@ def bulk_delete_nd2_files(payload: Nd2BulkDeleteRequest):
 
 
 @router_nd2.get("/nd2_files/{filename}/metadata")
-def get_nd2_file_metadata(filename: Annotated[str, ApiPath()]):
+def get_nd2_file_metadata(filename: Annotated[str, ApiPath()]) -> JSONResponse:
     sanitized = _sanitize_nd2_filename(filename)
     file_path = _ensure_upload_dir() / sanitized
     if not file_path.is_file():
