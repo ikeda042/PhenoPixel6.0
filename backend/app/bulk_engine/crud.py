@@ -690,7 +690,7 @@ def _build_heatmap_abs_plot(
     u1_min = min(u1_all)
     u1_max = max(u1_all)
 
-    fig, ax = plt.subplots(figsize=(14, 9))
+    fig, ax = plt.subplots(figsize=(10, 5))
     cmap = plt.cm.jet
 
     for idx, vec in enumerate(heatmap_vectors):
@@ -769,7 +769,7 @@ def _build_heatmap_rel_plot(
     u1_min = min(u1_all)
     u1_max = max(u1_all)
 
-    fig, ax = plt.subplots(figsize=(14, 9))
+    fig, ax = plt.subplots(figsize=(10, 5))
     cmap = plt.cm.jet
 
     for idx, vec in enumerate(heatmap_vectors):
