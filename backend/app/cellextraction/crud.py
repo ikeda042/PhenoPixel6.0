@@ -152,9 +152,21 @@ def convexity_from_contour(contour: object) -> Optional[float]:
     return hull_perimeter / perimeter
 
 
+def convexity_from_blob(contour_blob: bytes) -> Optional[float]:
+    """
+    Deserialize a contour BLOB and compute convexity.
+    Returns None if the contour is invalid or cannot be deserialized.
+    """
+    try:
+        contour = pickle.loads(contour_blob)
+    except Exception:
+        return None
+    return convexity_from_contour(contour)
+
+
 def screen_contour(contour_blob: bytes) -> bool:
     variance = second_pca_variance_from_blob(contour_blob)
-    convexity = convexity_from_contour(pickle.loads(contour_blob))
+    convexity = convexity_from_blob(contour_blob)
     return (
         variance is not None
         and variance <= 120
