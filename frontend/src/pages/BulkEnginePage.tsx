@@ -23,7 +23,6 @@ import {
 import { strFromU8, unzipSync } from 'fflate'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
-import ThemeToggle from '../components/ThemeToggle'
 import { getApiBase } from '../utils/apiBase'
 
 type BulkCell = {
@@ -1698,7 +1697,6 @@ export default function BulkEnginePage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
-          <ThemeToggle />
         </HStack>
       </AppHeader>
 

@@ -17,9 +17,9 @@ import Nd2ParserPage from './pages/Nd2ParserPage'
 import Nd2FilesPage from './pages/Nd2FilesPage'
 import TopPage from './pages/TopPage'
 import system from './theme'
-import { applyThemeMode, getInitialTheme } from './utils/themeMode'
-
-applyThemeMode(getInitialTheme())
+const root = document.documentElement
+root.classList.add('dark')
+root.classList.remove('light')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

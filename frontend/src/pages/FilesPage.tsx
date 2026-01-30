@@ -23,7 +23,6 @@ import {
 import { Search } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
-import ThemeToggle from '../components/ThemeToggle'
 import { getApiBase } from '../utils/apiBase'
 
 type ManagedFile = {
@@ -255,7 +254,6 @@ export default function FilesPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
-          <ThemeToggle />
         </HStack>
       </AppHeader>
 
