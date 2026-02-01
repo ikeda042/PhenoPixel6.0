@@ -24,6 +24,7 @@ import {
 import { Download, Search, Trash2 } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
 
 const SearchGlyph = () => (
@@ -256,6 +257,7 @@ export default function DatabasesPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
+          <ThemeToggleButton />
         </HStack>
       </AppHeader>
 
@@ -284,7 +286,7 @@ export default function DatabasesPage() {
                 _placeholder={{ color: 'ink.700' }}
                 _focusVisible={{
                   borderColor: 'tide.400',
-                  boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                  boxShadow: '0 0 0 1px var(--app-accent-ring)',
                 }}
               />
             </InputGroup>
@@ -292,7 +294,7 @@ export default function DatabasesPage() {
             <Button
               size="sm"
               bg="tide.500"
-              color="ink.900"
+              color="white"
               _hover={{ bg: 'tide.400' }}
               onClick={handleUploadClick}
               loading={isUploading}
@@ -312,9 +314,10 @@ export default function DatabasesPage() {
               <Button
                 size="xs"
                 variant="outline"
-                borderColor="sand.200"
-                color="ink.700"
-                _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                borderColor="tide.500"
+                bg="tide.500"
+                color="white"
+                _hover={{ bg: 'tide.400' }}
                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                 disabled={!canGoPrev}
               >
@@ -326,9 +329,10 @@ export default function DatabasesPage() {
               <Button
                 size="xs"
                 variant="outline"
-                borderColor="sand.200"
-                color="ink.700"
-                _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                borderColor="tide.500"
+                bg="tide.500"
+                color="white"
+                _hover={{ bg: 'tide.400' }}
                 onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                 disabled={!canGoNext}
               >
@@ -427,7 +431,7 @@ export default function DatabasesPage() {
                     <Button
                       size="xs"
                       bg="tide.500"
-                      color="ink.900"
+                      color="white"
                       _hover={{ bg: 'tide.400' }}
                       onClick={() =>
                         navigate(`/cells?db=${encodeURIComponent(name)}`)
@@ -438,7 +442,7 @@ export default function DatabasesPage() {
                     <Button
                       size="xs"
                       bg="tide.500"
-                      color="ink.900"
+                      color="white"
                       _hover={{ bg: 'tide.400' }}
                       onClick={() =>
                         navigate(`/annotation?dbname=${encodeURIComponent(name)}`)
@@ -449,7 +453,7 @@ export default function DatabasesPage() {
                     <Button
                       size="xs"
                       bg="tide.500"
-                      color="ink.900"
+                      color="white"
                       _hover={{ bg: 'tide.400' }}
                       onClick={() =>
                         navigate(`/bulk-engine?dbname=${encodeURIComponent(name)}`)
@@ -460,9 +464,10 @@ export default function DatabasesPage() {
                     <Button
                       size="xs"
                       variant="outline"
-                      borderColor="sand.200"
-                      color="ink.700"
-                      _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                      borderColor="tide.500"
+                      bg="tide.500"
+                      color="white"
+                      _hover={{ bg: 'tide.400' }}
                       onClick={() => handleDownload(name)}
                       loading={downloadingDatabase === name}
                     >
@@ -474,9 +479,10 @@ export default function DatabasesPage() {
                     <Button
                       size="xs"
                       variant="outline"
-                      borderColor="red.400"
-                      color="red.400"
-                      _hover={{ bg: 'red.500/10' }}
+                      borderColor="red.500"
+                      bg="red.500"
+                      color="white"
+                      _hover={{ bg: 'red.600' }}
                       onClick={() => handleDelete(name)}
                       loading={deletingDatabase === name}
                       aria-label={`Delete ${name}`}

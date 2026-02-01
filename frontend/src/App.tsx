@@ -23,6 +23,7 @@ import { keyframes } from '@emotion/react'
 import { Link as RouterLink } from 'react-router-dom'
 import AppHeader from './components/AppHeader'
 import ReloadButton from './components/ReloadButton'
+import ThemeToggleButton from './components/ThemeToggleButton'
 
 const fadeUp = keyframes`
   from { opacity: 0; transform: translate3d(0, 18px, 0); }
@@ -124,7 +125,7 @@ export default function App() {
         right={{ base: '-160px', lg: '-220px' }}
         w={{ base: '260px', lg: '380px' }}
         h={{ base: '260px', lg: '380px' }}
-        bg="radial-gradient(circle at 30% 30%, rgba(45,212,191,0.25), rgba(45,212,191,0))"
+        bg="radial-gradient(circle at 30% 30%, var(--app-accent-glow), rgba(0, 0, 0, 0))"
         filter="blur(10px)"
         opacity="0.9"
         animation={`${drift} 16s ease-in-out infinite`}
@@ -201,11 +202,12 @@ export default function App() {
                 _placeholder={{ color: 'ink.700' }}
                 _focusVisible={{
                   borderColor: 'tide.400',
-                  boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                  boxShadow: '0 0 0 1px var(--app-accent-ring)',
                 }}
               />
             </InputGroup>
             <ReloadButton />
+            <ThemeToggleButton />
           </HStack>
         </AppHeader>
 
@@ -451,7 +453,7 @@ export default function App() {
                   <Button
                     size="sm"
                     bg="violet.500"
-                    color="ink.900"
+                    color="white"
                     _hover={{ bg: 'violet.400' }}
                     w="full"
                   >

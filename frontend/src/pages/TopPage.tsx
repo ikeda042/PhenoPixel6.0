@@ -28,6 +28,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
 
 type StatusChipProps = {
@@ -397,6 +398,7 @@ export default function TopPage() {
               </BreadcrumbList>
             </BreadcrumbRoot>
             <ReloadButton />
+            <ThemeToggleButton />
           </HStack>
         </AppHeader>
 
@@ -647,7 +649,7 @@ export default function TopPage() {
                                 x={point.x}
                                 y={activityChart.height - 5}
                                 textAnchor="middle"
-                                fontSize="11"
+                                fontSize="9"
                                 fontWeight="500"
                                 fill="var(--chakra-colors-ink-500)"
                               >

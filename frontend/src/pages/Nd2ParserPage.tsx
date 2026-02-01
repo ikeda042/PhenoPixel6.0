@@ -27,6 +27,7 @@ import {
 } from '@chakra-ui/react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
 import {
   ArrowDown,
@@ -577,6 +578,7 @@ export default function Nd2ParserPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
+          <ThemeToggleButton />
         </HStack>
       </AppHeader>
 
@@ -628,7 +630,7 @@ export default function Nd2ParserPage() {
                       color="ink.900"
                       _focusVisible={{
                         borderColor: 'tide.400',
-                        boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                        boxShadow: '0 0 0 1px var(--app-accent-ring)',
                       }}
                     >
                       <option value="none">None</option>
@@ -644,7 +646,7 @@ export default function Nd2ParserPage() {
                 <Button
                   size="sm"
                   bg="tide.500"
-                  color="ink.900"
+                  color="white"
                   _hover={{ bg: 'tide.400' }}
                   onClick={handleParse}
                   loading={isParsing}
@@ -706,7 +708,7 @@ export default function Nd2ParserPage() {
                         color="ink.900"
                         _focusVisible={{
                           borderColor: 'tide.400',
-                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                          boxShadow: '0 0 0 1px var(--app-accent-ring)',
                         }}
                       />
                     </Stack>
@@ -805,7 +807,7 @@ export default function Nd2ParserPage() {
                             color="ink.900"
                             _focusVisible={{
                               borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
                             }}
                           />
                         </HStack>
@@ -816,7 +818,7 @@ export default function Nd2ParserPage() {
                   <Button
                     size="sm"
                     bg="tide.500"
-                    color="ink.900"
+                    color="white"
                     _hover={{ bg: 'tide.400' }}
                     onClick={handleExportRegion}
                     loading={isExporting}
@@ -965,9 +967,10 @@ export default function Nd2ParserPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        borderColor="sand.200"
-                        color="ink.700"
-                        _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                        borderColor="tide.500"
+                        bg="tide.500"
+                        color="white"
+                        _hover={{ bg: 'tide.400' }}
                         onClick={handlePreviousFrame}
                         isDisabled={currentFrame <= 0 || isLoadingImages}
                       >
@@ -976,9 +979,10 @@ export default function Nd2ParserPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        borderColor="sand.200"
-                        color="ink.700"
-                        _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                        borderColor="tide.500"
+                        bg="tide.500"
+                        color="white"
+                        _hover={{ bg: 'tide.400' }}
                         onClick={handleNextFrame}
                         isDisabled={
                           currentFrame >= Math.max(frameCount - 1, 0) ||

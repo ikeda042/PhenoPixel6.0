@@ -23,6 +23,7 @@ import {
 import { Search } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
 
 type ManagedFile = {
@@ -254,6 +255,7 @@ export default function FilesPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
+          <ThemeToggleButton />
         </HStack>
       </AppHeader>
 
@@ -276,7 +278,7 @@ export default function FilesPage() {
               _placeholder={{ color: 'ink.700' }}
               _focusVisible={{
                 borderColor: 'tide.400',
-                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                boxShadow: '0 0 0 1px var(--app-accent-ring)',
               }}
             />
           </InputGroup>
@@ -288,7 +290,7 @@ export default function FilesPage() {
             <Button
               size="sm"
               bg="tide.500"
-              color="ink.900"
+              color="white"
               _hover={{ bg: 'tide.400' }}
               onClick={handleUploadClick}
               loading={isUploading}
@@ -419,9 +421,10 @@ export default function FilesPage() {
                     <Button
                       size="xs"
                       variant="outline"
-                      borderColor="sand.200"
-                      color="ink.700"
-                      _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                      borderColor="tide.500"
+                      bg="tide.500"
+                      color="white"
+                      _hover={{ bg: 'tide.400' }}
                       onClick={() => handleDownload(file)}
                       loading={downloadingFile === file.name}
                     >
@@ -430,7 +433,7 @@ export default function FilesPage() {
                     <Button
                       size="xs"
                       bg="violet.400"
-                      color="ink.900"
+                      color="white"
                       _hover={{ bg: 'violet.300' }}
                       onClick={() => handleDelete(file)}
                       loading={deletingFile === file.name}

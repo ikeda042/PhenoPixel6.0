@@ -43,10 +43,10 @@ const ReloadButton = () => {
       type="button"
       size="sm"
       border="1px solid"
-      borderColor="sand.200"
-      bg="sand.100"
-      color="ink.900"
-      _hover={{ bg: 'sand.200' }}
+      borderColor="tide.500"
+      bg="tide.500"
+      color="white"
+      _hover={{ bg: 'tide.400' }}
       onClick={handleUpdate}
       loading={isUpdating}
       loadingText="Updating"
