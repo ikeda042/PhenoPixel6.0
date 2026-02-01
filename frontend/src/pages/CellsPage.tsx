@@ -1255,7 +1255,7 @@ export default function CellsPage() {
                       <Checkbox.HiddenInput />
                       <Checkbox.Control
                         borderColor="tide.400"
-                        _checked={{ bg: 'tide.500', borderColor: 'tide.500', color: 'ink.900' }}
+                        _checked={{ bg: 'tide.500', borderColor: 'tide.500', color: 'white' }}
                       />
                       <Checkbox.Label fontSize="sm" color="ink.700">
                         Contour
@@ -1277,7 +1277,7 @@ export default function CellsPage() {
                       <Checkbox.HiddenInput />
                       <Checkbox.Control
                         borderColor="tide.400"
-                        _checked={{ bg: 'tide.500', borderColor: 'tide.500', color: 'ink.900' }}
+                        _checked={{ bg: 'tide.500', borderColor: 'tide.500', color: 'white' }}
                       />
                       <Checkbox.Label fontSize="sm" color="ink.700">
                         Scale
