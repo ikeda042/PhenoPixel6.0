@@ -501,9 +501,9 @@ export default function CellExtractionPage() {
                     <HStack spacing="2" mr="auto">
                       <Button
                         size="sm"
-                        bg="sand.300"
-                        color="ink.900"
-                        _hover={{ bg: 'sand.200' }}
+                        bg="tide.500"
+                        color="white"
+                        _hover={{ bg: 'tide.400' }}
                         as={RouterLink}
                         to={`/databases?search_dbname=${encodeURIComponent(extractedDbName)}`}
                       >
@@ -511,9 +511,9 @@ export default function CellExtractionPage() {
                       </Button>
                       <Button
                         size="sm"
-                        bg="sand.300"
-                        color="ink.900"
-                        _hover={{ bg: 'sand.200' }}
+                        bg="tide.500"
+                        color="white"
+                        _hover={{ bg: 'tide.400' }}
                         as={RouterLink}
                         to={`/annotation?dbname=${encodeURIComponent(extractedDbName)}`}
                       >
@@ -524,7 +524,7 @@ export default function CellExtractionPage() {
                   <Button
                     size="sm"
                     bg="tide.500"
-                    color="ink.900"
+                    color="white"
                     _hover={{ bg: 'tide.400' }}
                     onClick={handleSubmit}
                     loading={isSubmitting}
