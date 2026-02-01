@@ -1439,7 +1439,7 @@ export default function CellsPage() {
                             size="sm"
                             h={{ base: '2.25rem', lg: '2rem' }}
                             bg="tide.500"
-                            color="ink.900"
+                            color="white"
                             _hover={{ bg: 'tide.400' }}
                             onClick={handleApplyModification}
                             isDisabled={!dbName || !currentCellId || isApplyingAnyModification}
@@ -1452,9 +1452,10 @@ export default function CellsPage() {
                             size="sm"
                             h={{ base: '2.25rem', lg: '2rem' }}
                             variant="outline"
-                            borderColor="tide.400"
-                            color="tide.400"
-                            _hover={{ bg: 'tide.400', color: 'ink.900' }}
+                            borderColor="tide.500"
+                            bg="tide.500"
+                            color="white"
+                            _hover={{ bg: 'tide.400' }}
                             onClick={handleApplyBulkModification}
                             isDisabled={
                               !dbName ||
@@ -1521,7 +1522,7 @@ export default function CellsPage() {
                             size="sm"
                             h={{ base: '2.25rem', lg: '2rem' }}
                             bg="tide.500"
-                            color="ink.900"
+                            color="white"
                             _hover={{ bg: 'tide.400' }}
                             onClick={handleApplyModification}
                             isDisabled={
@@ -1626,9 +1627,10 @@ export default function CellsPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  borderColor="sand.200"
-                  color="teal.500"
-                  _hover={{ bg: 'sand.100', color: 'teal.600' }}
+                  borderColor="tide.500"
+                  bg="tide.500"
+                  color="white"
+                  _hover={{ bg: 'tide.400' }}
                   onClick={handlePrevious}
                   disabled={isNavigatorDisabled || currentIndex === 0}
                   gap="1"
@@ -1658,9 +1660,10 @@ export default function CellsPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  borderColor="sand.200"
-                  color="teal.500"
-                  _hover={{ bg: 'sand.100', color: 'teal.600' }}
+                  borderColor="tide.500"
+                  bg="tide.500"
+                  color="white"
+                  _hover={{ bg: 'tide.400' }}
                   onClick={handleNext}
                   disabled={isNavigatorDisabled || currentIndex >= cellCount - 1}
                   gap="1"
