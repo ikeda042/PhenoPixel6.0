@@ -51,9 +51,9 @@ const DEFAULT_PARAM1 = 130
 const DEFAULT_IMAGE_SIZE = 200
 const OVERLAY_FRAME_INTERVAL_MS = 15
 const OVERLAY_PREVIEW_SIZE = 'min(72vw, 60vh)'
-const OVERLAY_PREVIEW_SCALE = 0.5
+const OVERLAY_PREVIEW_SCALE = 1
 const OVERLAY_PREVIEW_FORMAT = 'jpeg'
-const OVERLAY_PREVIEW_QUALITY = 65
+const OVERLAY_PREVIEW_QUALITY = 60
 
 const normalizeIntInput = (value: string) => {
   const digitsOnly = value.replace(/[^\d]/g, '')
