@@ -50,6 +50,7 @@ type ExtractCellsJobStatusResponse = {
 const DEFAULT_PARAM1 = 130
 const DEFAULT_IMAGE_SIZE = 200
 const OVERLAY_FRAME_INTERVAL_MS = 15
+const OVERLAY_PREVIEW_SIZE = 'min(72vw, 60vh)'
 
 const normalizeIntInput = (value: string) => {
   const digitsOnly = value.replace(/[^\d]/g, '')
@@ -799,8 +800,7 @@ export default function CellExtractionPage() {
             borderColor="sand.200"
             borderRadius="xl"
             p="4"
-            w="100%"
-            maxW={{ base: '92vw', md: '720px' }}
+            w={OVERLAY_PREVIEW_SIZE}
             maxH="85vh"
             display="flex"
             flexDirection="column"
@@ -869,8 +869,6 @@ export default function CellExtractionPage() {
               <AspectRatio
                 ratio={1}
                 w="100%"
-                maxW={{ base: '72vw', md: '520px' }}
-                maxH="60vh"
               >
                 {overlayImageUrl ? (
                   <Box
