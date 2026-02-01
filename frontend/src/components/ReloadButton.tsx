@@ -9,7 +9,11 @@ type GitPullResponse = {
   detail?: string
 }
 
-const ReloadButton = () => {
+type ReloadButtonProps = {
+  compact?: boolean
+}
+
+const ReloadButton = ({ compact = false }: ReloadButtonProps) => {
   const apiBase = useMemo(() => getApiBase(), [])
   const [isUpdating, setIsUpdating] = useState(false)
 
@@ -41,10 +45,10 @@ const ReloadButton = () => {
   return (
     <Button
       type="button"
-      size={{ base: 'xs', md: 'sm' }}
-      h={{ base: '1.75rem', md: '2rem' }}
-      minH={{ base: '1.75rem', md: '2rem' }}
-      px={{ base: 3, md: 4 }}
+      size={compact ? 'xs' : { base: 'xs', md: 'sm' }}
+      h={compact ? { base: '1.5rem', md: '1.5rem' } : { base: '1.75rem', md: '2rem' }}
+      minH={compact ? { base: '1.5rem', md: '1.5rem' } : { base: '1.75rem', md: '2rem' }}
+      px={compact ? 2 : { base: 3, md: 4 }}
       py="0"
       alignSelf="center"
       border="1px solid"
@@ -58,9 +62,9 @@ const ReloadButton = () => {
       aria-label="Update application"
     >
       <HStack spacing="2">
-        <Icon as={RotateCw} boxSize={4} />
+        <Icon as={RotateCw} boxSize={compact ? 3 : 4} />
         <Text
-          fontSize="xs"
+          fontSize={compact ? '0.55rem' : 'xs'}
           letterSpacing="0.12em"
           textTransform="uppercase"
           display={{ base: 'none', md: 'inline' }}
