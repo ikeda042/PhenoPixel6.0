@@ -23,6 +23,7 @@ import {
 import { strFromU8, unzipSync } from 'fflate'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
 
 type AnnotationCell = {
@@ -421,6 +422,7 @@ export default function AnnotationPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
+          <ThemeToggleButton />
         </HStack>
       </AppHeader>
 
@@ -467,7 +469,7 @@ export default function AnnotationPage() {
                     color="ink.900"
                     _focusVisible={{
                       borderColor: 'tide.400',
-                      boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                      boxShadow: '0 0 0 1px var(--app-accent-ring)',
                     }}
                   >
                     {ANNOTATION_DOWNSCALE_OPTIONS.map((option) => (
@@ -642,7 +644,7 @@ export default function AnnotationPage() {
                           color="ink.900"
                           _focusVisible={{
                             borderColor: 'tide.400',
-                            boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                            boxShadow: '0 0 0 1px var(--app-accent-ring)',
                           }}
                         >
                           {ANNOTATION_LABEL_OPTIONS.map((option) => (
