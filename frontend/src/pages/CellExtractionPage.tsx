@@ -396,6 +396,12 @@ export default function CellExtractionPage() {
     }
   }, [overlayImageUrl])
 
+  useEffect(() => {
+    if (!autoAnnotation && overlayVisible) {
+      closeOverlay()
+    }
+  }, [autoAnnotation, closeOverlay, overlayVisible])
+
   const overlayCurrentCellId = overlayCellIds[overlayIndex] ?? ''
   const overlayTotal = overlayCellIds.length
 
@@ -782,7 +788,7 @@ export default function CellExtractionPage() {
         </Stack>
       </Container>
 
-      {overlayVisible && (
+      {autoAnnotation && overlayVisible && (
         <Box
           position="fixed"
           inset="0"
