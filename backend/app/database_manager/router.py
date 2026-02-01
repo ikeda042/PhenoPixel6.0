@@ -209,10 +209,21 @@ def get_cell_overlay_endpoint(
     cell_id: Annotated[str, Query()] = ...,
     draw_scale_bar: Annotated[bool, Query()] = False,
     overlay_mode: Annotated[Literal["ph", "fluo", "raw"], Query()] = "ph",
+    scale: Annotated[float, Query(gt=0, le=1)] = 1.0,
+    image_format: Annotated[
+        Literal["png", "jpeg", "jpg"], Query(alias="format")
+    ] = "png",
+    jpeg_quality: Annotated[int, Query(ge=10, le=95)] = 80,
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_overlay(
-            dbname, cell_id, draw_scale_bar=draw_scale_bar, overlay_mode=overlay_mode
+            dbname,
+            cell_id,
+            draw_scale_bar=draw_scale_bar,
+            overlay_mode=overlay_mode,
+            scale=scale,
+            image_format=image_format,
+            jpeg_quality=jpeg_quality,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -222,7 +233,10 @@ def get_cell_overlay_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-    return StreamingResponse(io.BytesIO(image_bytes), media_type="image/png")
+    media_type = (
+        "image/jpeg" if image_format.lower() in ("jpeg", "jpg") else "image/png"
+    )
+    return StreamingResponse(io.BytesIO(image_bytes), media_type=media_type)
 
 
 @router_database_manager.patch("/update-cell-label")

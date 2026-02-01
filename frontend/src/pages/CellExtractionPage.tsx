@@ -51,6 +51,9 @@ const DEFAULT_PARAM1 = 130
 const DEFAULT_IMAGE_SIZE = 200
 const OVERLAY_FRAME_INTERVAL_MS = 15
 const OVERLAY_PREVIEW_SIZE = 'min(72vw, 60vh)'
+const OVERLAY_PREVIEW_SCALE = 0.5
+const OVERLAY_PREVIEW_FORMAT = 'jpeg'
+const OVERLAY_PREVIEW_QUALITY = 50
 
 const normalizeIntInput = (value: string) => {
   const digitsOnly = value.replace(/[^\d]/g, '')
@@ -107,21 +110,40 @@ export default function CellExtractionPage() {
   const [overlayImageUrl, setOverlayImageUrl] = useState<string | null>(null)
   const [overlayError, setOverlayError] = useState<string | null>(null)
   const [overlayDbName, setOverlayDbName] = useState<string | null>(null)
+  const [finishedNoticeVisible, setFinishedNoticeVisible] = useState(false)
   const overlayRunRef = useRef(0)
   const overlayAbortRef = useRef<AbortController | null>(null)
+  const finishedNoticeTimeoutRef = useRef<number | null>(null)
 
-  const closeOverlay = useCallback(() => {
-    overlayRunRef.current += 1
-    overlayAbortRef.current?.abort()
-    overlayAbortRef.current = null
-    setOverlayVisible(false)
-    setOverlayStatus('idle')
-    setOverlayCellIds([])
-    setOverlayIndex(0)
-    setOverlayImageUrl(null)
-    setOverlayError(null)
-    setOverlayDbName(null)
+  const triggerFinishedNotice = useCallback(() => {
+    if (finishedNoticeTimeoutRef.current !== null) {
+      window.clearTimeout(finishedNoticeTimeoutRef.current)
+    }
+    setFinishedNoticeVisible(true)
+    finishedNoticeTimeoutRef.current = window.setTimeout(() => {
+      setFinishedNoticeVisible(false)
+      finishedNoticeTimeoutRef.current = null
+    }, 2000)
   }, [])
+
+  const closeOverlay = useCallback(
+    (options?: { showFinished?: boolean }) => {
+      overlayRunRef.current += 1
+      overlayAbortRef.current?.abort()
+      overlayAbortRef.current = null
+      setOverlayVisible(false)
+      setOverlayStatus('idle')
+      setOverlayCellIds([])
+      setOverlayIndex(0)
+      setOverlayImageUrl(null)
+      setOverlayError(null)
+      setOverlayDbName(null)
+      if (options?.showFinished) {
+        triggerFinishedNotice()
+      }
+    },
+    [triggerFinishedNotice],
+  )
 
   const startOverlayPreview = useCallback(
     async (dbName: string) => {
@@ -171,10 +193,13 @@ export default function CellExtractionPage() {
               cell_id: cellId,
               draw_scale_bar: 'false',
               overlay_mode: 'raw',
+              scale: String(OVERLAY_PREVIEW_SCALE),
+              format: OVERLAY_PREVIEW_FORMAT,
+              jpeg_quality: String(OVERLAY_PREVIEW_QUALITY),
             })
             const overlayRes = await fetch(
               `${apiBase}/get-cell-overlay?${overlayParams.toString()}`,
-              { signal: controller.signal, headers: { accept: 'image/png' } },
+              { signal: controller.signal, headers: { accept: 'image/jpeg' } },
             )
             if (!overlayRes.ok) {
               throw new Error(`Overlay request failed (${overlayRes.status})`)
@@ -397,9 +422,17 @@ export default function CellExtractionPage() {
   }, [overlayImageUrl])
 
   useEffect(() => {
+    return () => {
+      if (finishedNoticeTimeoutRef.current !== null) {
+        window.clearTimeout(finishedNoticeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     if (overlayStatus !== 'done' || !overlayVisible) return
     const timeoutId = window.setTimeout(() => {
-      closeOverlay()
+      closeOverlay({ showFinished: true })
     }, 200)
     return () => {
       window.clearTimeout(timeoutId)
@@ -808,7 +841,7 @@ export default function CellExtractionPage() {
           alignItems="center"
           justifyContent="center"
           px="4"
-          onClick={closeOverlay}
+          onClick={() => closeOverlay({ showFinished: overlayStatus === 'done' })}
         >
           <Box
             bg="sand.100"
@@ -841,7 +874,7 @@ export default function CellExtractionPage() {
                 bg="tide.500"
                 color="white"
                 _hover={{ bg: 'tide.400' }}
-                onClick={closeOverlay}
+                onClick={() => closeOverlay({ showFinished: overlayStatus === 'done' })}
               >
                 Close
               </Button>
@@ -909,6 +942,32 @@ export default function CellExtractionPage() {
                 )}
               </AspectRatio>
             </Box>
+          </Box>
+        </Box>
+      )}
+
+      {finishedNoticeVisible && (
+        <Box
+          position="fixed"
+          inset="0"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          zIndex={1500}
+          pointerEvents="none"
+        >
+          <Box
+            bg="sand.100"
+            border="1px solid"
+            borderColor="sand.200"
+            borderRadius="lg"
+            px="6"
+            py="3"
+            boxShadow="lg"
+          >
+            <Text fontSize="sm" fontWeight="600" color="ink.900">
+              AutoAnnotation Finished.
+            </Text>
           </Box>
         </Box>
       )}

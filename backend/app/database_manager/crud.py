@@ -434,6 +434,24 @@ def _encode_image(image: np.ndarray) -> bytes:
     return buffer.tobytes()
 
 
+def _encode_image_with_format(
+    image: np.ndarray,
+    image_format: str,
+    jpeg_quality: int = 80,
+) -> bytes:
+    fmt = (image_format or "png").lower()
+    if fmt in ("jpg", "jpeg"):
+        quality = max(10, min(int(jpeg_quality), 95))
+        success, buffer = cv2.imencode(
+            ".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), quality]
+        )
+    else:
+        success, buffer = cv2.imencode(".png", image)
+    if not success:
+        raise ValueError("Failed to encode image")
+    return buffer.tobytes()
+
+
 def _colorize_fluo_image(
     image: np.ndarray, image_type: Literal["fluo1", "fluo2"]
 ) -> np.ndarray:
@@ -1480,6 +1498,9 @@ def get_cell_overlay(
     cell_id: str,
     draw_scale_bar: bool = False,
     overlay_mode: Literal["ph", "fluo", "raw"] = "ph",
+    scale: float = 1.0,
+    image_format: Literal["png", "jpeg", "jpg"] = "png",
+    jpeg_quality: int = 80,
 ) -> bytes:
     session = get_database_session(db_name)
     try:
@@ -1590,7 +1611,18 @@ def get_cell_overlay(
         if draw_scale_bar:
             overlay = _draw_scale_bar_with_centered_text(overlay)
 
-        return _encode_image(overlay)
+        if scale <= 0 or scale > 1:
+            raise ValueError("Invalid scale")
+        if scale < 1:
+            width = max(1, int(overlay.shape[1] * scale))
+            height = max(1, int(overlay.shape[0] * scale))
+            overlay = cv2.resize(overlay, (width, height), interpolation=cv2.INTER_AREA)
+
+        return _encode_image_with_format(
+            overlay,
+            image_format=image_format,
+            jpeg_quality=jpeg_quality,
+        )
     finally:
         session.close()
 
