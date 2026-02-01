@@ -24,6 +24,7 @@ import {
 } from '@chakra-ui/react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
 
 type ExtractCellsResponse = {
@@ -311,6 +312,7 @@ export default function CellExtractionPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
+          <ThemeToggleButton />
         </HStack>
       </AppHeader>
 
@@ -370,7 +372,7 @@ export default function CellExtractionPage() {
                       _readOnly={{ opacity: 0.8 }}
                       _focusVisible={{
                         borderColor: 'tide.400',
-                        boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                        boxShadow: '0 0 0 1px var(--app-accent-ring)',
                       }}
                     />
                   </Stack>
@@ -389,7 +391,7 @@ export default function CellExtractionPage() {
                         color="ink.900"
                         _focusVisible={{
                           borderColor: 'tide.400',
-                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                          boxShadow: '0 0 0 1px var(--app-accent-ring)',
                         }}
                       >
                         {layerOptions.map((option) => (
@@ -426,7 +428,7 @@ export default function CellExtractionPage() {
                       _placeholder={{ color: 'ink.700' }}
                       _focusVisible={{
                         borderColor: 'tide.400',
-                        boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                        boxShadow: '0 0 0 1px var(--app-accent-ring)',
                       }}
                     />
                     <Text fontSize="xs" color="ink.700">
@@ -459,7 +461,7 @@ export default function CellExtractionPage() {
                       color="ink.900"
                       _focusVisible={{
                         borderColor: 'tide.400',
-                        boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                        boxShadow: '0 0 0 1px var(--app-accent-ring)',
                       }}
                     />
                   </Stack>
