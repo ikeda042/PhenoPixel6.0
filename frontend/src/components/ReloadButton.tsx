@@ -42,8 +42,10 @@ const ReloadButton = () => {
     <Button
       type="button"
       size={{ base: 'xs', md: 'sm' }}
-      h={{ base: '2rem', md: '2.25rem' }}
-      minH={{ base: '2rem', md: '2.25rem' }}
+      h={{ base: '1.75rem', md: '2rem' }}
+      minH={{ base: '1.75rem', md: '2rem' }}
+      px={{ base: 3, md: 4 }}
+      py="0"
       alignSelf="center"
       border="1px solid"
       borderColor="tide.500"
