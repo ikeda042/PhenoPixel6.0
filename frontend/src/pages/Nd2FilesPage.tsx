@@ -435,7 +435,7 @@ export default function Nd2FilesPage() {
             <Button
               size="sm"
               bg="tide.500"
-              color="ink.900"
+              color="white"
               _hover={{ bg: 'tide.400' }}
               onClick={handleUploadClick}
               loading={isUploading}
@@ -483,9 +483,10 @@ export default function Nd2FilesPage() {
               <Button
                 size="xs"
                 variant="outline"
-                borderColor="sand.200"
-                color="ink.700"
-                _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                borderColor="tide.500"
+                bg="tide.500"
+                color="white"
+                _hover={{ bg: 'tide.400' }}
                 onClick={() => setSelectedFiles(new Set())}
                 isDisabled={selectedCount === 0}
               >
@@ -494,9 +495,10 @@ export default function Nd2FilesPage() {
               <Button
                 size="xs"
                 variant="outline"
-                borderColor="red.400"
-                color="red.400"
-                _hover={{ bg: 'red.500/10' }}
+                borderColor="red.500"
+                bg="red.500"
+                color="white"
+                _hover={{ bg: 'red.600' }}
                 onClick={handleBulkDelete}
                 loading={isBulkDeleting}
                 isDisabled={selectedCount === 0 || isBulkDeleting || !!deletingFile}
@@ -597,7 +599,7 @@ export default function Nd2FilesPage() {
                     <Button
                       size="xs"
                       bg="tide.500"
-                      color="ink.900"
+                      color="white"
                       _hover={{ bg: 'tide.400' }}
                       onClick={() =>
                         navigate(`/cell-extraction?filename=${encodeURIComponent(file)}`)
@@ -608,7 +610,7 @@ export default function Nd2FilesPage() {
                     <Button
                       size="xs"
                       bg="tide.500"
-                      color="ink.900"
+                      color="white"
                       _hover={{ bg: 'tide.400' }}
                       onClick={() => handleParse(file)}
                       loading={parsingFile === file}
@@ -619,9 +621,10 @@ export default function Nd2FilesPage() {
                     <Button
                       size="xs"
                       variant="outline"
-                      borderColor="sand.200"
-                      color="ink.700"
-                      _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                      borderColor="tide.500"
+                      bg="tide.500"
+                      color="white"
+                      _hover={{ bg: 'tide.400' }}
                       onClick={() => handleMetadata(file)}
                       loading={isMetadataLoading && metadataFile === file}
                       isDisabled={isBulkDeleting}
@@ -631,9 +634,10 @@ export default function Nd2FilesPage() {
                     <Button
                       size="xs"
                       variant="outline"
-                      borderColor="sand.200"
-                      color="ink.700"
-                      _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                      borderColor="tide.500"
+                      bg="tide.500"
+                      color="white"
+                      _hover={{ bg: 'tide.400' }}
                       onClick={() => handleDownload(file)}
                       isDisabled={isBulkDeleting}
                     >
@@ -642,9 +646,10 @@ export default function Nd2FilesPage() {
                     <Button
                       size="xs"
                       variant="outline"
-                      borderColor="red.400"
-                      color="red.400"
-                      _hover={{ bg: 'red.500/10' }}
+                      borderColor="red.500"
+                      bg="red.500"
+                      color="white"
+                      _hover={{ bg: 'red.600' }}
                       onClick={() => handleDelete(file)}
                       loading={deletingFile === file}
                       isDisabled={isBulkDeleting}
@@ -704,9 +709,10 @@ export default function Nd2FilesPage() {
               <Button
                 size="xs"
                 variant="outline"
-                borderColor="sand.200"
-                color="ink.700"
-                _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                borderColor="tide.500"
+                bg="tide.500"
+                color="white"
+                _hover={{ bg: 'tide.400' }}
                 onClick={handleMetadataClose}
               >
                 Close
