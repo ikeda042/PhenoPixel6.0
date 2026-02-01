@@ -17,9 +17,20 @@ import Nd2ParserPage from './pages/Nd2ParserPage'
 import Nd2FilesPage from './pages/Nd2FilesPage'
 import TopPage from './pages/TopPage'
 import system from './theme'
+
+const THEME_STORAGE_KEY = 'phenopixel-theme'
 const root = document.documentElement
-root.classList.add('dark')
-root.classList.remove('light')
+const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
+const resolvedTheme =
+  storedTheme === 'dark' || storedTheme === 'light'
+    ? storedTheme
+    : prefersDark
+      ? 'dark'
+      : 'light'
+
+root.classList.toggle('dark', resolvedTheme === 'dark')
+root.classList.toggle('light', resolvedTheme === 'light')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
