@@ -11,7 +11,11 @@ const getCurrentMode = (): ThemeMode => {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
 }
 
-const ThemeToggleButton = () => {
+type ThemeToggleButtonProps = {
+  compact?: boolean
+}
+
+const ThemeToggleButton = ({ compact = false }: ThemeToggleButtonProps) => {
   const [mode, setMode] = useState<ThemeMode>(() => getCurrentMode())
 
   const handleToggle = () => {
@@ -30,7 +34,12 @@ const ThemeToggleButton = () => {
   return (
     <Button
       type="button"
-      size="sm"
+      size={compact ? 'xs' : { base: 'xs', md: 'sm' }}
+      h={compact ? { base: '1.5rem', md: '1.5rem' } : { base: '1.75rem', md: '2rem' }}
+      minH={compact ? { base: '1.5rem', md: '1.5rem' } : { base: '1.75rem', md: '2rem' }}
+      px={compact ? 2 : { base: 3, md: 4 }}
+      py="0"
+      alignSelf="center"
       border="1px solid"
       borderColor="tide.500"
       bg="tide.500"
@@ -40,9 +49,9 @@ const ThemeToggleButton = () => {
       aria-label={`Switch to ${label} mode`}
     >
       <HStack spacing="2">
-        <Icon as={ModeIcon} boxSize={4} />
+        <Icon as={ModeIcon} boxSize={compact ? 3 : 4} />
         <Text
-          fontSize="xs"
+          fontSize={compact ? '0.55rem' : 'xs'}
           letterSpacing="0.12em"
           textTransform="uppercase"
           display={{ base: 'none', md: 'inline' }}

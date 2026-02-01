@@ -1126,8 +1126,8 @@ export default function CellsPage() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </BreadcrumbRoot>
-          <ReloadButton />
-          <ThemeToggleButton />
+          <ReloadButton compact />
+          <ThemeToggleButton compact />
         </HStack>
       </AppHeader>
 
