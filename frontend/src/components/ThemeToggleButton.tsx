@@ -30,7 +30,10 @@ const ThemeToggleButton = () => {
   return (
     <Button
       type="button"
-      size="sm"
+      size={{ base: 'xs', md: 'sm' }}
+      h={{ base: '2rem', md: '2.25rem' }}
+      minH={{ base: '2rem', md: '2.25rem' }}
+      alignSelf="center"
       border="1px solid"
       borderColor="tide.500"
       bg="tide.500"
