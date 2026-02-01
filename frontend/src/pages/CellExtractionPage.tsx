@@ -632,7 +632,7 @@ export default function CellExtractionPage() {
                         }}
                       />
                       <Checkbox.Label fontSize="sm" color="ink.700">
-                        Auto Annotation (Beta)
+                        Auto Annotation
                       </Checkbox.Label>
                     </Checkbox.Root>
                   </Stack>
