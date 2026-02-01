@@ -649,7 +649,7 @@ export default function TopPage() {
                                 x={point.x}
                                 y={activityChart.height - 5}
                                 textAnchor="middle"
-                                fontSize="11"
+                                fontSize="9"
                                 fontWeight="500"
                                 fill="var(--chakra-colors-ink-500)"
                               >
