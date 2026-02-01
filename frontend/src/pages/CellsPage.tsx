@@ -27,6 +27,7 @@ import {
 import { ArrowLeft, ArrowRight, Download } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
 
 type ChannelKey = 'ph' | 'fluo1' | 'fluo2'
@@ -1126,6 +1127,7 @@ export default function CellsPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
+          <ThemeToggleButton />
         </HStack>
       </AppHeader>
 
@@ -1177,7 +1179,7 @@ export default function CellsPage() {
                             color="ink.900"
                             _focusVisible={{
                               borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
                             }}
                           >
                             {labelOptions.map((option) => (
@@ -1209,7 +1211,7 @@ export default function CellsPage() {
                             }
                             _focusVisible={{
                               borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
                             }}
                           >
                             <option value="" disabled>
@@ -1391,7 +1393,7 @@ export default function CellsPage() {
                             color="ink.900"
                             _focusVisible={{
                               borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
                             }}
                           >
                             <option value="elastic">Elastic contour</option>
@@ -1427,7 +1429,7 @@ export default function CellsPage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             />
                           </Stack>
@@ -1509,7 +1511,7 @@ export default function CellsPage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             />
                           </Stack>
@@ -1712,7 +1714,7 @@ export default function CellsPage() {
                         color="ink.900"
                         _focusVisible={{
                           borderColor: 'tide.400',
-                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                          boxShadow: '0 0 0 1px var(--app-accent-ring)',
                         }}
                       >
                         <option value="contour">Contour</option>
@@ -1748,7 +1750,7 @@ export default function CellsPage() {
                         color="ink.900"
                         _focusVisible={{
                           borderColor: 'tide.400',
-                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                          boxShadow: '0 0 0 1px var(--app-accent-ring)',
                         }}
                       >
                         <option value="fluo1">Fluo1</option>
@@ -1778,7 +1780,7 @@ export default function CellsPage() {
                         color="ink.900"
                         _focusVisible={{
                           borderColor: 'tide.400',
-                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                          boxShadow: '0 0 0 1px var(--app-accent-ring)',
                         }}
                       >
                         <option value="fluo1">Fluo1</option>
@@ -1808,7 +1810,7 @@ export default function CellsPage() {
                         color="ink.900"
                         _focusVisible={{
                           borderColor: 'tide.400',
-                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                          boxShadow: '0 0 0 1px var(--app-accent-ring)',
                         }}
                       >
                         {channelOptions.map((option) => (
@@ -1841,7 +1843,7 @@ export default function CellsPage() {
                         color="ink.900"
                         _focusVisible={{
                           borderColor: 'tide.400',
-                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                          boxShadow: '0 0 0 1px var(--app-accent-ring)',
                         }}
                       >
                         {replotChannelOptions.map((option) => (
