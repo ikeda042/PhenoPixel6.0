@@ -27,6 +27,7 @@ import {
 } from '@chakra-ui/react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
 import {
   ArrowDown,
@@ -577,6 +578,7 @@ export default function Nd2ParserPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
+          <ThemeToggleButton />
         </HStack>
       </AppHeader>
 
@@ -628,7 +630,7 @@ export default function Nd2ParserPage() {
                       color="ink.900"
                       _focusVisible={{
                         borderColor: 'tide.400',
-                        boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                        boxShadow: '0 0 0 1px var(--app-accent-ring)',
                       }}
                     >
                       <option value="none">None</option>
@@ -706,7 +708,7 @@ export default function Nd2ParserPage() {
                         color="ink.900"
                         _focusVisible={{
                           borderColor: 'tide.400',
-                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                          boxShadow: '0 0 0 1px var(--app-accent-ring)',
                         }}
                       />
                     </Stack>
@@ -805,7 +807,7 @@ export default function Nd2ParserPage() {
                             color="ink.900"
                             _focusVisible={{
                               borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
                             }}
                           />
                         </HStack>
