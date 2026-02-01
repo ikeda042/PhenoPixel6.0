@@ -23,6 +23,7 @@ import {
 import { strFromU8, unzipSync } from 'fflate'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
 
 type BulkCell = {
@@ -1697,6 +1698,7 @@ export default function BulkEnginePage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
+          <ThemeToggleButton />
         </HStack>
       </AppHeader>
 
@@ -1797,7 +1799,7 @@ export default function BulkEnginePage() {
                             color="ink.900"
                             _focusVisible={{
                               borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
                             }}
                           >
                             {labelOptions.map((option) => (
@@ -1830,7 +1832,7 @@ export default function BulkEnginePage() {
                             color="ink.900"
                             _focusVisible={{
                               borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
                             }}
                           >
                             {channelOptions.map((option) => (
@@ -1963,7 +1965,7 @@ export default function BulkEnginePage() {
                         color="ink.900"
                         _focusVisible={{
                           borderColor: 'tide.400',
-                          boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                          boxShadow: '0 0 0 1px var(--app-accent-ring)',
                         }}
                       >
                         <option value="cell-length">Cell length</option>
@@ -2003,7 +2005,7 @@ export default function BulkEnginePage() {
                             color="ink.900"
                             _focusVisible={{
                               borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
                             }}
                           >
                             {analysisLabelOptions.map((option) => (
@@ -2108,7 +2110,7 @@ export default function BulkEnginePage() {
                             color="ink.900"
                             _focusVisible={{
                               borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
                             }}
                           >
                             {analysisLabelOptions.map((option) => (
@@ -2214,7 +2216,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {analysisLabelOptions.map((option) => (
@@ -2242,7 +2244,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {channelOptions.map((option) => (
@@ -2351,7 +2353,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {analysisLabelOptions.map((option) => (
@@ -2379,7 +2381,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {heatmapChannelOptions.map((option) => (
@@ -2464,7 +2466,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {analysisLabelOptions.map((option) => (
@@ -2492,7 +2494,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {channelOptions.map((option) => (
@@ -2599,7 +2601,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {analysisLabelOptions.map((option) => (
@@ -2627,7 +2629,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {heatmapChannelOptions.map((option) => (
@@ -2798,7 +2800,7 @@ export default function BulkEnginePage() {
                             color="ink.900"
                             _focusVisible={{
                               borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
                             }}
                           >
                             {analysisLabelOptions.map((option) => (
@@ -2894,7 +2896,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {analysisLabelOptions.map((option) => (
@@ -2922,7 +2924,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {heatmapChannelOptions.map((option) => (
@@ -3007,7 +3009,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {analysisLabelOptions.map((option) => (
@@ -3035,7 +3037,7 @@ export default function BulkEnginePage() {
                               color="ink.900"
                               _focusVisible={{
                                 borderColor: 'tide.400',
-                                boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
                               }}
                             >
                               {channelOptions.map((option) => (
