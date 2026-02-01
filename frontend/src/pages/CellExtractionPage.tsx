@@ -397,6 +397,16 @@ export default function CellExtractionPage() {
   }, [overlayImageUrl])
 
   useEffect(() => {
+    if (overlayStatus !== 'done' || !overlayVisible) return
+    const timeoutId = window.setTimeout(() => {
+      closeOverlay()
+    }, 200)
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [closeOverlay, overlayStatus, overlayVisible])
+
+  useEffect(() => {
     if (!autoAnnotation && overlayVisible) {
       closeOverlay()
     }
