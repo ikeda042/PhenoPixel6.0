@@ -818,7 +818,7 @@ export default function CellExtractionPage() {
             <HStack justify="space-between" align="center" spacing="3" flexWrap="wrap">
               <Stack spacing="1">
                 <Text fontSize="sm" fontWeight="600" color="ink.900">
-                  Cell Extraction Preview
+                  AutoAnnotating manual labels ...
                 </Text>
                 <Text fontSize="xs" color="ink.700">
                   Overlay raw sequence{overlayDbName ? ` · ${overlayDbName}` : ''}
