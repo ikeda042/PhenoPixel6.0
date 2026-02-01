@@ -21,13 +21,8 @@ import system from './theme'
 const THEME_STORAGE_KEY = 'phenopixel-theme'
 const root = document.documentElement
 const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
-const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
 const resolvedTheme =
-  storedTheme === 'dark' || storedTheme === 'light'
-    ? storedTheme
-    : prefersDark
-      ? 'dark'
-      : 'light'
+  storedTheme === 'dark' || storedTheme === 'light' ? storedTheme : 'light'
 
 root.classList.toggle('dark', resolvedTheme === 'dark')
 root.classList.toggle('light', resolvedTheme === 'light')
