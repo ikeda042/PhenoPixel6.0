@@ -1862,7 +1862,7 @@ export default function BulkEnginePage() {
                         size="sm"
                         h="2.25rem"
                         bg="tide.500"
-                        color="ink.900"
+                        color="white"
                         _hover={{ bg: 'tide.400' }}
                         onClick={handleExport}
                         isDisabled={filteredCells.length === 0 || isLoading || isExporting}
@@ -2024,7 +2024,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleCalcLength}
                           isDisabled={!dbName || isLengthLoading}
@@ -2034,7 +2034,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportLengthCsv}
                           isDisabled={!dbName || isLengthExporting}
@@ -2044,7 +2044,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportLengthJson}
                           isDisabled={!dbName || isJsonExporting || isLengthExporting}
@@ -2129,7 +2129,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleCalcArea}
                           isDisabled={!dbName || isAreaLoading}
@@ -2139,7 +2139,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportAreaCsv}
                           isDisabled={!dbName || isAreaExporting}
@@ -2149,7 +2149,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportAreaJson}
                           isDisabled={!dbName || isJsonExporting || isAreaExporting}
@@ -2264,7 +2264,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleCalcNormalizedMedian}
                           isDisabled={!dbName || isMedianLoading}
@@ -2274,7 +2274,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportNormalizedMedianCsv}
                           isDisabled={!dbName || isMedianExporting}
@@ -2284,7 +2284,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportNormalizedMedianJson}
                           isDisabled={!dbName || isJsonExporting || isMedianExporting}
@@ -2404,7 +2404,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleCalcFitcAggregation}
                           isDisabled={!dbName || isFitcLoading}
@@ -2514,7 +2514,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleCalcEntropy}
                           isDisabled={!dbName || isEntropyLoading}
@@ -2524,7 +2524,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportEntropyCsv}
                           isDisabled={!dbName || isEntropyExporting}
@@ -2534,7 +2534,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportEntropyJson}
                           isDisabled={!dbName || isJsonExporting || isEntropyExporting}
@@ -2649,7 +2649,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportHeatmapCsv}
                           isDisabled={!dbName || isHeatmapExporting}
@@ -2659,7 +2659,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportHeatmapJson}
                           isDisabled={!dbName || isJsonExporting || isHeatmapExporting}
@@ -2669,7 +2669,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleGenerateHeatmapPlot}
                           isDisabled={!dbName || isHeatmapPlotLoading}
@@ -2679,7 +2679,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleGenerateHeatmapRelPlot}
                           isDisabled={!dbName || isHeatmapRelLoading}
@@ -2689,7 +2689,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleGenerateHuSeparation}
                           isDisabled={!dbName || isHuSeparationLoading}
@@ -2819,7 +2819,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleGenerateContoursGrid}
                           isDisabled={!dbName || isContoursLoading}
@@ -2829,7 +2829,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportContoursJson}
                           isDisabled={!dbName || isContoursExporting}
@@ -2944,7 +2944,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleGenerateMap256}
                           isDisabled={!dbName || isMap256Loading}
@@ -3057,7 +3057,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportRawData}
                           isDisabled={!dbName || isRawExporting}
@@ -3067,7 +3067,7 @@ export default function BulkEnginePage() {
                         <Button
                           size="sm"
                           bg="tide.500"
-                          color="ink.900"
+                          color="white"
                           _hover={{ bg: 'tide.400' }}
                           onClick={handleExportRawJson}
                           isDisabled={!dbName || isJsonExporting || isRawExporting}
@@ -3130,9 +3130,10 @@ export default function BulkEnginePage() {
                 <Button
                   size="xs"
                   variant="outline"
-                  borderColor="sand.200"
-                  color="ink.700"
-                  _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                  borderColor="tide.500"
+                  bg="tide.500"
+                  color="white"
+                  _hover={{ bg: 'tide.400' }}
                   onClick={handleCopyJson}
                 >
                   Copy JSON
@@ -3140,9 +3141,10 @@ export default function BulkEnginePage() {
                 <Button
                   size="xs"
                   variant="outline"
-                  borderColor="sand.200"
-                  color="ink.700"
-                  _hover={{ bg: 'sand.200', color: 'ink.900' }}
+                  borderColor="tide.500"
+                  bg="tide.500"
+                  color="white"
+                  _hover={{ bg: 'tide.400' }}
                   onClick={closeJsonModal}
                 >
                   Close
