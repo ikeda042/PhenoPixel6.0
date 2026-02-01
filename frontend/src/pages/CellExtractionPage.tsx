@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import {
   Badge,
+  AspectRatio,
   Box,
   BreadcrumbCurrentLink,
   BreadcrumbItem,
@@ -48,6 +49,8 @@ type ExtractCellsJobStatusResponse = {
 
 const DEFAULT_PARAM1 = 130
 const DEFAULT_IMAGE_SIZE = 200
+const OVERLAY_FRAME_INTERVAL_MS = 15
+const OVERLAY_PREVIEW_SIZE = 'min(72vw, 60vh)'
 
 const normalizeIntInput = (value: string) => {
   const digitsOnly = value.replace(/[^\d]/g, '')
@@ -95,12 +98,131 @@ export default function CellExtractionPage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [isImageLoading, setIsImageLoading] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
+  const [overlayVisible, setOverlayVisible] = useState(false)
+  const [overlayStatus, setOverlayStatus] = useState<
+    'idle' | 'loading' | 'running' | 'done' | 'error'
+  >('idle')
+  const [overlayCellIds, setOverlayCellIds] = useState<string[]>([])
+  const [overlayIndex, setOverlayIndex] = useState(0)
+  const [overlayImageUrl, setOverlayImageUrl] = useState<string | null>(null)
+  const [overlayError, setOverlayError] = useState<string | null>(null)
+  const [overlayDbName, setOverlayDbName] = useState<string | null>(null)
+  const overlayRunRef = useRef(0)
+  const overlayAbortRef = useRef<AbortController | null>(null)
+
+  const closeOverlay = useCallback(() => {
+    overlayRunRef.current += 1
+    overlayAbortRef.current?.abort()
+    overlayAbortRef.current = null
+    setOverlayVisible(false)
+    setOverlayStatus('idle')
+    setOverlayCellIds([])
+    setOverlayIndex(0)
+    setOverlayImageUrl(null)
+    setOverlayError(null)
+    setOverlayDbName(null)
+  }, [])
+
+  const startOverlayPreview = useCallback(
+    async (dbName: string) => {
+      overlayRunRef.current += 1
+      const runId = overlayRunRef.current
+      overlayAbortRef.current?.abort()
+      const controller = new AbortController()
+      overlayAbortRef.current = controller
+
+      setOverlayVisible(true)
+      setOverlayStatus('loading')
+      setOverlayCellIds([])
+      setOverlayIndex(0)
+      setOverlayImageUrl(null)
+      setOverlayError(null)
+      setOverlayDbName(dbName)
+
+      try {
+        const listParams = new URLSearchParams({ dbname: dbName })
+        const listRes = await fetch(`${apiBase}/get-cell-ids?${listParams.toString()}`, {
+          signal: controller.signal,
+          headers: { accept: 'application/json' },
+        })
+        if (!listRes.ok) {
+          throw new Error(`Cell list request failed (${listRes.status})`)
+        }
+        const listData = (await listRes.json()) as string[]
+        if (overlayRunRef.current !== runId) return
+        const ids = Array.isArray(listData)
+          ? listData.filter((value) => typeof value === 'string' && value.trim() !== '')
+          : []
+        if (ids.length === 0) {
+          setOverlayStatus('error')
+          setOverlayError('No cells found in the extracted database.')
+          return
+        }
+        setOverlayCellIds(ids)
+        setOverlayStatus('running')
+
+        for (let index = 0; index < ids.length; index += 1) {
+          if (overlayRunRef.current !== runId) return
+          const cellId = ids[index]
+          setOverlayIndex(index)
+          try {
+            const overlayParams = new URLSearchParams({
+              dbname: dbName,
+              cell_id: cellId,
+              draw_scale_bar: 'false',
+              overlay_mode: 'raw',
+            })
+            const overlayRes = await fetch(
+              `${apiBase}/get-cell-overlay?${overlayParams.toString()}`,
+              { signal: controller.signal, headers: { accept: 'image/png' } },
+            )
+            if (!overlayRes.ok) {
+              throw new Error(`Overlay request failed (${overlayRes.status})`)
+            }
+            const blob = await overlayRes.blob()
+            if (overlayRunRef.current !== runId) return
+            const url = URL.createObjectURL(blob)
+            if (overlayRunRef.current !== runId) {
+              URL.revokeObjectURL(url)
+              return
+            }
+            setOverlayImageUrl(url)
+            setOverlayError(null)
+          } catch (err) {
+            if (overlayRunRef.current !== runId || controller.signal.aborted) return
+            setOverlayError(
+              err instanceof Error ? err.message : 'Failed to load overlay preview',
+            )
+          }
+          await new Promise((resolve) => {
+            window.setTimeout(resolve, OVERLAY_FRAME_INTERVAL_MS)
+          })
+        }
+
+        if (overlayRunRef.current === runId) {
+          setOverlayStatus('done')
+        }
+      } catch (err) {
+        if (overlayRunRef.current !== runId || controller.signal.aborted) return
+        setOverlayStatus('error')
+        setOverlayError(
+          err instanceof Error ? err.message : 'Failed to start overlay preview',
+        )
+      } finally {
+        if (overlayRunRef.current === runId) {
+          overlayAbortRef.current = null
+        }
+      }
+    },
+    [apiBase],
+  )
 
   const handleSubmit = useCallback(async () => {
     if (!filename.trim()) {
       setError('Filename is required')
       return
     }
+    closeOverlay()
     const param1Value = coerceInt(param1Input, DEFAULT_PARAM1, 0)
     const imageSizeValue = coerceInt(imageSizeInput, DEFAULT_IMAGE_SIZE, 1)
     setIsSubmitting(true)
@@ -142,7 +264,15 @@ export default function CellExtractionPage() {
       setIsSubmitting(false)
       setJobStatus('failed')
     }
-  }, [apiBase, autoAnnotation, filename, imageSizeInput, layerMode, param1Input])
+  }, [
+    apiBase,
+    autoAnnotation,
+    closeOverlay,
+    filename,
+    imageSizeInput,
+    layerMode,
+    param1Input,
+  ])
 
   useEffect(() => {
     if (!jobId || jobStatus !== 'running') return
@@ -169,6 +299,9 @@ export default function CellExtractionPage() {
           setExtractedDbName(nextDbName ? nextDbName : null)
           setJobStatus('completed')
           setIsSubmitting(false)
+          if (nextDbName) {
+            void startOverlayPreview(nextDbName)
+          }
           return
         }
         if (data.status === 'failed') {
@@ -192,7 +325,7 @@ export default function CellExtractionPage() {
       cancelled = true
       window.clearInterval(intervalId)
     }
-  }, [apiBase, jobId, jobStatus])
+  }, [apiBase, jobId, jobStatus, startOverlayPreview])
 
   const fetchImageCount = useCallback(
     async (stem: string) => {
@@ -256,6 +389,31 @@ export default function CellExtractionPage() {
       if (imageUrl) URL.revokeObjectURL(imageUrl)
     }
   }, [imageUrl])
+
+  useEffect(() => {
+    return () => {
+      if (overlayImageUrl) URL.revokeObjectURL(overlayImageUrl)
+    }
+  }, [overlayImageUrl])
+
+  useEffect(() => {
+    if (overlayStatus !== 'done' || !overlayVisible) return
+    const timeoutId = window.setTimeout(() => {
+      closeOverlay()
+    }, 200)
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [closeOverlay, overlayStatus, overlayVisible])
+
+  useEffect(() => {
+    if (!autoAnnotation && overlayVisible) {
+      closeOverlay()
+    }
+  }, [autoAnnotation, closeOverlay, overlayVisible])
+
+  const overlayCurrentCellId = overlayCellIds[overlayIndex] ?? ''
+  const overlayTotal = overlayCellIds.length
 
   return (
     <Box h="100vh" bg="sand.50" color="ink.900" display="flex" flexDirection="column">
@@ -490,7 +648,7 @@ export default function CellExtractionPage() {
                         }}
                       />
                       <Checkbox.Label fontSize="sm" color="ink.700">
-                        Auto Annotation (Beta)
+                        Auto Annotation
                       </Checkbox.Label>
                     </Checkbox.Root>
                   </Stack>
@@ -639,6 +797,121 @@ export default function CellExtractionPage() {
           )}
         </Stack>
       </Container>
+
+      {autoAnnotation && overlayVisible && (
+        <Box
+          position="fixed"
+          inset="0"
+          bg="rgba(11, 13, 16, 0.55)"
+          zIndex={1400}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          px="4"
+          onClick={closeOverlay}
+        >
+          <Box
+            bg="sand.100"
+            border="1px solid"
+            borderColor="sand.200"
+            borderRadius="xl"
+            p="4"
+            w={OVERLAY_PREVIEW_SIZE}
+            maxH="85vh"
+            display="flex"
+            flexDirection="column"
+            gap="3"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <HStack justify="space-between" align="center" spacing="3" flexWrap="wrap">
+              <Stack spacing="1">
+                <Text fontSize="sm" fontWeight="600" color="ink.900">
+                  AutoAnnotating manual labels ...
+                </Text>
+                <Text fontSize="xs" color="ink.700">
+                  Overlay raw sequence{overlayDbName ? ` · ${overlayDbName}` : ''}
+                </Text>
+              </Stack>
+              <Button
+                size="xs"
+                variant="outline"
+                borderColor="tide.500"
+                bg="tide.500"
+                color="white"
+                _hover={{ bg: 'tide.400' }}
+                onClick={closeOverlay}
+              >
+                Close
+              </Button>
+            </HStack>
+
+            {overlayStatus === 'loading' && (
+              <Text fontSize="sm" color="ink.700">
+                Loading cells...
+              </Text>
+            )}
+            {overlayStatus === 'error' && overlayError && (
+              <Text fontSize="sm" color="violet.300">
+                {overlayError}
+              </Text>
+            )}
+            {overlayStatus !== 'error' && (
+              <Stack spacing="1">
+                <Text fontSize="xs" color="ink.700">
+                  {overlayTotal > 0
+                    ? `Cell ${overlayIndex + 1} / ${overlayTotal}`
+                    : 'Preparing overlay sequence...'}
+                </Text>
+                {overlayCurrentCellId && (
+                  <Text fontSize="xs" color="ink.700">
+                    {overlayCurrentCellId}
+                  </Text>
+                )}
+              </Stack>
+            )}
+
+            <Box
+              bg="sand.200"
+              borderRadius="lg"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              overflow="hidden"
+              flex="1"
+              minH="240px"
+            >
+              <AspectRatio
+                ratio={1}
+                w="100%"
+              >
+                {overlayImageUrl ? (
+                  <Box
+                    as="img"
+                    src={overlayImageUrl}
+                    alt={
+                      overlayCurrentCellId ? `${overlayCurrentCellId} overlay` : 'Cell overlay'
+                    }
+                    w="100%"
+                    h="100%"
+                    objectFit="contain"
+                    imageRendering="pixelated"
+                  />
+                ) : (
+                  <Flex align="center" justify="center" color="ink.700" fontSize="sm">
+                    {overlayStatus === 'done'
+                      ? 'Overlay sequence complete.'
+                      : overlayError
+                        ? overlayError
+                        : 'Generating overlays...'}
+                  </Flex>
+                )}
+              </AspectRatio>
+            </Box>
+          </Box>
+        </Box>
+      )}
     </Box>
   )
 }
