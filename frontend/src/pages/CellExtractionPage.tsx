@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import {
   Badge,
+  AspectRatio,
   Box,
   BreadcrumbCurrentLink,
   BreadcrumbItem,
@@ -48,7 +49,7 @@ type ExtractCellsJobStatusResponse = {
 
 const DEFAULT_PARAM1 = 130
 const DEFAULT_IMAGE_SIZE = 200
-const OVERLAY_FRAME_INTERVAL_MS = 50
+const OVERLAY_FRAME_INTERVAL_MS = 15
 
 const normalizeIntInput = (value: string) => {
   const digitsOnly = value.replace(/[^\d]/g, '')
@@ -167,7 +168,7 @@ export default function CellExtractionPage() {
             const overlayParams = new URLSearchParams({
               dbname: dbName,
               cell_id: cellId,
-              draw_scale_bar: 'true',
+              draw_scale_bar: 'false',
               overlay_mode: 'raw',
             })
             const overlayRes = await fetch(
@@ -865,25 +866,34 @@ export default function CellExtractionPage() {
               flex="1"
               minH="240px"
             >
-              {overlayImageUrl ? (
-                <Box
-                  as="img"
-                  src={overlayImageUrl}
-                  alt={overlayCurrentCellId ? `${overlayCurrentCellId} overlay` : 'Cell overlay'}
-                  w="100%"
-                  h="auto"
-                  maxH="100%"
-                  objectFit="contain"
-                />
-              ) : (
-                <Flex align="center" justify="center" color="ink.700" fontSize="sm">
-                  {overlayStatus === 'done'
-                    ? 'Overlay sequence complete.'
-                    : overlayError
-                      ? overlayError
-                      : 'Generating overlays...'}
-                </Flex>
-              )}
+              <AspectRatio
+                ratio={1}
+                w="100%"
+                maxW={{ base: '72vw', md: '520px' }}
+                maxH="60vh"
+              >
+                {overlayImageUrl ? (
+                  <Box
+                    as="img"
+                    src={overlayImageUrl}
+                    alt={
+                      overlayCurrentCellId ? `${overlayCurrentCellId} overlay` : 'Cell overlay'
+                    }
+                    w="100%"
+                    h="100%"
+                    objectFit="contain"
+                    imageRendering="pixelated"
+                  />
+                ) : (
+                  <Flex align="center" justify="center" color="ink.700" fontSize="sm">
+                    {overlayStatus === 'done'
+                      ? 'Overlay sequence complete.'
+                      : overlayError
+                        ? overlayError
+                        : 'Generating overlays...'}
+                  </Flex>
+                )}
+              </AspectRatio>
             </Box>
 
             {overlayStatus === 'done' && (
