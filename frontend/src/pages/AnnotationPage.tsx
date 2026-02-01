@@ -444,9 +444,10 @@ export default function AnnotationPage() {
                 <Button
                   size="xs"
                   variant="outline"
-                  borderColor="sand.200"
-                  color="ink.700"
-                  _hover={{ bg: 'sand.100', color: 'ink.900' }}
+                  borderColor="tide.500"
+                  bg="tide.500"
+                  color="white"
+                  _hover={{ bg: 'tide.400' }}
                   as={RouterLink}
                   to={`/bulk-engine?dbname=${encodeURIComponent(dbName)}`}
                 >
@@ -484,7 +485,7 @@ export default function AnnotationPage() {
               <Button
                 size="xs"
                 bg="tide.500"
-                color="ink.900"
+                color="white"
                 _hover={{ bg: 'tide.400' }}
                 onClick={applySelection}
                 isDisabled={selectedCount === 0 || isUpdating}
