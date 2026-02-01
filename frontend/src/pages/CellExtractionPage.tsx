@@ -51,6 +51,9 @@ const DEFAULT_PARAM1 = 130
 const DEFAULT_IMAGE_SIZE = 200
 const OVERLAY_FRAME_INTERVAL_MS = 15
 const OVERLAY_PREVIEW_SIZE = 'min(72vw, 60vh)'
+const OVERLAY_PREVIEW_SCALE = 0.5
+const OVERLAY_PREVIEW_FORMAT = 'jpeg'
+const OVERLAY_PREVIEW_QUALITY = 50
 
 const normalizeIntInput = (value: string) => {
   const digitsOnly = value.replace(/[^\d]/g, '')
@@ -190,10 +193,13 @@ export default function CellExtractionPage() {
               cell_id: cellId,
               draw_scale_bar: 'false',
               overlay_mode: 'raw',
+              scale: String(OVERLAY_PREVIEW_SCALE),
+              format: OVERLAY_PREVIEW_FORMAT,
+              jpeg_quality: String(OVERLAY_PREVIEW_QUALITY),
             })
             const overlayRes = await fetch(
               `${apiBase}/get-cell-overlay?${overlayParams.toString()}`,
-              { signal: controller.signal, headers: { accept: 'image/png' } },
+              { signal: controller.signal, headers: { accept: 'image/jpeg' } },
             )
             if (!overlayRes.ok) {
               throw new Error(`Overlay request failed (${overlayRes.status})`)
