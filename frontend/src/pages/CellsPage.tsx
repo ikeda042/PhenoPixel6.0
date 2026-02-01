@@ -1860,7 +1860,7 @@ export default function CellsPage() {
                   </HStack>
                 )}
                 <AspectRatio
-                  ratio={1.1}
+                  ratio={1}
                   bg="sand.200"
                   borderRadius="lg"
                   overflow="hidden"
