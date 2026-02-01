@@ -453,7 +453,7 @@ export default function App() {
                   <Button
                     size="sm"
                     bg="violet.500"
-                    color="ink.900"
+                    color="white"
                     _hover={{ bg: 'violet.400' }}
                     w="full"
                   >
