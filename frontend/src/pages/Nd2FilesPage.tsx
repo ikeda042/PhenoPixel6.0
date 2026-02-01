@@ -24,6 +24,7 @@ import {
 } from '@chakra-ui/react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { Search, Trash2 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 
@@ -397,6 +398,7 @@ export default function Nd2FilesPage() {
             </BreadcrumbList>
           </BreadcrumbRoot>
           <ReloadButton />
+          <ThemeToggleButton />
         </HStack>
       </AppHeader>
 
@@ -425,7 +427,7 @@ export default function Nd2FilesPage() {
                 _placeholder={{ color: 'ink.700' }}
                 _focusVisible={{
                   borderColor: 'tide.400',
-                  boxShadow: '0 0 0 1px rgba(45,212,191,0.6)',
+                  boxShadow: '0 0 0 1px var(--app-accent-ring)',
                 }}
               />
             </InputGroup>
