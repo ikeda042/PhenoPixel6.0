@@ -899,12 +899,6 @@ export default function CellExtractionPage() {
                 )}
               </AspectRatio>
             </Box>
-
-            {overlayStatus === 'done' && (
-              <Text fontSize="xs" color="ink.700">
-                Finished generating overlay raw images.
-              </Text>
-            )}
           </Box>
         </Box>
       )}
