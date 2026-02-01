@@ -33,9 +33,9 @@ const ThemeToggleButton = () => {
       size="sm"
       border="1px solid"
       borderColor="tide.500"
-      bg="transparent"
-      color="tide.500"
-      _hover={{ bg: 'tide.500', color: 'ink.900' }}
+      bg="tide.500"
+      color="white"
+      _hover={{ bg: 'tide.400' }}
       onClick={handleToggle}
       aria-label={`Switch to ${label} mode`}
     >
