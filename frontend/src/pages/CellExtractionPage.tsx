@@ -960,7 +960,7 @@ export default function CellExtractionPage() {
             boxShadow="lg"
           >
             <Text fontSize="sm" fontWeight="600" color="ink.900">
-              AutoAnnotation Finished
+              AutoAnnotation Finished.
             </Text>
           </Box>
         </Box>
