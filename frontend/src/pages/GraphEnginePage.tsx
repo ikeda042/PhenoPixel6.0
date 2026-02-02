@@ -98,7 +98,7 @@ export default function GraphEnginePage() {
   const apiBase = useMemo(() => getApiBase(), [])
   const [graphMode, setGraphMode] = useState(GRAPH_MODE_OPTIONS[0].value)
   const [ctrlFile, setCtrlFile] = useState<File | null>(null)
-  const [files, setFiles] = useState<FileList | null>(null)
+  const [files, setFiles] = useState<File[] | null>(null)
   const [results, setResults] = useState<ResultItem[]>([])
   const [heatmaps, setHeatmaps] = useState<Record<string, HeatmapUrls>>({})
   const [isLoading, setIsLoading] = useState(false)
@@ -125,7 +125,8 @@ export default function GraphEnginePage() {
 
   const handleFilesChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextFiles = event.target.files
-    setFiles(nextFiles && nextFiles.length > 0 ? nextFiles : null)
+    const selected = nextFiles ? Array.from(nextFiles) : []
+    setFiles(selected.length > 0 ? selected : null)
     event.target.value = ''
   }
 
@@ -135,7 +136,7 @@ export default function GraphEnginePage() {
       return
     }
 
-    const selectedFiles = Array.from(files)
+    const selectedFiles = files
     const runId = runIdRef.current + 1
     runIdRef.current = runId
 
@@ -243,7 +244,7 @@ export default function GraphEnginePage() {
 
   const rows = useMemo(() => {
     if (files?.length) {
-      return Array.from(files).map((file) => file.name)
+      return files.map((file) => file.name)
     }
     return results.map((result) => result.filename)
   }, [files, results])
