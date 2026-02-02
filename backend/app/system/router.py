@@ -5,9 +5,9 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
-router_system = APIRouter(tags=["system"])
-logger = logging.getLogger("uvicorn.error")
-REPO_ROOT = Path(__file__).resolve().parents[2].parent
+router_system: APIRouter = APIRouter(tags=["system"])
+logger: logging.Logger = logging.getLogger("uvicorn.error")
+REPO_ROOT: Path = Path(__file__).resolve().parents[2].parent
 
 
 @router_system.post("/system/git-pull")
