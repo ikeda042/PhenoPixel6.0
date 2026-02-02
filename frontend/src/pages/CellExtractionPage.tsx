@@ -47,6 +47,12 @@ type ExtractCellsJobStatusResponse = {
   error?: string
 }
 
+type Nd2FileMetadataResponse = {
+  reader?: {
+    sizes?: Record<string, number | string | null>
+  }
+}
+
 const DEFAULT_PARAM1 = 130
 const DEFAULT_IMAGE_SIZE = 200
 const OVERLAY_FRAME_INTERVAL_MS = 15
@@ -78,12 +84,25 @@ const layerOptions = [
   { value: 'quad', label: 'Quad Layer' },
 ]
 
+const defaultLayerMode = layerOptions[1].value
+
+const inferLayerModeFromMetadata = (metadata: Nd2FileMetadataResponse | null) => {
+  if (!metadata?.reader?.sizes) return null
+  const rawChannels = metadata.reader.sizes.c
+  const channelCount = Number(rawChannels)
+  if (!Number.isFinite(channelCount) || channelCount <= 0) return null
+  if (channelCount <= 1) return 'single'
+  if (channelCount === 2) return 'dual'
+  if (channelCount === 3) return 'triple'
+  return 'quad'
+}
+
 export default function CellExtractionPage() {
   const [searchParams] = useSearchParams()
   const queryFilename = searchParams.get('filename') ?? ''
   const apiBase = useMemo(() => getApiBase(), [])
   const filename = queryFilename
-  const [layerMode, setLayerMode] = useState(layerOptions[1].value)
+  const [layerMode, setLayerMode] = useState(defaultLayerMode)
   const [param1Input, setParam1Input] = useState(String(DEFAULT_PARAM1))
   const [imageSizeInput, setImageSizeInput] = useState(String(DEFAULT_IMAGE_SIZE))
   const [autoAnnotation, setAutoAnnotation] = useState(true)
@@ -114,6 +133,52 @@ export default function CellExtractionPage() {
   const overlayRunRef = useRef(0)
   const overlayAbortRef = useRef<AbortController | null>(null)
   const finishedNoticeTimeoutRef = useRef<number | null>(null)
+  const layerModeRequestRef = useRef(0)
+  const lastFilenameRef = useRef<string | null>(null)
+  const hasManualLayerModeRef = useRef(false)
+
+  useEffect(() => {
+    const trimmed = filename.trim()
+    if (!trimmed) return
+
+    if (lastFilenameRef.current !== trimmed) {
+      lastFilenameRef.current = trimmed
+      hasManualLayerModeRef.current = false
+    }
+
+    const requestId = layerModeRequestRef.current + 1
+    layerModeRequestRef.current = requestId
+    const controller = new AbortController()
+
+    const loadMetadata = async () => {
+      try {
+        const res = await fetch(
+          `${apiBase}/nd2_files/${encodeURIComponent(trimmed)}/metadata`,
+          { signal: controller.signal },
+        )
+        if (!res.ok) {
+          throw new Error(`Metadata request failed (${res.status})`)
+        }
+        const data = (await res.json()) as Nd2FileMetadataResponse
+        if (layerModeRequestRef.current !== requestId) return
+        const inferred = inferLayerModeFromMetadata(data) ?? defaultLayerMode
+        if (!hasManualLayerModeRef.current) {
+          setLayerMode(inferred)
+        }
+      } catch (err) {
+        if (controller.signal.aborted) return
+        if (layerModeRequestRef.current !== requestId) return
+        if (!hasManualLayerModeRef.current) {
+          setLayerMode(defaultLayerMode)
+        }
+      }
+    }
+
+    void loadMetadata()
+    return () => {
+      controller.abort()
+    }
+  }, [apiBase, filename])
 
   const triggerFinishedNotice = useCallback(() => {
     if (finishedNoticeTimeoutRef.current !== null) {
@@ -575,7 +640,10 @@ export default function CellExtractionPage() {
                     <NativeSelect.Root>
                       <NativeSelect.Field
                         value={layerMode}
-                        onChange={(event) => setLayerMode(event.target.value)}
+                        onChange={(event) => {
+                          hasManualLayerModeRef.current = true
+                          setLayerMode(event.target.value)
+                        }}
                         bg="sand.50"
                         border="1px solid"
                         borderColor="sand.200"
