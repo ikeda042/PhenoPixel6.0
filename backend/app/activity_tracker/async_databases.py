@@ -11,16 +11,16 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-DB_DIR = Path(__file__).resolve().parent / "data"
-DB_PATH = DB_DIR / "activity_tracker.db"
+DB_DIR: Path = Path(__file__).resolve().parent / "data"
+DB_PATH: Path = DB_DIR / "activity_tracker.db"
 
-_INITIALIZED = False
-_ENGINE = None
+_INITIALIZED: bool = False
+_ENGINE: AsyncEngine | None = None
 _SESSION_MAKER: async_sessionmaker[AsyncSession] | None = None
 
-_METADATA = MetaData()
+_METADATA: MetaData = MetaData()
 
-activity_log = Table(
+activity_log: Table = Table(
     "activity_log",
     _METADATA,
     Column("id", Integer, primary_key=True, autoincrement=True),
