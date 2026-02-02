@@ -22,6 +22,7 @@ import {
   Database,
   Folder,
   Server,
+  Share2,
   Wifi,
   WifiOff,
 } from 'lucide-react'
@@ -164,6 +165,13 @@ const menuItems: MenuItem[] = [
     path: '/files',
     icon: Folder,
     accent: 'violet.400',
+  },
+  {
+    title: 'Graph Engine',
+    description: 'Generate graph metrics and plots from CSV inputs.',
+    path: '/graph-engine',
+    icon: Share2,
+    accent: 'tide.300',
   },
 ]
 

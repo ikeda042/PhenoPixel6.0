@@ -13,6 +13,7 @@ import CellExtractionPage from './pages/CellExtractionPage'
 import CellsPage from './pages/CellsPage'
 import DatabasesPage from './pages/DatabasesPage'
 import FilesPage from './pages/FilesPage'
+import GraphEnginePage from './pages/GraphEnginePage'
 import Nd2ParserPage from './pages/Nd2ParserPage'
 import Nd2FilesPage from './pages/Nd2FilesPage'
 import TopPage from './pages/TopPage'
@@ -39,6 +40,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/cells" element={<CellsPage />} />
           <Route path="/databases" element={<DatabasesPage />} />
           <Route path="/files" element={<FilesPage />} />
+          <Route path="/graph-engine" element={<GraphEnginePage />} />
           <Route path="/nd2files" element={<Nd2FilesPage />} />
           <Route path="/nd2parser" element={<Nd2ParserPage />} />
           <Route path="/docs" element={<App />} />
