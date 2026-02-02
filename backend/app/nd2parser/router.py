@@ -17,15 +17,15 @@ from pydantic import BaseModel, Field
 from PIL import Image, ImageDraw, ImageFont
 
 
-router_nd2parser = APIRouter(tags=["nd2parser"])
-logger = logging.getLogger("uvicorn.error")
-ND2_DIR = Path(__file__).resolve().parents[1] / "nd2files"
-PARSED_DIR = Path(__file__).resolve().parent / "parsednd2"
-SUPPORTED_CHANNELS = ["ph", "fluo1", "fluo2"]
-META_FILENAME = "meta.json"
+router_nd2parser: APIRouter = APIRouter(tags=["nd2parser"])
+logger: logging.Logger = logging.getLogger("uvicorn.error")
+ND2_DIR: Path = Path(__file__).resolve().parents[1] / "nd2files"
+PARSED_DIR: Path = Path(__file__).resolve().parent / "parsednd2"
+SUPPORTED_CHANNELS: list[str] = ["ph", "fluo1", "fluo2"]
+META_FILENAME: str = "meta.json"
 _PROCESS_POOL: ProcessPoolExecutor | None = None
-_PROCESS_POOL_LOCK = Lock()
-_DEFAULT_MAX_WORKERS = 4
+_PROCESS_POOL_LOCK: Lock = Lock()
+_DEFAULT_MAX_WORKERS: int = 4
 
 
 class ParseNd2Request(BaseModel):
