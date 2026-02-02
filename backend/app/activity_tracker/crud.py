@@ -8,17 +8,17 @@ from sqlalchemy import func, insert, select
 
 from app.activity_tracker.async_databases import activity_log, get_db
 
-ACTION_TOP_PAGE = "top_page"
-ACTION_CELL_EXTRACTION = "cell_extraction"
-ACTION_BULK_ENGINE = "bulk_engine"
+ACTION_TOP_PAGE: str = "top_page"
+ACTION_CELL_EXTRACTION: str = "cell_extraction"
+ACTION_BULK_ENGINE: str = "bulk_engine"
 
-ALLOWED_ACTIONS = {
+ALLOWED_ACTIONS: set[str] = {
     ACTION_TOP_PAGE,
     ACTION_CELL_EXTRACTION,
     ACTION_BULK_ENGINE,
 }
 
-_MAX_ACTION_LENGTH = 64
+_MAX_ACTION_LENGTH: int = 64
 
 
 def _normalize_action_name(action_name: str) -> str:

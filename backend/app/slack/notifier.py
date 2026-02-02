@@ -8,8 +8,8 @@ from urllib.parse import urlencode
 
 import aiohttp
 
-logger = logging.getLogger(__name__)
-_ENV_LOADED = False
+logger: logging.Logger = logging.getLogger(__name__)
+_ENV_LOADED: bool = False
 
 
 def _load_env() -> None:

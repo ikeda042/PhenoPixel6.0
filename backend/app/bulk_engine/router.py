@@ -13,7 +13,7 @@ from app.bulk_engine.crud import BulkEngineCrud
 from app.slack.notifier import build_bulk_engine_completed_message, notify_slack
 
 
-logger = logging.getLogger("uvicorn.error")
+logger: logging.Logger = logging.getLogger("uvicorn.error")
 
 
 async def _track_bulk_engine_activity() -> None:
@@ -23,12 +23,12 @@ async def _track_bulk_engine_activity() -> None:
         logger.warning("Activity tracking failed: %s", exc)
 
 
-router_bulk_engine = APIRouter(
+router_bulk_engine: APIRouter = APIRouter(
     tags=["bulk_engine"],
     dependencies=[Depends(_track_bulk_engine_activity)],
 )
-bulk_executor = ProcessPoolExecutor()
-heatmap_bulk_executor = ProcessPoolExecutor(max_workers=1)
+bulk_executor: ProcessPoolExecutor = ProcessPoolExecutor()
+heatmap_bulk_executor: ProcessPoolExecutor = ProcessPoolExecutor(max_workers=1)
 
 
 async def _notify_bulk_engine_completed(

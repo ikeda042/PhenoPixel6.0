@@ -4,8 +4,8 @@ from typing import AsyncIterator
 import aiofiles
 from aiofiles import os as aioos
 
-FILES_DIR = Path(__file__).resolve().parent / "storage"
-UPLOAD_CHUNK_SIZE = 1024 * 1024 * 100
+FILES_DIR: Path = Path(__file__).resolve().parent / "storage"
+UPLOAD_CHUNK_SIZE: int = 1024 * 1024 * 100
 
 
 def ensure_files_dir() -> Path:
@@ -77,7 +77,7 @@ async def delete_file(filename: str) -> str:
 
 
 class FileManagerCrud:
-    FILES_DIR = FILES_DIR
+    FILES_DIR: Path = FILES_DIR
     UPLOAD_CHUNK_SIZE = UPLOAD_CHUNK_SIZE
 
     @classmethod

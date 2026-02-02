@@ -17,8 +17,8 @@ from app.bulk_engine.heatmap_bulk_core import (
 )
 from app.bulk_engine.hu_separation_detector import build_hu_separation_overlay
 
-PIXEL_SIZE_UM = 0.065
-FITC_AGGREGATION_THRESHOLD = 0.7414
+PIXEL_SIZE_UM: float = 0.065
+FITC_AGGREGATION_THRESHOLD: float = 0.7414
 
 
 def _pca_length(points: np.ndarray) -> float:

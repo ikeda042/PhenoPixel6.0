@@ -14,14 +14,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sqlalchemy import BLOB, FLOAT, Column, Integer, MetaData, String, Table, create_engine, or_, select, text, update
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeMeta, Session, declarative_base, sessionmaker
 
-DATABASES_DIR = Path(__file__).resolve().parents[1] / "databases"
-DOWNLOAD_CHUNK_SIZE = 1024 * 1024
-ANNOTATION_DOWNSCALE = 0.2
-ANNOTATION_CONTOUR_THICKNESS = 3
+DATABASES_DIR: Path = Path(__file__).resolve().parents[1] / "databases"
+DOWNLOAD_CHUNK_SIZE: int = 1024 * 1024
+ANNOTATION_DOWNSCALE: float = 0.2
+ANNOTATION_CONTOUR_THICKNESS: int = 3
 
-Base = declarative_base()
+Base: DeclarativeMeta = declarative_base()
 
 
 class Cell(Base):

@@ -7,8 +7,8 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 
-router_extracted_data = APIRouter(tags=["extracted_data"])
-EXTRACTED_DATA_DIR = Path(__file__).resolve().parent
+router_extracted_data: APIRouter = APIRouter(tags=["extracted_data"])
+EXTRACTED_DATA_DIR: Path = Path(__file__).resolve().parent
 
 
 async def _list_extracted_folders() -> list[str]:

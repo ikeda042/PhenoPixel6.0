@@ -15,16 +15,16 @@ from fastapi.responses import StreamingResponse
 from PIL import Image
 from sqlalchemy import BLOB, Column, FLOAT, Integer, String, create_engine, text
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeMeta, Session, declarative_base, sessionmaker
 from sqlalchemy.sql import select
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
-APP_DIR = Path(__file__).resolve().parents[1]
-DATABASES_DIR = APP_DIR / "databases"
-EXTRACTED_DATA_DIR = APP_DIR / "extracted_data"
-TEMPDATA_DIR = APP_DIR / "tempdata"
+APP_DIR: Path = Path(__file__).resolve().parents[1]
+DATABASES_DIR: Path = APP_DIR / "databases"
+EXTRACTED_DATA_DIR: Path = APP_DIR / "extracted_data"
+TEMPDATA_DIR: Path = APP_DIR / "tempdata"
 
 
 def _get_temp_dir(ulid: str) -> str:
@@ -205,7 +205,7 @@ def get_ulid() -> str:
     return "".join(str(random.randint(0, 9)) for _ in range(16))
 
 
-Base = declarative_base()
+Base: DeclarativeMeta = declarative_base()
 
 
 @dataclass

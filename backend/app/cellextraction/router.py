@@ -16,12 +16,12 @@ from app.cellextraction.crud import ExtractionCrudBase
 from app.slack.notifier import build_database_created_message, notify_slack_sync
 
 
-router_cellextraction = APIRouter(tags=["cellextraction"])
-logger = logging.getLogger("uvicorn.error")
-ND2_DIR = Path(__file__).resolve().parents[1] / "nd2files"
+router_cellextraction: APIRouter = APIRouter(tags=["cellextraction"])
+logger: logging.Logger = logging.getLogger("uvicorn.error")
+ND2_DIR: Path = Path(__file__).resolve().parents[1] / "nd2files"
 _jobs: dict[str, dict[str, Any]] = {}
-_jobs_lock = Lock()
-_DEFAULT_MAX_CONCURRENCY = 5
+_jobs_lock: Lock = Lock()
+_DEFAULT_MAX_CONCURRENCY: int = 5
 
 
 def _get_max_concurrency() -> int:
