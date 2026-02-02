@@ -1,14 +1,15 @@
 import asyncio
 import io
+from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.graphengine.crud import GraphEngineCrud
+from app.graphengine.crud import GraphEngineCrud, GraphEngineResult
 
-router_graphengine = APIRouter(tags=["graph_engine"])
+router_graphengine: APIRouter = APIRouter(tags=["graph_engine"])
 
 
 class GraphEngineResultResponse(BaseModel):
@@ -26,17 +27,17 @@ async def analyze_graph_engine(
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
     try:
-        ctrl_bytes = await ctrl_file.read() if ctrl_file else None
+        ctrl_bytes: bytes | None = await ctrl_file.read() if ctrl_file else None
         payloads: list[tuple[str, bytes]] = []
         for file in files:
-            content = await file.read()
+            content: bytes = await file.read()
             if not content:
                 continue
             payloads.append((file.filename or "file.csv", content))
         if not payloads:
             raise ValueError("No valid CSV files uploaded")
-        loop = asyncio.get_running_loop()
-        results = await loop.run_in_executor(
+        loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+        results: list[GraphEngineResult] = await loop.run_in_executor(
             None, GraphEngineCrud.analyze_files, mode, payloads, ctrl_bytes
         )
     except ValueError as exc:
@@ -59,16 +60,16 @@ async def analyze_graph_engine(
 
 
 async def _render_graph_engine_image(
-    render_fn,
+    render_fn: Callable[[str | None, bytes], bytes],
     mode: str | None,
     file: UploadFile,
 ) -> StreamingResponse:
     try:
-        content = await file.read()
+        content: bytes = await file.read()
         if not content:
             raise ValueError("Uploaded file is empty")
-        loop = asyncio.get_running_loop()
-        image_bytes = await loop.run_in_executor(None, render_fn, mode, content)
+        loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+        image_bytes: bytes = await loop.run_in_executor(None, render_fn, mode, content)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
