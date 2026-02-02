@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.file_manager.crud import FileManagerCrud
 
-router_file_manager = APIRouter(tags=["file_manager"])
+router_file_manager: APIRouter = APIRouter(tags=["file_manager"])
 
 
 async def _iter_upload(file: UploadFile) -> AsyncIterator[bytes]:
