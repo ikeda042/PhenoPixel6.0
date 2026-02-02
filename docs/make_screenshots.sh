@@ -5,5 +5,5 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "${REPO_ROOT}/frontend"
 
-npm install
+npm install --legacy-peer-deps
 npm run storybook:shots
