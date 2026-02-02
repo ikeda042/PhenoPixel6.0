@@ -71,6 +71,24 @@ async def delete_database_endpoint(dbname: Annotated[str, Path()]) -> dict:
     return {"deleted": True, "filename": deleted}
 
 
+@router_database_manager.patch("/database_files/{dbname}")
+async def rename_database_endpoint(
+    dbname: Annotated[str, Path()],
+    new_name: Annotated[str, Query(alias="new_name")] = ...,
+) -> dict:
+    try:
+        previous, updated = await DatabaseManagerCrud.rename_database(dbname, new_name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except FileExistsError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return {"previous": previous, "filename": updated}
+
+
 @router_database_manager.get("/get-cell-ids", response_model=list[str])
 def get_cell_ids_endpoint(dbname: Annotated[str, Query()] = ...) -> list[str]:
     try:

@@ -45,6 +45,11 @@ Response: `application/octet-stream`
 Delete a database file.  
 Response: `{ "deleted": true, "filename": "example.db" }`
 
+**PATCH** `/database_files/{dbname}`  
+Rename a database file.  
+Params: `new_name` (query, required)  
+Response: `{ "previous": "old.db", "filename": "new.db" }`
+
 ### Labels and Contours
 
 **GET** `/get-cell-ids`  

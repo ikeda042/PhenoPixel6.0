@@ -46,6 +46,9 @@ export default function DatabasesPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [downloadingDatabase, setDownloadingDatabase] = useState<string | null>(null)
   const [deletingDatabase, setDeletingDatabase] = useState<string | null>(null)
+  const [renamingDatabase, setRenamingDatabase] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [isRenaming, setIsRenaming] = useState(false)
   const [page, setPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
 
@@ -87,6 +90,7 @@ export default function DatabasesPage() {
     if (!query) return databases
     return databases.filter((name) => name.toLowerCase().includes(query))
   }, [databases, searchText])
+
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(filteredDatabases.length / PAGE_SIZE)),
@@ -137,7 +141,8 @@ export default function DatabasesPage() {
 
   const handleDownload = useCallback(
     async (dbName: string) => {
-      if (downloadingDatabase || deletingDatabase) return
+      if (downloadingDatabase || deletingDatabase || isRenaming || renamingDatabase)
+        return
       setDownloadingDatabase(dbName)
       setError(null)
       try {
@@ -163,12 +168,13 @@ export default function DatabasesPage() {
         setDownloadingDatabase(null)
       }
     },
-    [apiBase, deletingDatabase, downloadingDatabase],
+    [apiBase, deletingDatabase, downloadingDatabase, isRenaming, renamingDatabase],
   )
 
   const handleDelete = useCallback(
     async (dbName: string) => {
-      if (downloadingDatabase || deletingDatabase) return
+      if (downloadingDatabase || deletingDatabase || isRenaming || renamingDatabase)
+        return
       const confirmed = window.confirm(`Delete ${dbName}?`)
       if (!confirmed) return
       setDeletingDatabase(dbName)
@@ -189,8 +195,77 @@ export default function DatabasesPage() {
         setDeletingDatabase(null)
       }
     },
-    [apiBase, deletingDatabase, downloadingDatabase, fetchDatabases],
+    [
+      apiBase,
+      deletingDatabase,
+      downloadingDatabase,
+      fetchDatabases,
+      isRenaming,
+      renamingDatabase,
+    ],
   )
+
+  const beginRename = useCallback((dbName: string) => {
+    setError(null)
+    setRenamingDatabase(dbName)
+    setRenameValue(dbName)
+  }, [])
+
+  const cancelRename = useCallback(() => {
+    setRenamingDatabase(null)
+    setRenameValue('')
+  }, [])
+
+  const confirmRename = useCallback(async () => {
+    if (!renamingDatabase) return
+    const trimmed = renameValue.trim()
+    if (!trimmed) {
+      setError('Database name is required')
+      return
+    }
+    if (!trimmed.toLowerCase().endsWith('.db')) {
+      setError('Database name must end with .db')
+      return
+    }
+    if (trimmed === renamingDatabase) {
+      cancelRename()
+      return
+    }
+    setIsRenaming(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams({ new_name: trimmed })
+      const res = await fetch(
+        `${apiBase}/database_files/${encodeURIComponent(renamingDatabase)}?${params.toString()}`,
+        { method: 'PATCH', headers: { accept: 'application/json' } },
+      )
+      if (!res.ok) {
+        let message = `Rename failed (${res.status})`
+        try {
+          const data = (await res.json()) as { detail?: string }
+          if (data?.detail) {
+            message = data.detail
+          }
+        } catch {
+          // ignore json parse failures
+        }
+        throw new Error(message)
+      }
+      await res.json()
+      await fetchDatabases()
+      cancelRename()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to rename database')
+    } finally {
+      setIsRenaming(false)
+    }
+  }, [apiBase, cancelRename, fetchDatabases, renameValue, renamingDatabase])
+
+  useEffect(() => {
+    if (renamingDatabase && !filteredDatabases.includes(renamingDatabase)) {
+      cancelRename()
+    }
+  }, [cancelRename, filteredDatabases, renamingDatabase])
 
   const handleUploadClick = () => {
     inputRef.current?.click()
@@ -280,6 +355,7 @@ export default function DatabasesPage() {
                 placeholder="Search databases"
                 value={searchText}
                 onChange={(event) => setSearchText(event.target.value)}
+                disabled={Boolean(renamingDatabase) || isRenaming}
                 border="1px solid"
                 borderColor="sand.200"
                 color="ink.900"
@@ -319,7 +395,7 @@ export default function DatabasesPage() {
                 color="white"
                 _hover={{ bg: 'tide.400' }}
                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                disabled={!canGoPrev}
+                disabled={!canGoPrev || renamingDatabase !== null || isRenaming}
               >
                 Prev
               </Button>
@@ -334,7 +410,7 @@ export default function DatabasesPage() {
                 color="white"
                 _hover={{ bg: 'tide.400' }}
                 onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={!canGoNext}
+                disabled={!canGoNext || renamingDatabase !== null || isRenaming}
               >
                 Next
               </Button>
@@ -409,91 +485,179 @@ export default function DatabasesPage() {
 
             {!isLoading &&
               !error &&
-              pagedDatabases.map((name, index) => (
-                <Grid
-                  key={name}
-                  templateColumns={{ base: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 26rem' }}
-                  px="4"
-                  py="3"
-                  borderBottom={index === pagedDatabases.length - 1 ? 'none' : '1px solid'}
-                  borderColor="sand.200"
-                  _hover={{ bg: 'sand.200' }}
-                  transition="background 0.2s ease"
-                >
-                  <Text fontSize="sm" fontWeight="500">
-                    {name}
-                  </Text>
-                  <HStack
-                    spacing="2"
-                    justify={{ base: 'flex-start', md: 'flex-end' }}
-                    flexWrap={{ base: 'wrap', md: 'nowrap' }}
+              pagedDatabases.map((name, index) => {
+                const isEditing = renamingDatabase === name
+                const disableActions =
+                  isRenaming ||
+                  downloadingDatabase ||
+                  deletingDatabase ||
+                  (renamingDatabase !== null && !isEditing)
+                return (
+                  <Grid
+                    key={name}
+                    templateColumns={{
+                      base: 'minmax(0, 1fr)',
+                      md: 'minmax(0, 1fr) 26rem',
+                    }}
+                    px="4"
+                    py="3"
+                    borderBottom={
+                      index === pagedDatabases.length - 1 ? 'none' : '1px solid'
+                    }
+                    borderColor="sand.200"
+                    _hover={{ bg: 'sand.200' }}
+                    transition="background 0.2s ease"
                   >
-                    <Button
-                      size="xs"
-                      bg="tide.500"
-                      color="white"
-                      _hover={{ bg: 'tide.400' }}
-                      onClick={() =>
-                        navigate(`/cells?db=${encodeURIComponent(name)}`)
-                      }
+                    {isEditing ? (
+                      <Input
+                        size="sm"
+                        value={renameValue}
+                        onChange={(event) => setRenameValue(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            void confirmRename()
+                          }
+                          if (event.key === 'Escape') {
+                            cancelRename()
+                          }
+                        }}
+                        border="1px solid"
+                        borderColor="sand.200"
+                        color="ink.900"
+                        _focusVisible={{
+                          borderColor: 'tide.400',
+                          boxShadow: '0 0 0 1px var(--app-accent-ring)',
+                        }}
+                        autoFocus
+                      />
+                    ) : (
+                      <Text fontSize="sm" fontWeight="500">
+                        {name}
+                      </Text>
+                    )}
+                    <HStack
+                      spacing="2"
+                      justify={{ base: 'flex-start', md: 'flex-end' }}
+                      flexWrap={{ base: 'wrap', md: 'nowrap' }}
                     >
-                      Access
-                    </Button>
-                    <Button
-                      size="xs"
-                      bg="tide.500"
-                      color="white"
-                      _hover={{ bg: 'tide.400' }}
-                      onClick={() =>
-                        navigate(`/annotation?dbname=${encodeURIComponent(name)}`)
-                      }
-                    >
-                      Annotation
-                    </Button>
-                    <Button
-                      size="xs"
-                      bg="tide.500"
-                      color="white"
-                      _hover={{ bg: 'tide.400' }}
-                      onClick={() =>
-                        navigate(`/bulk-engine?dbname=${encodeURIComponent(name)}`)
-                      }
-                    >
-                      Bulk-engine
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      borderColor="tide.500"
-                      bg="tide.500"
-                      color="white"
-                      _hover={{ bg: 'tide.400' }}
-                      onClick={() => handleDownload(name)}
-                      loading={downloadingDatabase === name}
-                    >
-                      <HStack spacing="1">
-                        <Icon as={Download} boxSize={3.5} />
-                        <Box as="span">Download</Box>
-                      </HStack>
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      borderColor="red.500"
-                      bg="red.500"
-                      color="white"
-                      _hover={{ bg: 'red.600' }}
-                      onClick={() => handleDelete(name)}
-                      loading={deletingDatabase === name}
-                      aria-label={`Delete ${name}`}
-                      minW="auto"
-                      px="2"
-                    >
-                      <Icon as={Trash2} boxSize={3.5} />
-                    </Button>
-                  </HStack>
-                </Grid>
-              ))}
+                      {isEditing ? (
+                        <>
+                          <Button
+                            size="xs"
+                            bg="tide.500"
+                            color="white"
+                            _hover={{ bg: 'tide.400' }}
+                            onClick={() => void confirmRename()}
+                            loading={isRenaming}
+                            disabled={isRenaming}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            borderColor="sand.300"
+                            color="ink.700"
+                            _hover={{ bg: 'sand.200' }}
+                            onClick={cancelRename}
+                            disabled={isRenaming}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="xs"
+                            bg="tide.500"
+                            color="white"
+                            _hover={{ bg: 'tide.400' }}
+                            onClick={() =>
+                              navigate(`/cells?db=${encodeURIComponent(name)}`)
+                            }
+                            disabled={disableActions}
+                          >
+                            Access
+                          </Button>
+                          <Button
+                            size="xs"
+                            bg="tide.500"
+                            color="white"
+                            _hover={{ bg: 'tide.400' }}
+                            onClick={() =>
+                              navigate(
+                                `/annotation?dbname=${encodeURIComponent(name)}`,
+                              )
+                            }
+                            disabled={disableActions}
+                          >
+                            Annotation
+                          </Button>
+                          <Button
+                            size="xs"
+                            bg="tide.500"
+                            color="white"
+                            _hover={{ bg: 'tide.400' }}
+                            onClick={() =>
+                              navigate(
+                                `/bulk-engine?dbname=${encodeURIComponent(name)}`,
+                              )
+                            }
+                            disabled={disableActions}
+                          >
+                            Bulk-engine
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            borderColor="tide.500"
+                            bg="tide.500"
+                            color="white"
+                            _hover={{ bg: 'tide.400' }}
+                            onClick={() => beginRename(name)}
+                            disabled={disableActions}
+                          >
+                            Rename
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            borderColor="tide.500"
+                            bg="tide.500"
+                            color="white"
+                            _hover={{ bg: 'tide.400' }}
+                            onClick={() => handleDownload(name)}
+                            loading={downloadingDatabase === name}
+                            disabled={disableActions}
+                          >
+                            <HStack spacing="1">
+                              <Icon as={Download} boxSize={3.5} />
+                              <Box as="span">Download</Box>
+                            </HStack>
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            borderColor="red.500"
+                            bg="red.500"
+                            color="white"
+                            _hover={{ bg: 'red.600' }}
+                            onClick={() => handleDelete(name)}
+                            loading={deletingDatabase === name}
+                            aria-label={`Delete ${name}`}
+                            minW="auto"
+                            px="2"
+                            disabled={disableActions}
+                          >
+                            <Icon as={Trash2} boxSize={3.5} />
+                          </Button>
+                        </>
+                      )}
+                    </HStack>
+                  </Grid>
+                )
+              })}
           </Box>
         </Stack>
       </Container>

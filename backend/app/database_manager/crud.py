@@ -78,6 +78,29 @@ async def delete_database(db_name: str) -> str:
     return db_path.name
 
 
+async def rename_database(old_name: str, new_name: str) -> tuple[str, str]:
+    old_cleaned = _sanitize_db_name(old_name)
+    new_cleaned = _sanitize_db_name(new_name)
+    if old_cleaned == new_cleaned:
+        return old_cleaned, new_cleaned
+    old_path = DATABASES_DIR / old_cleaned
+    if not old_path.is_file():
+        raise FileNotFoundError("Database not found")
+    new_path = DATABASES_DIR / new_cleaned
+    if new_path.exists():
+        raise FileExistsError("Database name already exists")
+    for suffix in ("-wal", "-shm", "-journal"):
+        sidecar_new = DATABASES_DIR / f"{new_cleaned}{suffix}"
+        if sidecar_new.exists():
+            raise FileExistsError("Database name already exists")
+    await aioos.rename(old_path, new_path)
+    for suffix in ("-wal", "-shm", "-journal"):
+        sidecar_old = DATABASES_DIR / f"{old_cleaned}{suffix}"
+        if sidecar_old.is_file():
+            await aioos.rename(sidecar_old, DATABASES_DIR / f"{new_cleaned}{suffix}")
+    return old_cleaned, new_cleaned
+
+
 def get_database_session(db_name: str) -> Session:
     """
     Return a synchronous SQLAlchemy session for the given database file.
