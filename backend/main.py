@@ -17,11 +17,13 @@ from app.nd2files.router import router_nd2
 from app.nd2parser.router import router_nd2parser
 from app.system.router import router_system
 
-API_PREFIX = "/api/v1"
-app = FastAPI(docs_url=f"{API_PREFIX}/docs", openapi_url=f"{API_PREFIX}/openapi.json")
-logger = logging.getLogger("uvicorn.error")
-FRONTEND_DIST_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
-FRONTEND_INDEX = FRONTEND_DIST_DIR / "index.html"
+API_PREFIX: str = "/api/v1"
+app: FastAPI = FastAPI(
+    docs_url=f"{API_PREFIX}/docs", openapi_url=f"{API_PREFIX}/openapi.json"
+)
+logger: logging.Logger = logging.getLogger("uvicorn.error")
+FRONTEND_DIST_DIR: Path = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+FRONTEND_INDEX: Path = FRONTEND_DIST_DIR / "index.html"
 
 app.add_middleware(
     CORSMiddleware,
@@ -80,7 +82,7 @@ def read_health() -> dict[str, str]:
 
 
 if FRONTEND_INDEX.is_file():
-    assets_dir = FRONTEND_DIST_DIR / "assets"
+    assets_dir: Path = FRONTEND_DIST_DIR / "assets"
     if assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
@@ -92,7 +94,7 @@ if FRONTEND_INDEX.is_file():
     def serve_spa(full_path: str) -> FileResponse:
         if full_path.startswith(API_PREFIX.lstrip("/")):
             raise HTTPException(status_code=404, detail="Not Found")
-        file_path = FRONTEND_DIST_DIR / full_path
+        file_path: Path = FRONTEND_DIST_DIR / full_path
         if file_path.is_file():
             return FileResponse(file_path)
         return FileResponse(FRONTEND_INDEX)
