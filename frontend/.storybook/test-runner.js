@@ -1,11 +1,10 @@
-import type { TestRunnerConfig } from '@storybook/test-runner'
-import { mkdirSync } from 'node:fs'
-import path from 'node:path'
+const { mkdirSync } = require('node:fs')
+const path = require('node:path')
 
 const defaultImagesRoot = path.resolve(__dirname, '..', '..', 'docs', 'images')
 const imagesRoot = process.env.STORYBOOK_SCREENSHOT_DIR ?? defaultImagesRoot
 
-const sanitize = (segment: string) =>
+const sanitize = (segment) =>
   segment
     .trim()
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
@@ -14,7 +13,7 @@ const sanitize = (segment: string) =>
     .replace(/^-+|-+$/g, '')
     .toLowerCase()
 
-const config: TestRunnerConfig = {
+module.exports = {
   async preVisit(page) {
     await page.setViewportSize({ width: 1280, height: 720 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -23,7 +22,7 @@ const config: TestRunnerConfig = {
         '*{animation:none!important;transition:none!important}\n*::before{animation:none!important;transition:none!important}\n*::after{animation:none!important;transition:none!important}',
     })
   },
-  async postRender(page, context) {
+  async postVisit(page, context) {
     const titleSegments = context.title.split('/').map(sanitize)
     const storyName = sanitize(context.name)
     const outputDir = path.join(imagesRoot, ...titleSegments)
@@ -35,5 +34,3 @@ const config: TestRunnerConfig = {
     })
   },
 }
-
-export default config
