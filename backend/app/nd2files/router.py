@@ -11,9 +11,9 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, Path as ApiPath
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-router_nd2 = APIRouter(tags=["nd2files"])
-UPLOAD_DIR = Path(__file__).resolve().parent
-UPLOAD_CHUNK_SIZE = 1024 * 1024 * 200
+router_nd2: APIRouter = APIRouter(tags=["nd2files"])
+UPLOAD_DIR: Path = Path(__file__).resolve().parent
+UPLOAD_CHUNK_SIZE: int = 1024 * 1024 * 200
 
 
 class Nd2BulkDeleteRequest(BaseModel):
@@ -79,7 +79,7 @@ def _to_jsonable(value: Any, depth: int = 0, max_depth: int = 6) -> Any:
     return str(value)
 
 
-_DATETIME_FORMATS = (
+_DATETIME_FORMATS: tuple[str, ...] = (
     "%m/%d/%Y  %H:%M:%S",
     "%m/%d/%Y  %I:%M:%S %p",
     "%m/%d/%Y %H:%M:%S",
@@ -92,7 +92,7 @@ _DATETIME_FORMATS = (
     "%Y-%m-%dT%H:%M:%S",
     "%Y-%m-%dT%H:%M:%S.%f",
 )
-_DATETIME_REGEX = re.compile(
+_DATETIME_REGEX: re.Pattern[str] = re.compile(
     r"(?:\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?|\d{2}[-/]\d{2}[-/]\d{4}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?: ?[AP]M)?)"
 )
 
