@@ -35,7 +35,10 @@ async def analyze_graph_engine(
             payloads.append((file.filename or "file.csv", content))
         if not payloads:
             raise ValueError("No valid CSV files uploaded")
-        results = await GraphEngineCrud.analyze_files(mode, payloads, ctrl_bytes)
+        loop = asyncio.get_running_loop()
+        results = await loop.run_in_executor(
+            None, GraphEngineCrud.analyze_files, mode, payloads, ctrl_bytes
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
