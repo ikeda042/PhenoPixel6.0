@@ -1,5 +1,4 @@
 import io
-import asyncio
 from dataclasses import dataclass
 
 import matplotlib
@@ -214,7 +213,7 @@ class GraphEngineCrud:
         return buf.getvalue()
 
     @classmethod
-    async def analyze_files(
+    def analyze_files(
         cls,
         mode: str,
         files: list[tuple[str, bytes]],
@@ -226,15 +225,11 @@ class GraphEngineCrud:
         ctrl_value: float | None = None
         if ctrl_bytes is not None:
             ctrl_text = cls._safe_decode(ctrl_bytes)
-            ctrl_value = await asyncio.to_thread(cls._parse_ctrl, ctrl_text)
+            ctrl_value = cls._parse_ctrl(ctrl_text)
         results: list[GraphEngineResult] = []
         for name, content in files:
             text = cls._safe_decode(content)
-            mean_length, nagg_rate = await asyncio.to_thread(
-                cls._analyze_csv,
-                text,
-                ctrl_value,
-            )
+            mean_length, nagg_rate = cls._analyze_csv(text, ctrl_value)
             results.append(
                 GraphEngineResult(
                     filename=name,
