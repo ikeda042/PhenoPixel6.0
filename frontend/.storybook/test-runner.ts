@@ -23,7 +23,7 @@ const config: TestRunnerConfig = {
         '*{animation:none!important;transition:none!important}\n*::before{animation:none!important;transition:none!important}\n*::after{animation:none!important;transition:none!important}',
     })
   },
-  async postRender(page, context) {
+  async postVisit(page, context) {
     const titleSegments = context.title.split('/').map(sanitize)
     const storyName = sanitize(context.name)
     const outputDir = path.join(imagesRoot, ...titleSegments)
