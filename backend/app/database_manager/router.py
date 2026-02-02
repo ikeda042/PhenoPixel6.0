@@ -10,10 +10,10 @@ from fastapi.responses import StreamingResponse
 from app.database_manager.crud import DatabaseManagerCrud
 
 
-router_database_manager = APIRouter(tags=["database_manager"])
-annotation_executor = ProcessPoolExecutor()
-heatmap_executor = ProcessPoolExecutor(max_workers=1)
-UPLOAD_CHUNK_SIZE = 1024 * 1024 * 100
+router_database_manager: APIRouter = APIRouter(tags=["database_manager"])
+annotation_executor: ProcessPoolExecutor = ProcessPoolExecutor()
+heatmap_executor: ProcessPoolExecutor = ProcessPoolExecutor(max_workers=1)
+UPLOAD_CHUNK_SIZE: int = 1024 * 1024 * 100
 
 
 @router_database_manager.get("/get-databases", response_model=list[str])
