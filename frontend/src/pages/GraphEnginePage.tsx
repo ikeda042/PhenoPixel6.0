@@ -179,6 +179,7 @@ export default function GraphEnginePage() {
         fd.append('mode', graphMode)
         const imageRes = await fetch(endpoint, {
           method: 'POST',
+          headers: { accept: 'image/png' },
           body: fd,
         })
         if (!imageRes.ok) {
@@ -194,42 +195,67 @@ export default function GraphEnginePage() {
       }
 
       const heatmapPromises = selectedFiles.map(async (file) => {
-        const [abs, rel, dist, distBox] = await Promise.all([
+        const results = await Promise.allSettled([
           createImage(`${apiBase}/graph_engine/heatmap_abs`, file),
           createImage(`${apiBase}/graph_engine/heatmap_rel`, file),
           createImage(`${apiBase}/graph_engine/distribution`, file),
           createImage(`${apiBase}/graph_engine/distribution_box`, file),
         ])
 
-        if (!abs && !rel && !dist && !distBox) {
+        if (runIdRef.current !== runId) {
           return null
         }
 
-        return [
-          file.name,
-          {
+        const abs = results[0].status === 'fulfilled' ? results[0].value : null
+        const rel = results[1].status === 'fulfilled' ? results[1].value : null
+        const dist = results[2].status === 'fulfilled' ? results[2].value : null
+        const distBox = results[3].status === 'fulfilled' ? results[3].value : null
+
+        const successCount = [abs, rel, dist, distBox].filter(Boolean).length
+        const failureCount = results.filter((item) => item.status === 'rejected').length
+
+        if (!abs && !rel && !dist && !distBox) {
+          return { name: file.name, urls: null, failureCount, successCount }
+        }
+
+        return {
+          name: file.name,
+          urls: {
             abs: abs ?? undefined,
             rel: rel ?? undefined,
             dist: dist ?? undefined,
             dist_box: distBox ?? undefined,
           },
-        ] as const
+          failureCount,
+          successCount,
+        }
       })
 
-      const heatmapEntries = await Promise.allSettled(heatmapPromises)
+      const heatmapEntries = await Promise.all(heatmapPromises)
       if (runIdRef.current !== runId) {
         return
       }
 
       const nextHeatmaps: Record<string, HeatmapUrls> = {}
+      let totalFailures = 0
+      let totalSuccesses = 0
       heatmapEntries.forEach((entry) => {
-        if (entry.status === 'fulfilled' && entry.value) {
-          const [name, urls] = entry.value
-          nextHeatmaps[name] = urls
+        if (!entry) {
+          return
+        }
+        totalFailures += entry.failureCount
+        totalSuccesses += entry.successCount
+        if (entry.urls) {
+          nextHeatmaps[entry.name] = entry.urls
         }
       })
 
       replaceHeatmaps(nextHeatmaps)
+      if (totalFailures > 0 && totalSuccesses === 0) {
+        setError('Failed to render graphs from the selected CSV file(s).')
+      } else if (totalFailures > 0) {
+        setError('Some graphs could not be rendered for the selected CSV file(s).')
+      }
     } catch (err) {
       if (runIdRef.current !== runId) {
         return
