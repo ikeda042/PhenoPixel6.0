@@ -622,12 +622,6 @@ export default function CellExtractionPage() {
                         boxShadow: '0 0 0 1px var(--app-accent-ring)',
                       }}
                     />
-                    <Text fontSize="xs" color="ink.700">
-                      画面暗め: 60-75
-                    </Text>
-                    <Text fontSize="xs" color="ink.700">
-                      画面明るめ: 115-140
-                    </Text>
                   </Stack>
 
                   <Stack spacing="2">
