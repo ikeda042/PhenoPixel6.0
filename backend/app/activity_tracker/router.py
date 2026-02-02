@@ -10,8 +10,8 @@ from app.activity_tracker.crud import (
     record_activity,
 )
 
-router_activity_tracker = APIRouter(tags=["activity_tracker"])
-logger = logging.getLogger("uvicorn.error")
+router_activity_tracker: APIRouter = APIRouter(tags=["activity_tracker"])
+logger: logging.Logger = logging.getLogger("uvicorn.error")
 
 
 class TrackActivityRequest(BaseModel):
@@ -63,4 +63,3 @@ async def get_weekly_activity(
         logger.error("Failed to load activity summary: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to load activity summary") from exc
     return ActivitySummaryResponse(**summary)
-
