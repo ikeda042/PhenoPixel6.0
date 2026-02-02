@@ -12,6 +12,7 @@ from app.cellextraction.router import router_cellextraction
 from app.database_manager.router import router_database_manager
 from app.extracted_data.router import router_extracted_data
 from app.file_manager.router import router_file_manager
+from app.graphengine.router import router_graphengine
 from app.nd2files.router import router_nd2
 from app.nd2parser.router import router_nd2parser
 from app.system.router import router_system
@@ -36,6 +37,7 @@ app.include_router(router_cellextraction, prefix=API_PREFIX)
 app.include_router(router_database_manager, prefix=API_PREFIX)
 app.include_router(router_bulk_engine, prefix=API_PREFIX)
 app.include_router(router_file_manager, prefix=API_PREFIX)
+app.include_router(router_graphengine, prefix=API_PREFIX)
 app.include_router(router_system, prefix=API_PREFIX)
 app.include_router(router_activity_tracker, prefix=API_PREFIX)
 
