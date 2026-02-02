@@ -1,5 +1,6 @@
 import { ChakraProvider } from '@chakra-ui/react'
 import type { FC } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import '@fontsource/noto-sans-jp/400.css'
 import '@fontsource/noto-sans-jp/600.css'
 import '@fontsource/noto-sans-jp/700.css'
@@ -25,7 +26,9 @@ const preview = {
   decorators: [
     (Story: FC) => (
       <ChakraProvider value={system}>
-        <Story />
+        <MemoryRouter>
+          <Story />
+        </MemoryRouter>
       </ChakraProvider>
     ),
   ],
