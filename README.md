@@ -6,8 +6,11 @@ provides a UI for running workflows.
 
 ![Cell extraction preview](docs/screen-records/cell-extraction.preview.gif)
 
-# ND2manager
+## ND2 Manager
 
+Manage ND2 files in this page: upload new datasets, delete existing ones, and select a specific ND2 file to proceed to Cell Extraction.
+
+![ND2 manager](docs/screenshots/nd2manager1.png)
 
 ## Cell Extraction
 
