@@ -6,6 +6,8 @@ provides a UI for running workflows.
 
 ![Cell extraction preview](docs/screen-records/cell-extraction.preview.gif)
 
+# ND2manager
+
 
 ## Cell Extraction
 
