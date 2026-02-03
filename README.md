@@ -60,6 +60,8 @@ To label `Label 1` (right panel), click a target cell (single cell) or use Shift
 
 ![Annotation labeling multiple](docs/screenshots/annotation3.png)
 
+## Bulk engine
+
 ## Requirements
 
 - Python 3.x (Launch uses `python3.14`)
