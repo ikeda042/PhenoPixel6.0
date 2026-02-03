@@ -14,6 +14,7 @@ from pydantic import BaseModel
 router_nd2: APIRouter = APIRouter(tags=["nd2files"])
 UPLOAD_DIR: Path = Path(__file__).resolve().parent
 UPLOAD_CHUNK_SIZE: int = 1024 * 1024 * 200
+DOWNLOAD_CHUNK_SIZE: int = 1024 * 1024 * 200
 
 
 class Nd2BulkDeleteRequest(BaseModel):
@@ -387,6 +388,7 @@ async def download_nd2_file(filename: Annotated[str, ApiPath()]) -> FileResponse
         file_path,
         media_type="application/octet-stream",
         filename=sanitized,
+        chunk_size=DOWNLOAD_CHUNK_SIZE,
     )
 
 
