@@ -26,6 +26,7 @@ Manage ND2 files in this page: upload new datasets, delete existing ones, and se
 
 ![Extraction results and next actions](docs/screenshots/cell_extraction3.png)
 
+## Database manager 
 
 ## Requirements
 
