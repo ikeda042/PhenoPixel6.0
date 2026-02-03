@@ -60,7 +60,13 @@ To label `Label 1` (right panel), click a target cell (single cell) or use Shift
 
 ![Annotation labeling multiple](docs/screenshots/annotation3.png)
 
-## Bulk engine
+## Bulk Engine
+
+For a database after annotation, the left panel shows the cells labeled with the default `Label 1`. If debris or non-single cells are mixed in, return to the Annotation page and relabel. Once only single cells are labeled, you can run batch analytics on this population.
+
+![Bulk engine selection](docs/screenshots/bulk1.png)
+
+![Bulk engine analysis](docs/screenshots/bulk2.png)
 
 ## Requirements
 
