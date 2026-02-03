@@ -9,6 +9,18 @@ provides a UI for running workflows.
 
 ## Cell Extraction
 
+1. Configure extraction. For the selected ND2 file, choose the Canny algorithm parameters, ROI crop size, number of fluorescence layers, and whether Auto Annotation is on or off. Press `Extract cells` to start the extraction run.
+
+![Cell extraction setup](docs/screenshots/cell_extraction1.png)
+
+2. Auto annotation behavior. When Auto Annotation is `On`, an additional post-processing step runs after extraction to automatically separate cells from debris.
+
+![Auto annotation processing](docs/screenshots/cell_extraction2.png)
+
+3. Review results and proceed. When extraction finishes, the right panel shows all extracted cell contours across every frame. From here you can open the generated cell database or go to the cell labeling (annotation) page. If contours are not extracted well (for example, due to mismatched Canny parameters), adjust settings in the parameter tuning section and click `Re-extract` to run extraction again.
+
+![Extraction results and next actions](docs/screenshots/cell_extraction3.png)
+
 
 ## Requirements
 
