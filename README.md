@@ -68,6 +68,19 @@ For a database after annotation, the left panel shows the cells labeled with the
 
 ![Bulk engine analysis](docs/screenshots/bulk2.png)
 
+Batch analysis modes available in Bulk Engine include:
+- `Cell length`: measure cell length (um) from contours.
+- `Cell area`: compute cell area (px^2).
+- `Normalized median`: calculate normalized median intensity per cell for a selected channel.
+- `FITC aggregation ratio`: compute aggregation ratio for FITC signal.
+- `Entropy`: quantify intensity distribution using entropy (1 - sparsity).
+- `Heatmap`: generate heatmap vectors/plots for the selected channel.
+- `Contours`: visualize aligned contours and export contour coordinates.
+- `Map256`: render a Map256 strip across cells.
+- `Raw data`: export raw intensity values inside each contour.
+
+![Bulk engine analysis modes](docs/screenshots/bulk3.png)
+
 ## Requirements
 
 - Python 3.x (Launch uses `python3.14`)
