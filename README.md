@@ -4,6 +4,8 @@ PhenoPixel6.0 is a backend + frontend app for microscopy cell extraction and
 batch analytics. The backend exposes APIs under `/api/v1`, and the frontend
 provides a UI for running workflows.
 
+# Cell Extraction
+
 ## Requirements
 
 - Python 3.x (Launch uses `python3.14`)
