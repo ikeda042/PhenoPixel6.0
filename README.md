@@ -36,6 +36,18 @@ When you click `Access` on a specific cell database row, you are taken to a page
 
 ![Database access](docs/screenshots/database_manager2.png)
 
+The function panel offers the following view modes:
+- `Contour`: view extracted contours only.
+- `Replot`: refresh the current plot from stored data.
+- `Overlay`: overlay contours on the default image.
+- `Overlay Raw`: overlay contours on the raw image.
+- `Overlay Fluo`: overlay contours on the fluorescence image.
+- `Heatmap`: visualize signal intensity as a heatmap.
+- `Map 256`: render a 256-level mapped view.
+- `Distribution`: show the value distribution for the selected cell or region.
+
+![Function panel modes](docs/screenshots/database_manager3.png)
+
 ## Requirements
 
 - Python 3.x (Launch uses `python3.14`)
