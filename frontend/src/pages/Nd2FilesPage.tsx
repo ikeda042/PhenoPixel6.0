@@ -25,7 +25,7 @@ import {
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
 import ThemeToggleButton from '../components/ThemeToggleButton'
-import { Search, Trash2 } from 'lucide-react'
+import { Download, Search, Trash2 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 
 type Nd2FilesResponse = {
@@ -470,14 +470,17 @@ export default function Nd2FilesPage() {
             </HStack>
             <HStack spacing="2" align="center" flexWrap="wrap">
               <Button
-                size="sm"
+                size="xs"
                 bg="tide.500"
                 color="white"
                 _hover={{ bg: 'tide.400' }}
                 onClick={handleUploadClick}
                 loading={isUploading}
               >
-                Upload ND2
+                <HStack spacing="1">
+                  <Icon as={Download} boxSize={3.5} />
+                  <Box as="span">Upload ND2</Box>
+                </HStack>
               </Button>
               <Button
                 size="xs"
