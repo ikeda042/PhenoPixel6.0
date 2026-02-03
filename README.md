@@ -83,6 +83,10 @@ JSON export is also supported, including raw intensity data.
 
 ![Bulk engine analysis modes](docs/screenshots/bulk3.png)
 
+For example, in `Heatmap` mode you can aggregate and visualize GFP localization for all cells of the selected label in a single plot.
+
+![Bulk engine heatmap example](docs/screenshots/bulk4.png)
+
 ## Requirements
 
 - Python 3.x (Launch uses `python3.14`)
