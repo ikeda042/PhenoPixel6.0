@@ -4,14 +4,13 @@ PhenoPixel6.0 is a backend + frontend app for microscopy cell extraction and
 batch analytics. The backend exposes APIs under `/api/v1`, and the frontend
 provides a UI for running workflows.
 
+![Cell extraction preview](docs/screen-records/cell-extraction.preview.gif)
+
+
 ## Cell Extraction
 Cell extraction converts ND2 microscopy files into per-cell crops, contour
 overlays, and SQLite databases for downstream analysis. The backend runs the
 pipeline asynchronously and exposes the results via the API.
-
-![Cell extraction preview](docs/screen-records/cell-extraction.preview.gif)
-
-[Cell extraction walkthrough (mp4)](docs/screen-records/cell-extraction.compressed.mp4)
 
 ## Requirements
 
