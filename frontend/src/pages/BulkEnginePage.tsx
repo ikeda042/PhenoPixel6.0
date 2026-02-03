@@ -102,6 +102,7 @@ export default function BulkEnginePage() {
   const fitcThreshold = 0.7414
 
   const [cells, setCells] = useState<BulkCell[]>([])
+  const [previewCellId, setPreviewCellId] = useState<string | null>(null)
   const [selectedLabel, setSelectedLabel] = useState('1')
   const [selectedChannel, setSelectedChannel] = useState('ph')
   const [isLoading, setIsLoading] = useState(false)
@@ -185,6 +186,7 @@ export default function BulkEnginePage() {
       setError('Database is required.')
       setCells([])
       setIsLoading(false)
+      setPreviewCellId(null)
       return
     }
 
@@ -196,6 +198,7 @@ export default function BulkEnginePage() {
       setError(null)
       setSelectedLabel('1')
       setCells([])
+      setPreviewCellId(null)
       try {
         const params = new URLSearchParams({
           dbname: dbName,
@@ -397,6 +400,18 @@ export default function BulkEnginePage() {
     if (selectedLabel === 'All') return cells
     return cells.filter((cell) => cell.label === selectedLabel)
   }, [cells, selectedLabel])
+
+  const previewCell = useMemo(() => {
+    if (!previewCellId) return null
+    return cells.find((cell) => cell.cellId === previewCellId) ?? null
+  }, [cells, previewCellId])
+
+  useEffect(() => {
+    if (!previewCellId) return
+    if (!previewCell) {
+      setPreviewCellId(null)
+    }
+  }, [previewCell, previewCellId])
 
   useEffect(() => {
     if (lengthPlotUrlRef.current) {
@@ -1900,6 +1915,18 @@ export default function BulkEnginePage() {
                           p="1"
                           borderWidth="1px"
                           borderColor="sand.200"
+                          cursor="pointer"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setPreviewCellId(cell.cellId)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              setPreviewCellId(cell.cellId)
+                            }
+                          }}
+                          _hover={{ borderColor: 'tide.400', boxShadow: 'sm' }}
+                          _focusVisible={{ outline: '2px solid', outlineColor: 'tide.400' }}
                         >
                           <AspectRatio ratio={1}>
                             <Box
@@ -3094,6 +3121,71 @@ export default function BulkEnginePage() {
           )}
         </Stack>
       </Container>
+      {previewCell && (
+        <Box
+          position="fixed"
+          inset="0"
+          bg="rgba(11, 13, 16, 0.55)"
+          zIndex={1450}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          px="4"
+          onClick={() => setPreviewCellId(null)}
+        >
+          <Box
+            bg="sand.100"
+            border="1px solid"
+            borderColor="sand.200"
+            borderRadius="xl"
+            p={{ base: 3, md: 4 }}
+            w="100%"
+            maxW={{ base: '92vw', md: '640px' }}
+            display="flex"
+            flexDirection="column"
+            gap="3"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <HStack justify="space-between" align="center" spacing="3" flexWrap="wrap">
+              <Box>
+                <Text fontSize="sm" fontWeight="600" color="ink.900">
+                  Cell {previewCell.cellId}
+                </Text>
+                <Text fontSize="xs" color="ink.700">
+                  Label: {previewCell.label}
+                </Text>
+              </Box>
+              <Button
+                size="xs"
+                variant="outline"
+                borderColor="tide.500"
+                bg="tide.500"
+                color="white"
+                _hover={{ bg: 'tide.400' }}
+                onClick={() => setPreviewCellId(null)}
+              >
+                Close
+              </Button>
+            </HStack>
+            <Box display="flex" justifyContent="center">
+              <Box w="min(82vw, 70vh)" maxW="520px">
+                <AspectRatio ratio={1}>
+                  <Box
+                    as="img"
+                    src={previewCell.url}
+                    alt={`Cell ${previewCell.cellId}`}
+                    objectFit="contain"
+                    bg="sand.50"
+                    borderRadius="md"
+                  />
+                </AspectRatio>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      )}
       {jsonModal && (
         <Box
           position="fixed"
