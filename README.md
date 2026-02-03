@@ -79,6 +79,8 @@ Batch analysis modes available in Bulk Engine include:
 - `Map256`: render a Map256 strip across cells.
 - `Raw data`: export raw intensity values inside each contour.
 
+JSON export is also supported, including raw intensity data.
+
 ![Bulk engine analysis modes](docs/screenshots/bulk3.png)
 
 ## Requirements
