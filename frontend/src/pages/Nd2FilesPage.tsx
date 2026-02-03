@@ -432,17 +432,6 @@ export default function Nd2FilesPage() {
               />
             </InputGroup>
 
-            <Button
-              size="sm"
-              bg="tide.500"
-              color="white"
-              _hover={{ bg: 'tide.400' }}
-              onClick={handleUploadClick}
-              loading={isUploading}
-              alignSelf={{ base: 'flex-start', md: 'center' }}
-            >
-              Upload ND2
-            </Button>
           </Stack>
 
           <HStack
@@ -480,6 +469,16 @@ export default function Nd2FilesPage() {
               </Text>
             </HStack>
             <HStack spacing="2" align="center" flexWrap="wrap">
+              <Button
+                size="sm"
+                bg="tide.500"
+                color="white"
+                _hover={{ bg: 'tide.400' }}
+                onClick={handleUploadClick}
+                loading={isUploading}
+              >
+                Upload ND2
+              </Button>
               <Button
                 size="xs"
                 variant="outline"
