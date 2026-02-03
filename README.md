@@ -48,6 +48,8 @@ The function panel offers the following view modes:
 
 ![Function panel modes](docs/screenshots/database_manager3.png)
 
+# Annotation 
+
 ## Requirements
 
 - Python 3.x (Launch uses `python3.14`)
