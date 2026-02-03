@@ -4,14 +4,28 @@ PhenoPixel6.0 is a backend + frontend app for microscopy cell extraction and
 batch analytics. The backend exposes APIs under `/api/v1`, and the frontend
 provides a UI for running workflows.
 
-## Cell Extraction
-Cell extraction converts ND2 microscopy files into per-cell crops, contour
-overlays, and SQLite databases for downstream analysis. The backend runs the
-pipeline asynchronously and exposes the results via the API.
-
 ![Cell extraction preview](docs/screen-records/cell-extraction.preview.gif)
 
-[Cell extraction walkthrough (mp4)](docs/screen-records/cell-extraction.compressed.mp4)
+## ND2 Manager
+
+Manage ND2 files in this page: upload new datasets, delete existing ones, and select a specific ND2 file to proceed to Cell Extraction.
+
+![ND2 manager](docs/screenshots/nd2manager1.png)
+
+## Cell Extraction
+
+1. Configure extraction. For the selected ND2 file, choose the Canny algorithm parameters, ROI crop size, number of fluorescence layers, and whether Auto Annotation is on or off. Press `Extract cells` to start the extraction run.
+
+![Cell extraction setup](docs/screenshots/cell_extraction1.png)
+
+2. Auto annotation behavior. When Auto Annotation is `On`, an additional post-processing step runs after extraction to automatically separate cells from debris.
+
+![Auto annotation processing](docs/screenshots/cell_extraction2.png)
+
+3. Review results and proceed. When extraction finishes, the right panel shows all extracted cell contours across every frame. From here you can open the generated cell database or go to the cell labeling (annotation) page. If contours are not extracted well (for example, due to mismatched Canny parameters), adjust settings in the parameter tuning section and click `Re-extract` to run extraction again.
+
+![Extraction results and next actions](docs/screenshots/cell_extraction3.png)
+
 
 ## Requirements
 
