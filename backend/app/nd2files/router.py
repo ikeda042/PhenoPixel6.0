@@ -384,12 +384,13 @@ async def download_nd2_file(filename: Annotated[str, ApiPath()]) -> FileResponse
     file_path = _ensure_upload_dir() / sanitized
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(
+    response = FileResponse(
         file_path,
         media_type="application/octet-stream",
         filename=sanitized,
-        chunk_size=DOWNLOAD_CHUNK_SIZE,
     )
+    response.chunk_size = DOWNLOAD_CHUNK_SIZE
+    return response
 
 
 @router_nd2.get("/nd2_files/{filename}/metadata")
