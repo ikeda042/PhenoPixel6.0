@@ -60,7 +60,32 @@ To label `Label 1` (right panel), click a target cell (single cell) or use Shift
 
 ![Annotation labeling multiple](docs/screenshots/annotation3.png)
 
-## Bulk engine
+## Bulk Engine
+
+For a database after annotation, the left panel shows the cells labeled with the default `Label 1`. If debris or non-single cells are mixed in, return to the Annotation page and relabel. Once only single cells are labeled, you can run batch analytics on this population.
+
+![Bulk engine selection](docs/screenshots/bulk1.png)
+
+![Bulk engine analysis](docs/screenshots/bulk2.png)
+
+Batch analysis modes available in Bulk Engine include:
+- `Cell length`: measure cell length (um) from contours.
+- `Cell area`: compute cell area (px^2).
+- `Normalized median`: calculate normalized median intensity per cell for a selected channel.
+- `FITC aggregation ratio`: compute aggregation ratio for FITC signal.
+- `Entropy`: quantify intensity distribution using entropy (1 - sparsity).
+- `Heatmap`: generate heatmap vectors/plots for the selected channel.
+- `Contours`: visualize aligned contours and export contour coordinates.
+- `Map256`: render a Map256 strip across cells.
+- `Raw data`: export raw intensity values inside each contour.
+
+JSON export is also supported, including raw intensity data.
+
+![Bulk engine analysis modes](docs/screenshots/bulk3.png)
+
+For example, in `Heatmap` mode you can aggregate and visualize GFP localization for all cells of the selected label in a single plot.
+
+![Bulk engine heatmap example](docs/screenshots/bulk4.png)
 
 ## Requirements
 
