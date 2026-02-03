@@ -48,7 +48,17 @@ The function panel offers the following view modes:
 
 ![Function panel modes](docs/screenshots/database_manager3.png)
 
-# Annotation 
+## Annotation
+
+Auto-detected contours can include debris or merged cells (not single cells), so you need to remove these manually.
+
+![Annotation cleanup](docs/screenshots/annotation1.png)
+
+To label `Label 1` (right panel), click a target cell (single cell) or use Shift + drag to select multiple cells, then press `Apply`. The right panel updates the labels in real time. You can also revert `Label 1` back to `N/A` (backwards labeling is supported).
+
+![Annotation labeling](docs/screenshots/annotation2.png)
+
+![Annotation labeling multiple](docs/screenshots/annotation3.png)
 
 ## Requirements
 
