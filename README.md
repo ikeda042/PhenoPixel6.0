@@ -8,9 +8,7 @@ provides a UI for running workflows.
 
 
 ## Cell Extraction
-Cell extraction converts ND2 microscopy files into per-cell crops, contour
-overlays, and SQLite databases for downstream analysis. The backend runs the
-pipeline asynchronously and exposes the results via the API.
+
 
 ## Requirements
 
