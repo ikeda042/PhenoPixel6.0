@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
-import { Flex } from '@chakra-ui/react'
+import { Flex, Icon, IconButton } from '@chakra-ui/react'
 import type { FlexProps } from '@chakra-ui/react'
+import { HelpCircle } from 'lucide-react'
 
 type AppHeaderProps = Omit<FlexProps, 'children'> & {
   children: ReactNode
@@ -11,7 +12,6 @@ const AppHeader = ({ children, bg = 'sand.50/85', ...rest }: AppHeaderProps) => 
   <Flex
     as="header"
     align="center"
-    justify="space-between"
     px={{ base: 4, md: 8 }}
     h="4rem"
     borderBottom="1px solid"
@@ -23,7 +23,28 @@ const AppHeader = ({ children, bg = 'sand.50/85', ...rest }: AppHeaderProps) => 
     zIndex="sticky"
     {...rest}
   >
-    {children}
+    <Flex align="center" justify="space-between" flex="1" minW="0">
+      {children}
+    </Flex>
+    <IconButton
+      as="a"
+      href="https://github.com/ikeda042/PhenoPixel6.0"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Open PhenoPixel GitHub repository"
+      size={{ base: 'xs', md: 'sm' }}
+      h={{ base: '1.75rem', md: '2rem' }}
+      minW={{ base: '1.75rem', md: '2rem' }}
+      ms={{ base: 2, md: 3 }}
+      border="1px solid"
+      borderColor="sand.200"
+      bg="sand.100"
+      color="ink.700"
+      _hover={{ bg: 'sand.200', color: 'ink.900' }}
+      flexShrink={0}
+    >
+      <Icon as={HelpCircle} boxSize={{ base: 3, md: 4 }} />
+    </IconButton>
   </Flex>
 )
 
