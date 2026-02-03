@@ -9,6 +9,8 @@ Cell extraction converts ND2 microscopy files into per-cell crops, contour
 overlays, and SQLite databases for downstream analysis. The backend runs the
 pipeline asynchronously and exposes the results via the API.
 
+![Cell extraction preview](docs/screen-records/cell-extraction.preview.webp)
+
 [Cell extraction walkthrough (mp4)](docs/screen-records/cell-extraction.compressed.mp4)
 
 ## Requirements
