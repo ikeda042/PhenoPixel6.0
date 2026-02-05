@@ -32,7 +32,7 @@ import { getApiBase } from '../utils/apiBase'
 
 type ChannelKey = 'ph' | 'fluo1' | 'fluo2'
 type ReplotChannel = ChannelKey | 'overlay'
-type FluoColor = 'blue' | 'green' | 'yellow' | 'magenta'
+type FluoColor = 'blue' | 'green' | 'red' | 'yellow' | 'magenta' | 'gray'
 type OverlayOptions = {
   contour: boolean
   scale: boolean
@@ -46,8 +46,10 @@ const channels: { key: ChannelKey; label: string }[] = [
 const fluoColorOptions: { value: FluoColor; label: string }[] = [
   { value: 'blue', label: 'Blue' },
   { value: 'green', label: 'Green' },
+  { value: 'red', label: 'Red' },
   { value: 'yellow', label: 'Yellow' },
   { value: 'magenta', label: 'Magenta' },
+  { value: 'gray', label: 'Gray' },
 ]
 const defaultFluoColors: Record<'fluo1' | 'fluo2', FluoColor> = {
   fluo1: 'green',
