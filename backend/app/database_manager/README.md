@@ -96,12 +96,12 @@ Response: `{ "total": 100, "updated": 98, "failed": 2, "failures": [{"cell_id": 
 
 **GET** `/get-cell-image`  
 Raw cell image with optional contour/scale bar.  
-Params: `dbname`, `cell_id`, `image_type`, `draw_contour`, `draw_scale_bar`  
+Params: `dbname`, `cell_id`, `image_type`, `draw_contour`, `draw_scale_bar`, `fluo_color=blue|green|yellow|magenta` (fluo only)  
 Response: `image/png`
 
 **GET** `/get-cell-image-optical-boost`  
 Contrast-normalized fluo image (fluo-only).  
-Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2`, `draw_contour`, `draw_scale_bar`  
+Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2`, `draw_contour`, `draw_scale_bar`, `fluo_color=blue|green|yellow|magenta`  
 Response: `image/png`
 
 **GET** `/get-cell-overlay`  

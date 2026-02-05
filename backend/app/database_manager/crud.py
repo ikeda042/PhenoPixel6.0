@@ -20,6 +20,13 @@ DATABASES_DIR: Path = Path(__file__).resolve().parents[1] / "databases"
 DOWNLOAD_CHUNK_SIZE: int = 1024 * 1024
 ANNOTATION_DOWNSCALE: float = 0.2
 ANNOTATION_CONTOUR_THICKNESS: int = 3
+FLUO_COLOR_CHANNELS: dict[str, tuple[int, int, int]] = {
+    "blue": (1, 0, 0),
+    "green": (0, 1, 0),
+    "yellow": (0, 1, 1),
+    "magenta": (1, 0, 1),
+}
+FLUO_DEFAULT_BY_TYPE: dict[str, str] = {"fluo1": "green", "fluo2": "magenta"}
 
 Base: DeclarativeMeta = declarative_base()
 
@@ -476,17 +483,26 @@ def _encode_image_with_format(
 
 
 def _colorize_fluo_image(
-    image: np.ndarray, image_type: Literal["fluo1", "fluo2"]
+    image: np.ndarray,
+    image_type: Literal["fluo1", "fluo2"],
+    fluo_color: str | None = None,
 ) -> np.ndarray:
     if image.ndim == 2:
         gray = image
     else:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    color_key = (fluo_color or "").strip().lower()
+    if not color_key:
+        color_key = FLUO_DEFAULT_BY_TYPE.get(image_type, "green")
+    if color_key not in FLUO_COLOR_CHANNELS:
+        raise ValueError("Invalid fluo_color")
+    blue, green, red = FLUO_COLOR_CHANNELS[color_key]
     color = np.zeros((gray.shape[0], gray.shape[1], 3), dtype=gray.dtype)
-    if image_type == "fluo1":
-        color[:, :, 1] = gray
-    else:
+    if blue:
         color[:, :, 0] = gray
+    if green:
+        color[:, :, 1] = gray
+    if red:
         color[:, :, 2] = gray
     return color
 
@@ -1411,6 +1427,7 @@ def get_cell_image(
     draw_contour: bool = False,
     draw_scale_bar: bool = False,
     gain: float = 1.0,
+    fluo_color: str | None = None,
 ) -> bytes:
     if not np.isfinite(gain) or gain <= 0:
         raise ValueError("Gain must be greater than 0")
@@ -1453,7 +1470,7 @@ def get_cell_image(
                 gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                 scaled = gray.astype(np.float32) * float(gain)
                 image = np.clip(scaled, 0, 255).astype(np.uint8)
-            image = _colorize_fluo_image(image, image_type)
+            image = _colorize_fluo_image(image, image_type, fluo_color=fluo_color)
         if draw_contour:
             contour_raw = row[1] if len(row) > 1 else None
             if contour_raw is None:
@@ -1472,6 +1489,7 @@ def get_cell_image_optical_boost(
     image_type: Literal["fluo1", "fluo2"],
     draw_contour: bool = False,
     draw_scale_bar: bool = False,
+    fluo_color: str | None = None,
 ) -> bytes:
     if image_type not in ("fluo1", "fluo2"):
         raise ValueError("Optical boost only supports fluo1 or fluo2")
@@ -1500,10 +1518,10 @@ def get_cell_image_optical_boost(
         row = session.execute(stmt).first()
         if row is None or row[0] is None:
             raise LookupError("Cell image not found")
-        image = _decode_image(bytes(row[0]))
-        gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        normalized = _normalize_grayscale_to_uint8(gray)
-        boosted = _colorize_fluo_image(normalized, image_type)
+    image = _decode_image(bytes(row[0]))
+    gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    normalized = _normalize_grayscale_to_uint8(gray)
+    boosted = _colorize_fluo_image(normalized, image_type, fluo_color=fluo_color)
         if draw_contour:
             contour_raw = row[1] if len(row) > 1 else None
             if contour_raw is None:
