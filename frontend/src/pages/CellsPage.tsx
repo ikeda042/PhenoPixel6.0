@@ -32,6 +32,7 @@ import { getApiBase } from '../utils/apiBase'
 
 type ChannelKey = 'ph' | 'fluo1' | 'fluo2'
 type ReplotChannel = ChannelKey | 'overlay'
+type FluoColor = 'blue' | 'green' | 'yellow' | 'magenta'
 type OverlayOptions = {
   contour: boolean
   scale: boolean
@@ -42,6 +43,16 @@ const channels: { key: ChannelKey; label: string }[] = [
   { key: 'fluo1', label: 'FLUO1' },
   { key: 'fluo2', label: 'FLUO2' },
 ]
+const fluoColorOptions: { value: FluoColor; label: string }[] = [
+  { value: 'blue', label: 'Blue' },
+  { value: 'green', label: 'Green' },
+  { value: 'yellow', label: 'Yellow' },
+  { value: 'magenta', label: 'Magenta' },
+]
+const defaultFluoColors: Record<'fluo1' | 'fluo2', FluoColor> = {
+  fluo1: 'green',
+  fluo2: 'magenta',
+}
 
 const channelOptions: { value: ChannelKey; label: string }[] = [
   { value: 'ph', label: 'PH' },
@@ -107,6 +118,9 @@ export default function CellsPage() {
     contour: true,
     scale: true,
   })
+  const [fluoColors, setFluoColors] = useState<Record<'fluo1' | 'fluo2', FluoColor>>(
+    defaultFluoColors,
+  )
   const [contourMode, setContourMode] = useState<
     | 'contour'
     | 'replot'
@@ -266,8 +280,9 @@ export default function CellsPage() {
     const fetchChannel = async (
       channel: ChannelKey,
     ): Promise<{ url: string | null; missing: boolean }> => {
+      const isFluo = channel === 'fluo1' || channel === 'fluo2'
       const endpoint =
-        modificationMode === 'optical-boost' && (channel === 'fluo1' || channel === 'fluo2')
+        modificationMode === 'optical-boost' && isFluo
           ? 'get-cell-image-optical-boost'
           : 'get-cell-image'
       const params = new URLSearchParams({
@@ -277,10 +292,10 @@ export default function CellsPage() {
         draw_contour: String(overlayOptions.contour),
         draw_scale_bar: String(overlayOptions.scale),
       })
-      if (
-        modificationMode === 'gain' &&
-        (channel === 'fluo1' || channel === 'fluo2')
-      ) {
+      if (isFluo) {
+        params.set('fluo_color', fluoColors[channel])
+      }
+      if (modificationMode === 'gain' && isFluo) {
         params.set('gain', String(appliedGain))
       }
       const res = await fetch(
@@ -342,6 +357,7 @@ export default function CellsPage() {
     dbName,
     currentCellId,
     overlayOptions,
+    fluoColors,
     modificationMode,
     contourRefreshKey,
     appliedGain,
@@ -1615,6 +1631,41 @@ export default function CellsPage() {
                         </Box>
                       )}
                     </AspectRatio>
+                    {channel.key !== 'ph' && (
+                      <Box mt={{ base: 3, lg: 2 }}>
+                        <Text fontSize="xs" color="ink.700" mb="1">
+                          Color
+                        </Text>
+                        <NativeSelect.Root>
+                          <NativeSelect.Field
+                            value={fluoColors[channel.key]}
+                            onChange={(event) => {
+                              const next = event.target.value as FluoColor
+                              setFluoColors((prev) => ({ ...prev, [channel.key]: next }))
+                            }}
+                            bg="sand.50"
+                            border="1px solid"
+                            borderColor="sand.200"
+                            fontSize="sm"
+                            h={{ base: '2.25rem', lg: '2rem' }}
+                            color="ink.900"
+                            w="100%"
+                            isDisabled={!dbName || !currentCellId}
+                            _focusVisible={{
+                              borderColor: 'tide.400',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
+                            }}
+                          >
+                            {fluoColorOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator color="ink.700" />
+                        </NativeSelect.Root>
+                      </Box>
+                    )}
                   </Box>
                 ))}
               </Grid>

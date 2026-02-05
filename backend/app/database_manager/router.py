@@ -173,6 +173,10 @@ def get_cell_image_endpoint(
     draw_contour: Annotated[bool, Query()] = False,
     draw_scale_bar: Annotated[bool, Query()] = False,
     gain: Annotated[float, Query(gt=0)] = 1.0,
+    fluo_color: Annotated[
+        Literal["blue", "green", "yellow", "magenta"] | None,
+        Query(description="blue | green | yellow | magenta"),
+    ] = None,
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_image(
@@ -182,6 +186,7 @@ def get_cell_image_endpoint(
             draw_contour=draw_contour,
             draw_scale_bar=draw_scale_bar,
             gain=gain,
+            fluo_color=fluo_color,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -201,6 +206,10 @@ def get_cell_image_optical_boost_endpoint(
     image_type: Annotated[str, Query(description="fluo1 | fluo2")] = ...,
     draw_contour: Annotated[bool, Query()] = False,
     draw_scale_bar: Annotated[bool, Query()] = False,
+    fluo_color: Annotated[
+        Literal["blue", "green", "yellow", "magenta"] | None,
+        Query(description="blue | green | yellow | magenta"),
+    ] = None,
 ) -> StreamingResponse:
     try:
         image_bytes = DatabaseManagerCrud.get_cell_image_optical_boost(
@@ -209,6 +218,7 @@ def get_cell_image_optical_boost_endpoint(
             image_type,
             draw_contour=draw_contour,
             draw_scale_bar=draw_scale_bar,
+            fluo_color=fluo_color,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
