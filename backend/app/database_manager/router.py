@@ -174,8 +174,8 @@ def get_cell_image_endpoint(
     draw_scale_bar: Annotated[bool, Query()] = False,
     gain: Annotated[float, Query(gt=0)] = 1.0,
     fluo_color: Annotated[
-        Literal["blue", "green", "yellow", "magenta"] | None,
-        Query(description="blue | green | yellow | magenta"),
+        Literal["blue", "green", "red", "yellow", "magenta", "gray"] | None,
+        Query(description="blue | green | red | yellow | magenta | gray"),
     ] = None,
 ) -> StreamingResponse:
     try:
@@ -207,8 +207,8 @@ def get_cell_image_optical_boost_endpoint(
     draw_contour: Annotated[bool, Query()] = False,
     draw_scale_bar: Annotated[bool, Query()] = False,
     fluo_color: Annotated[
-        Literal["blue", "green", "yellow", "magenta"] | None,
-        Query(description="blue | green | yellow | magenta"),
+        Literal["blue", "green", "red", "yellow", "magenta", "gray"] | None,
+        Query(description="blue | green | red | yellow | magenta | gray"),
     ] = None,
 ) -> StreamingResponse:
     try:
@@ -239,12 +239,12 @@ def get_cell_overlay_endpoint(
     overlay_mode: Annotated[Literal["ph", "fluo", "raw"], Query()] = "ph",
     scale: Annotated[float, Query(gt=0, le=1)] = 1.0,
     fluo1_color: Annotated[
-        Literal["blue", "green", "yellow", "magenta"] | None,
-        Query(description="blue | green | yellow | magenta"),
+        Literal["blue", "green", "red", "yellow", "magenta", "gray"] | None,
+        Query(description="blue | green | red | yellow | magenta | gray"),
     ] = None,
     fluo2_color: Annotated[
-        Literal["blue", "green", "yellow", "magenta"] | None,
-        Query(description="blue | green | yellow | magenta"),
+        Literal["blue", "green", "red", "yellow", "magenta", "gray"] | None,
+        Query(description="blue | green | red | yellow | magenta | gray"),
     ] = None,
     image_format: Annotated[
         Literal["png", "jpeg", "jpg"], Query(alias="format")
