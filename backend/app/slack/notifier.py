@@ -4,12 +4,14 @@ import logging
 import os
 import threading
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlencode
 
 import aiohttp
 
 logger: logging.Logger = logging.getLogger(__name__)
 _ENV_LOADED: bool = False
+SlackMessage = str | dict[str, Any]
 
 
 def _load_env() -> None:
@@ -59,6 +61,15 @@ def _get_base_path() -> str | None:
     )
 
 
+def _normalize_payload(message: SlackMessage) -> dict[str, Any]:
+    if isinstance(message, str):
+        return {"text": message}
+    payload = dict(message)
+    if "text" not in payload:
+        payload["text"] = ""
+    return payload
+
+
 async def _post_slack(
     webhook_url: str,
     payload: bytes,
@@ -90,7 +101,7 @@ async def _post_slack(
 
 
 async def notify_slack(
-    message: str,
+    message: SlackMessage,
     *,
     success_log: tuple[str, tuple[object, ...]] | None = None,
 ) -> None:
@@ -98,14 +109,14 @@ async def notify_slack(
     if not webhook_url:
         return
 
-    payload = json.dumps({"text": message}).encode("utf-8")
+    payload = json.dumps(_normalize_payload(message)).encode("utf-8")
     if success_log is None:
         success_log = ("Slack notified", ())
     await _post_slack(webhook_url, payload, success_log)
 
 
 def notify_slack_sync(
-    message: str,
+    message: SlackMessage,
     *,
     success_log: tuple[str, tuple[object, ...]] | None = None,
 ) -> None:
@@ -129,7 +140,7 @@ def build_database_created_message(
     param1: int | None = None,
     image_size: int | None = None,
     base_path: str | None = None,
-) -> str:
+) -> SlackMessage:
     if base_path is None:
         base_path = _get_base_path()
     db_url = None
@@ -139,29 +150,60 @@ def build_database_created_message(
         db_url = f"{base_path}/databases/?{urlencode({'db_name': db_name})}"
         cells_url = f"{base_path}/cells?{urlencode({'db': db_name})}"
 
-    slack_message = (
+    base_text = (
         message
         or f"nd2extract\u304c\u5b8c\u4e86\u3057\u307e\u3057\u305f\u3002"
         f"database `{db_name}` \u3092\u4f5c\u6210\u3057\u307e\u3057\u305f\u3002"
     )
-    details = []
+    text_lines = [base_text]
+    display_lines = [base_text]
     if contour_count is not None:
-        details.append(f"{contour_count}\u500b\u306e\u8f2a\u90ed\u3092\u53d6\u5f97\u3057\u307e\u3057\u305f\u3002")
+        line = f"{contour_count}\u500b\u306e\u8f2a\u90ed\u3092\u53d6\u5f97\u3057\u307e\u3057\u305f\u3002"
+        text_lines.append(line)
+        display_lines.append(line)
     param_parts = []
     if param1 is not None:
         param_parts.append(f"param1 = {param1}")
     if image_size is not None:
         param_parts.append(f"image_size = {image_size} x {image_size} px^2")
     if param_parts:
-        details.append(", ".join(param_parts))
+        line = ", ".join(param_parts)
+        text_lines.append(line)
+        display_lines.append(line)
     if cells_url:
-        details.append(f"URL : {cells_url}")
-    if details:
-        slack_message = f"{slack_message}\n" + "\n".join(details)
+        text_lines.append(f"URL : {cells_url}")
+    if text_lines:
+        slack_message = "\n".join(text_lines)
     if db_url and cells_url is None:
         slack_message = f"{slack_message}\n{db_url}"
 
-    return slack_message
+    if not (cells_url or db_url):
+        return slack_message
+
+    display_message = "\n".join(display_lines)
+    blocks: list[dict[str, Any]] = [
+        {"type": "section", "text": {"type": "mrkdwn", "text": display_message}}
+    ]
+    elements: list[dict[str, Any]] = []
+    if cells_url:
+        elements.append(
+            {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "Open Cells"},
+                "url": cells_url,
+            }
+        )
+    if db_url and cells_url is None:
+        elements.append(
+            {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "Open Databases"},
+                "url": db_url,
+            }
+        )
+    if elements:
+        blocks.append({"type": "actions", "elements": elements})
+    return {"text": slack_message, "blocks": blocks}
 
 
 def build_bulk_engine_completed_message(
