@@ -1518,10 +1518,10 @@ def get_cell_image_optical_boost(
         row = session.execute(stmt).first()
         if row is None or row[0] is None:
             raise LookupError("Cell image not found")
-    image = _decode_image(bytes(row[0]))
-    gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    normalized = _normalize_grayscale_to_uint8(gray)
-    boosted = _colorize_fluo_image(normalized, image_type, fluo_color=fluo_color)
+        image = _decode_image(bytes(row[0]))
+        gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        normalized = _normalize_grayscale_to_uint8(gray)
+        boosted = _colorize_fluo_image(normalized, image_type, fluo_color=fluo_color)
         if draw_contour:
             contour_raw = row[1] if len(row) > 1 else None
             if contour_raw is None:
