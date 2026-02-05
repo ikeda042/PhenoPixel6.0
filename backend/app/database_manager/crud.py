@@ -23,8 +23,10 @@ ANNOTATION_CONTOUR_THICKNESS: int = 3
 FLUO_COLOR_CHANNELS: dict[str, tuple[int, int, int]] = {
     "blue": (1, 0, 0),
     "green": (0, 1, 0),
+    "red": (0, 0, 1),
     "yellow": (0, 1, 1),
     "magenta": (1, 0, 1),
+    "gray": (1, 1, 1),
 }
 FLUO_DEFAULT_BY_TYPE: dict[str, str] = {"fluo1": "green", "fluo2": "magenta"}
 
