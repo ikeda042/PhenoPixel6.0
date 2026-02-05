@@ -565,6 +565,8 @@ export default function CellsPage() {
                 ? 'raw'
                 : 'ph',
         })
+        params.set('fluo1_color', fluoColors.fluo1)
+        params.set('fluo2_color', fluoColors.fluo2)
         const res = await fetch(`${apiBase}/get-cell-overlay?${params.toString()}`, {
           signal: controller.signal,
           headers: { accept: 'image/png' },
@@ -601,6 +603,7 @@ export default function CellsPage() {
     dbName,
     contourRefreshKey,
     overlayOptions.scale,
+    fluoColors,
   ])
 
   useEffect(() => {
