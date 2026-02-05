@@ -33,6 +33,7 @@ const ReloadButton = ({ compact = false }: ReloadButtonProps) => {
       if (typeof payload.output === 'string' && payload.output.trim()) {
         console.info(payload.output)
       }
+      window.location.reload()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       console.error('Update failed:', error)
