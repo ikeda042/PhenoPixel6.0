@@ -96,19 +96,19 @@ Response: `{ "total": 100, "updated": 98, "failed": 2, "failures": [{"cell_id": 
 
 **GET** `/get-cell-image`  
 Raw cell image with optional contour/scale bar.  
-Params: `dbname`, `cell_id`, `image_type`, `draw_contour`, `draw_scale_bar`, `fluo_color=blue|green|yellow|magenta` (fluo only)  
+Params: `dbname`, `cell_id`, `image_type`, `draw_contour`, `draw_scale_bar`, `fluo_color=blue|green|red|yellow|magenta|gray` (fluo only)  
 Response: `image/png`
 
 **GET** `/get-cell-image-optical-boost`  
 Contrast-normalized fluo image (fluo-only).  
-Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2`, `draw_contour`, `draw_scale_bar`, `fluo_color=blue|green|yellow|magenta`  
+Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2`, `draw_contour`, `draw_scale_bar`, `fluo_color=blue|green|red|yellow|magenta|gray`  
 Response: `image/png`
 
 **GET** `/get-cell-overlay`  
 Ph image with fluo overlay inside the contour.  
 Use `overlay_mode=fluo` to return a fluo-only overlay without contour masking.  
 Use `overlay_mode=raw` to overlay fluo on the PH image without contour masking.  
-Params: `dbname`, `cell_id`, `draw_scale_bar`, `overlay_mode=ph|fluo|raw`, `fluo1_color=blue|green|yellow|magenta`, `fluo2_color=blue|green|yellow|magenta`  
+Params: `dbname`, `cell_id`, `draw_scale_bar`, `overlay_mode=ph|fluo|raw`, `fluo1_color=blue|green|red|yellow|magenta|gray`, `fluo2_color=blue|green|red|yellow|magenta|gray`  
 Response: `image/png`
 
 ### Derived Visualizations
