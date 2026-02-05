@@ -28,6 +28,35 @@ FLUO_COLOR_CHANNELS: dict[str, tuple[int, int, int]] = {
 }
 FLUO_DEFAULT_BY_TYPE: dict[str, str] = {"fluo1": "green", "fluo2": "magenta"}
 
+
+def _resolve_fluo_color(
+    fluo_color: str | None, image_type: Literal["fluo1", "fluo2"]
+) -> str:
+    color_key = (fluo_color or "").strip().lower()
+    if not color_key:
+        color_key = FLUO_DEFAULT_BY_TYPE.get(image_type, "green")
+    if color_key not in FLUO_COLOR_CHANNELS:
+        raise ValueError("Invalid fluo_color")
+    return color_key
+
+
+def _apply_fluo_overlay(
+    overlay: np.ndarray, intensity: np.ndarray, mask: np.ndarray, color_key: str
+) -> None:
+    blue, green, red = FLUO_COLOR_CHANNELS[color_key]
+    if blue:
+        channel = overlay[:, :, 0]
+        channel[mask] = np.maximum(channel[mask], intensity[mask])
+        overlay[:, :, 0] = channel
+    if green:
+        channel = overlay[:, :, 1]
+        channel[mask] = np.maximum(channel[mask], intensity[mask])
+        overlay[:, :, 1] = channel
+    if red:
+        channel = overlay[:, :, 2]
+        channel[mask] = np.maximum(channel[mask], intensity[mask])
+        overlay[:, :, 2] = channel
+
 Base: DeclarativeMeta = declarative_base()
 
 
@@ -491,11 +520,7 @@ def _colorize_fluo_image(
         gray = image
     else:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    color_key = (fluo_color or "").strip().lower()
-    if not color_key:
-        color_key = FLUO_DEFAULT_BY_TYPE.get(image_type, "green")
-    if color_key not in FLUO_COLOR_CHANNELS:
-        raise ValueError("Invalid fluo_color")
+    color_key = _resolve_fluo_color(fluo_color, image_type)
     blue, green, red = FLUO_COLOR_CHANNELS[color_key]
     color = np.zeros((gray.shape[0], gray.shape[1], 3), dtype=gray.dtype)
     if blue:
@@ -1540,6 +1565,8 @@ def get_cell_overlay(
     draw_scale_bar: bool = False,
     overlay_mode: Literal["ph", "fluo", "raw"] = "ph",
     scale: float = 1.0,
+    fluo1_color: str | None = None,
+    fluo2_color: str | None = None,
     image_format: Literal["png", "jpeg", "jpg"] = "png",
     jpeg_quality: int = 80,
 ) -> bytes:
@@ -1638,16 +1665,11 @@ def get_cell_overlay(
         if norm2 is not None:
             norm2 = np.clip(norm2, 0, 255).astype(np.uint8)
 
-        green = overlay[:, :, 1]
-        green[mask_bool] = np.maximum(green[mask_bool], norm1[mask_bool])
-        overlay[:, :, 1] = green
+        color1 = _resolve_fluo_color(fluo1_color, "fluo1")
+        _apply_fluo_overlay(overlay, norm1, mask_bool, color1)
         if norm2 is not None:
-            red = overlay[:, :, 2]
-            blue = overlay[:, :, 0]
-            red[mask_bool] = np.maximum(red[mask_bool], norm2[mask_bool])
-            blue[mask_bool] = np.maximum(blue[mask_bool], norm2[mask_bool])
-            overlay[:, :, 2] = red
-            overlay[:, :, 0] = blue
+            color2 = _resolve_fluo_color(fluo2_color, "fluo2")
+            _apply_fluo_overlay(overlay, norm2, mask_bool, color2)
 
         if draw_scale_bar:
             overlay = _draw_scale_bar_with_centered_text(overlay)
