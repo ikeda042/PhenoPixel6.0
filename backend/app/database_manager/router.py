@@ -238,6 +238,14 @@ def get_cell_overlay_endpoint(
     draw_scale_bar: Annotated[bool, Query()] = False,
     overlay_mode: Annotated[Literal["ph", "fluo", "raw"], Query()] = "ph",
     scale: Annotated[float, Query(gt=0, le=1)] = 1.0,
+    fluo1_color: Annotated[
+        Literal["blue", "green", "yellow", "magenta"] | None,
+        Query(description="blue | green | yellow | magenta"),
+    ] = None,
+    fluo2_color: Annotated[
+        Literal["blue", "green", "yellow", "magenta"] | None,
+        Query(description="blue | green | yellow | magenta"),
+    ] = None,
     image_format: Annotated[
         Literal["png", "jpeg", "jpg"], Query(alias="format")
     ] = "png",
@@ -250,6 +258,8 @@ def get_cell_overlay_endpoint(
             draw_scale_bar=draw_scale_bar,
             overlay_mode=overlay_mode,
             scale=scale,
+            fluo1_color=fluo1_color,
+            fluo2_color=fluo2_color,
             image_format=image_format,
             jpeg_quality=jpeg_quality,
         )
