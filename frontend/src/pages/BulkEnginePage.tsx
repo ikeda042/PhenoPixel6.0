@@ -109,6 +109,9 @@ export default function BulkEnginePage() {
 
   const [cells, setCells] = useState<BulkCell[]>([])
   const [previewCellId, setPreviewCellId] = useState<string | null>(null)
+  const [previewOriginalUrl, setPreviewOriginalUrl] = useState<string | null>(null)
+  const [previewOriginalError, setPreviewOriginalError] = useState<string | null>(null)
+  const [isPreviewOriginalLoading, setIsPreviewOriginalLoading] = useState(false)
   const [previewDownscale, setPreviewDownscale] = useState(
     BULK_PREVIEW_DOWNSCALE_DEFAULT,
   )
@@ -189,6 +192,7 @@ export default function BulkEnginePage() {
   const huSeparationUrlRef = useRef<string | null>(null)
   const map256PlotUrlRef = useRef<string | null>(null)
   const contoursPlotUrlRef = useRef<string | null>(null)
+  const previewOriginalUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!dbName) {
@@ -421,6 +425,79 @@ export default function BulkEnginePage() {
       setPreviewCellId(null)
     }
   }, [previewCell, previewCellId])
+
+  useEffect(() => {
+    const revokePreviewOriginalUrl = () => {
+      if (previewOriginalUrlRef.current) {
+        URL.revokeObjectURL(previewOriginalUrlRef.current)
+        previewOriginalUrlRef.current = null
+      }
+    }
+
+    if (!dbName || !previewCell) {
+      setIsPreviewOriginalLoading(false)
+      setPreviewOriginalError(null)
+      setPreviewOriginalUrl(null)
+      revokePreviewOriginalUrl()
+      return
+    }
+
+    let isActive = true
+    const controller = new AbortController()
+
+    const loadPreviewOriginal = async () => {
+      setIsPreviewOriginalLoading(true)
+      setPreviewOriginalError(null)
+      try {
+        const params = new URLSearchParams({
+          dbname: dbName,
+          cell_id: previewCell.cellId,
+          image_type: selectedChannel,
+          draw_contour: 'true',
+        })
+        const res = await fetch(`${apiBase}/get-cell-image?${params.toString()}`, {
+          headers: { accept: 'image/png' },
+          signal: controller.signal,
+        })
+        if (!res.ok) {
+          throw new Error(`Request failed (${res.status})`)
+        }
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        if (!isActive) {
+          URL.revokeObjectURL(url)
+          return
+        }
+        revokePreviewOriginalUrl()
+        previewOriginalUrlRef.current = url
+        setPreviewOriginalUrl(url)
+      } catch (err) {
+        if (!isActive || controller.signal.aborted) return
+        setPreviewOriginalError(
+          err instanceof Error ? err.message : 'Failed to load full-resolution preview',
+        )
+        setPreviewOriginalUrl(null)
+        revokePreviewOriginalUrl()
+      } finally {
+        if (isActive) setIsPreviewOriginalLoading(false)
+      }
+    }
+
+    void loadPreviewOriginal()
+    return () => {
+      isActive = false
+      controller.abort()
+    }
+  }, [apiBase, dbName, previewCell, selectedChannel])
+
+  useEffect(() => {
+    return () => {
+      if (previewOriginalUrlRef.current) {
+        URL.revokeObjectURL(previewOriginalUrlRef.current)
+        previewOriginalUrlRef.current = null
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (lengthPlotUrlRef.current) {
@@ -3226,13 +3303,20 @@ export default function BulkEnginePage() {
                 <AspectRatio ratio={1}>
                   <Box
                     as="img"
-                    src={previewCell.url}
+                    src={previewOriginalUrl ?? previewCell.url}
                     alt={`Cell ${previewCell.cellId}`}
                     objectFit="contain"
                     bg="sand.50"
                     borderRadius="md"
                   />
                 </AspectRatio>
+                {(isPreviewOriginalLoading || previewOriginalError) && (
+                  <Text fontSize="xs" color="ink.700" textAlign="center" mt="2">
+                    {isPreviewOriginalLoading
+                      ? 'Loading original quality...'
+                      : 'Original quality is unavailable. Showing preview image.'}
+                  </Text>
+                )}
               </Box>
             </Box>
           </Box>
