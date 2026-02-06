@@ -21,7 +21,8 @@ import {
 } from '@chakra-ui/react'
 import { keyframes } from '@emotion/react'
 import { Link as RouterLink } from 'react-router-dom'
-import AppHeader from './components/AppHeader'
+import PageBreadcrumb from './components/PageBreadcrumb'
+import PageHeader from './components/PageHeader'
 import ReloadButton from './components/ReloadButton'
 import ThemeToggleButton from './components/ThemeToggleButton'
 
@@ -150,31 +151,36 @@ export default function App() {
       />
 
       <Box position="relative">
-        <AppHeader bg="sand.50/90">
-          <HStack
-            as={RouterLink}
-            to="/"
-            spacing="3"
-            color="inherit"
-            _hover={{ textDecoration: 'none' }}
-          >
-            <Box w="12px" h="12px" borderRadius="full" bg="tide.300" />
-            <Heading size="md" letterSpacing="0.08em">
-              PhenoPixel 6.0
-            </Heading>
-          </HStack>
-          <HStack spacing="6" display={{ base: 'none', md: 'flex' }}>
-            <Text fontSize="sm" fontWeight="600" color="ink.900">
-              Docs
-            </Text>
-            <Text fontSize="sm" color="ink.700">
-              Showcase
-            </Text>
-            <Text fontSize="sm" color="ink.700">
-              Blog
-            </Text>
-          </HStack>
-          <HStack spacing="4" align="center">
+        <PageHeader
+          bg="sand.50/90"
+          actions={
+            <>
+              <InputGroup
+                size="sm"
+                w={{ base: '160px', md: '220px' }}
+                startElement={<SearchGlyph />}
+              >
+                <Input
+                  placeholder="Search docs"
+                  bg="sand.100"
+                  border="1px solid"
+                  borderColor="sand.200"
+                  color="ink.900"
+                  _placeholder={{ color: 'ink.700' }}
+                  _focusVisible={{
+                    borderColor: 'tide.400',
+                    boxShadow: '0 0 0 1px var(--app-accent-ring)',
+                  }}
+                />
+              </InputGroup>
+              <ReloadButton />
+              <ThemeToggleButton />
+            </>
+          }
+        />
+
+        <Container maxW="1240px" px={{ base: 4, md: 8 }} py={{ base: 8, md: 10 }}>
+          <PageBreadcrumb>
             <BreadcrumbRoot fontSize="sm" color="ink.700">
               <BreadcrumbList>
                 <BreadcrumbItem>
@@ -188,30 +194,7 @@ export default function App() {
                 </BreadcrumbItem>
               </BreadcrumbList>
             </BreadcrumbRoot>
-            <InputGroup
-              size="sm"
-              w={{ base: '160px', md: '220px' }}
-              startElement={<SearchGlyph />}
-            >
-              <Input
-                placeholder="Search docs"
-                bg="sand.100"
-                border="1px solid"
-                borderColor="sand.200"
-                color="ink.900"
-                _placeholder={{ color: 'ink.700' }}
-                _focusVisible={{
-                  borderColor: 'tide.400',
-                  boxShadow: '0 0 0 1px var(--app-accent-ring)',
-                }}
-              />
-            </InputGroup>
-            <ReloadButton />
-            <ThemeToggleButton />
-          </HStack>
-        </AppHeader>
-
-        <Container maxW="1240px" px={{ base: 4, md: 8 }} py={{ base: 8, md: 10 }}>
+          </PageBreadcrumb>
           <Stack spacing={{ base: 6, md: 8 }}>
             <Grid
               templateColumns={{

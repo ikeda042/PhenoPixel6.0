@@ -26,7 +26,8 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { ArrowLeft, ArrowRight, Download } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
+import PageBreadcrumb from '../components/PageBreadcrumb'
+import PageHeader from '../components/PageHeader'
 import ReloadButton from '../components/ReloadButton'
 import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
@@ -1364,39 +1365,24 @@ export default function CellsPage() {
       flexDirection="column"
       overflow={{ base: 'visible', lg: 'hidden' }}
     >
-      <AppHeader>
-        <HStack
-          as={RouterLink}
-          to="/"
-          spacing="3"
-          color="inherit"
-          _hover={{ textDecoration: 'none' }}
-        >
-          <Box
-            as="img"
-            src="/favicon.png"
-            alt="PhenoPixel logo"
-            w="1.25rem"
-            h="1.25rem"
-            objectFit="contain"
-          />
-          <Heading size="md" letterSpacing="0.08em">
-            PhenoPixel 6.0
-          </Heading>
-          <Badge
-            bg="sand.100"
-            color="ink.700"
-            borderRadius="full"
-            px="2"
-            py="1"
-            fontSize="0.6rem"
-            letterSpacing="0.2em"
-            textTransform="uppercase"
-          >
-            Viewer
-          </Badge>
-        </HStack>
-        <HStack spacing="4" align="center">
+      <PageHeader
+        actions={
+          <>
+            <ReloadButton compact />
+            <ThemeToggleButton compact />
+          </>
+        }
+      />
+
+      <Container
+        maxW="80rem"
+        py={{ base: 4, md: 3, lg: 2 }}
+        flex="1"
+        display="flex"
+        flexDirection="column"
+        minH="0"
+      >
+        <PageBreadcrumb>
           <BreadcrumbRoot fontSize="sm" color="ink.700">
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -1416,19 +1402,7 @@ export default function CellsPage() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </BreadcrumbRoot>
-          <ReloadButton compact />
-          <ThemeToggleButton compact />
-        </HStack>
-      </AppHeader>
-
-      <Container
-        maxW="80rem"
-        py={{ base: 4, md: 3, lg: 2 }}
-        flex="1"
-        display="flex"
-        flexDirection="column"
-        minH="0"
-      >
+        </PageBreadcrumb>
         <Stack spacing={{ base: 4, lg: 3 }} flex="1" minH="0" overflow="hidden">
           <Box
             borderRadius="xl"
