@@ -1649,9 +1649,21 @@ export default function CellsPage() {
           )}
 
           {fastModeRequested && selectedLabel === 'All' && isLoadingFastBundle && (
-            <Text fontSize="sm" color="ink.700">
-              Fast preloading cells...
-            </Text>
+            <HStack
+              spacing="2"
+              align="center"
+              px="4"
+              py="3"
+              bg="sand.100"
+              borderRadius="md"
+              border="1px solid"
+              borderColor="sand.200"
+            >
+              <Spinner size="sm" color="teal.500" />
+              <Text fontSize="sm" color="ink.700">
+                Fast preloading cells...
+              </Text>
+            </HStack>
           )}
 
           {fastModeRequested && selectedLabel === 'All' && fastBundleError && (
