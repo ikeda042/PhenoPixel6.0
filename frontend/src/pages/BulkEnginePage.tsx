@@ -98,7 +98,7 @@ export default function BulkEnginePage() {
   const apiBase = useMemo(() => getApiBase(), [])
   const bulkZoom = 0.75
   const previewDownscale = 0.5
-  const scaledViewportHeight = `calc(100vh / ${bulkZoom})`
+  const scaledViewportHeight = `calc(100dvh / ${bulkZoom})`
   const fitcThreshold = 0.7414
 
   const [cells, setCells] = useState<BulkCell[]>([])
@@ -1651,13 +1651,13 @@ export default function BulkEnginePage() {
 
   return (
     <Box
-      minH={{ base: '100vh', lg: scaledViewportHeight }}
+      minH={{ base: '100dvh', lg: scaledViewportHeight }}
       h={{ base: 'auto', lg: scaledViewportHeight }}
       bg="sand.50"
       color="ink.900"
       display="flex"
       flexDirection="column"
-      overflow={{ base: 'visible', lg: 'hidden' }}
+      overflow={{ base: 'visible', lg: 'auto' }}
       style={{ zoom: bulkZoom }}
     >
       <AppHeader>
