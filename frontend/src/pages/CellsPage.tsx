@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import {
-  AspectRatio,
   Badge,
   Box,
   BreadcrumbCurrentLink,
@@ -1088,12 +1087,12 @@ export default function CellsPage() {
   return (
     <Box
       minH="100dvh"
-      h="auto"
+      h={{ base: 'auto', lg: '100dvh' }}
       bg="sand.50"
       color="ink.900"
       display="flex"
       flexDirection="column"
-      overflow="visible"
+      overflow={{ base: 'visible', lg: 'hidden' }}
     >
       <AppHeader>
         <HStack
@@ -1154,20 +1153,22 @@ export default function CellsPage() {
 
       <Container
         maxW="80rem"
-        py={{ base: 6, md: 4, lg: 3 }}
+        py={{ base: 4, md: 3, lg: 2 }}
         flex="1"
         display="flex"
         flexDirection="column"
+        minH="0"
       >
-        <Stack spacing={{ base: 5, lg: 4 }} flex="1" minH="0">
+        <Stack spacing={{ base: 4, lg: 3 }} flex="1" minH="0" overflow="hidden">
           <Box
             borderRadius="xl"
             bg="sand.100"
             border="1px solid"
             borderColor="sand.200"
-            p="3"
+            p={{ base: 3, lg: 2 }}
+            flexShrink={0}
           >
-            <Stack spacing="3">
+            <Stack spacing="2">
               <HStack spacing="2" justify="space-between" flexWrap="wrap">
                 <Text fontSize="xs" letterSpacing="0.18em" color="ink.700">
                   Cell Control Panel
@@ -1195,7 +1196,7 @@ export default function CellsPage() {
                             border="1px solid"
                             borderColor="sand.200"
                             fontSize="sm"
-                            h="2.25rem"
+                            h={{ base: '2.25rem', lg: '2rem' }}
                             w="7rem"
                             color="ink.900"
                             _focusVisible={{
@@ -1224,7 +1225,7 @@ export default function CellsPage() {
                             border="1px solid"
                             borderColor="sand.200"
                             fontSize="sm"
-                            h="2.25rem"
+                            h={{ base: '2.25rem', lg: '2rem' }}
                             w="8rem"
                             color="ink.900"
                             isDisabled={
@@ -1259,7 +1260,7 @@ export default function CellsPage() {
                   <Text fontSize="xs" letterSpacing="0.18em" color="ink.700" mb="1">
                     Overlays
                   </Text>
-                  <HStack spacing="4" align="center" minH="2.25rem">
+                  <HStack spacing="4" align="center" minH={{ base: '2.25rem', lg: '2rem' }}>
                     <Checkbox.Root
                       checked={overlayOptions.contour}
                       onCheckedChange={(details) =>
@@ -1365,19 +1366,20 @@ export default function CellsPage() {
 
           <Grid
             templateColumns={{ base: 'minmax(0, 1fr)', lg: 'minmax(0, 1.6fr) minmax(0, 1fr)' }}
-            gap="6"
+            gap={{ base: 4, lg: 3 }}
             alignItems="stretch"
             flex="1"
             minH="0"
+            overflow="hidden"
           >
             <Box
               overflowX={{ base: 'auto', lg: 'visible' }}
-              overflowY={{ base: 'visible', lg: 'auto' }}
-              pb={{ base: 2, lg: 0 }}
+              overflowY="hidden"
+              pb={{ base: 1, lg: 0 }}
               h="100%"
               display="flex"
               flexDirection="column"
-              gap={{ base: 3, lg: 2 }}
+              gap="2"
               minH="0"
             >
               <Box
@@ -1385,15 +1387,15 @@ export default function CellsPage() {
                 bg="sand.100"
                 border="1px dashed"
                 borderColor="sand.200"
-                p={{ base: 3, lg: 2 }}
+                p="2"
                 flex="0 0 auto"
                 order={0}
               >
-                <Stack spacing={{ base: 3, lg: 2 }}>
+                <Stack spacing="2">
                   <Text fontSize="xs" letterSpacing="0.18em" color="ink.700">
                     Modification
                   </Text>
-                  <HStack spacing={{ base: 3, lg: 2 }} align="flex-end" flexWrap="wrap">
+                  <HStack spacing="2" align="flex-end" flexWrap="wrap">
                     <Box minW="10rem">
                       <Stack spacing="1">
                         <Text fontSize="xs" color="ink.700">
@@ -1572,7 +1574,7 @@ export default function CellsPage() {
                   base: 'repeat(3, 200px)',
                   md: 'repeat(3, minmax(0, 1fr))',
                 }}
-                gap={{ base: 3, lg: 2 }}
+                gap="2"
                 minW={{ base: 'max-content', md: '0' }}
                 order={1}
                 flex="1"
@@ -1585,9 +1587,12 @@ export default function CellsPage() {
                     bg="sand.100"
                     border="1px solid"
                     borderColor="sand.200"
-                    p={{ base: 3, lg: 2 }}
+                    p="2"
+                    display="flex"
+                    flexDirection="column"
+                    minH="0"
                   >
-                    <HStack spacing="2" align="center" mb={{ base: 3, lg: 2 }}>
+                    <HStack spacing="2" align="center" mb="2">
                       <Text
                         fontSize="xs"
                         letterSpacing="0.18em"
@@ -1608,11 +1613,15 @@ export default function CellsPage() {
                         <Download size={14} />
                       </IconButton>
                     </HStack>
-                    <AspectRatio
-                      ratio={1}
+                    <Box
                       bg="sand.200"
                       borderRadius="lg"
                       overflow="hidden"
+                      h={{ base: '8rem', md: 'clamp(6.5rem, 17vh, 11rem)' }}
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      minH="0"
                     >
                       {isLoadingImages ? (
                         <Box display="flex" alignItems="center" justifyContent="center">
@@ -1636,9 +1645,9 @@ export default function CellsPage() {
                           </Text>
                         </Box>
                       )}
-                    </AspectRatio>
+                    </Box>
                     {channel.key !== 'ph' && (
-                      <Box mt={{ base: 3, lg: 2 }}>
+                      <Box mt="2">
                         <Text fontSize="xs" color="ink.700" mb="1">
                           Color
                         </Text>
@@ -1679,7 +1688,7 @@ export default function CellsPage() {
                 spacing="3"
                 align="center"
                 order={2}
-                flexWrap="wrap"
+                flexWrap={{ base: 'wrap', lg: 'nowrap' }}
                 flexShrink={0}
               >
                 <Button
@@ -1737,12 +1746,13 @@ export default function CellsPage() {
               bg="sand.100"
               border="1px solid"
               borderColor="sand.200"
-              p={{ base: 3, lg: 2 }}
+              p="2"
               h="100%"
               display="flex"
               flexDirection="column"
+              minH="0"
             >
-              <Stack spacing={{ base: 3, lg: 2 }} flex="1">
+              <Stack spacing="2" flex="1" minH="0">
                 <HStack justify="space-between" align="center" spacing="3" flexWrap="nowrap">
                   <Text fontSize="xs" letterSpacing="0.18em" color="ink.700">
                     Function Panel
@@ -1917,11 +1927,12 @@ export default function CellsPage() {
                     </NativeSelect.Root>
                   </HStack>
                 )}
-                <AspectRatio
-                  ratio={1}
+                <Box
                   bg="sand.200"
                   borderRadius="lg"
                   overflow="hidden"
+                  flex="1"
+                  minH={{ base: '11rem', lg: 'clamp(9rem, 30vh, 22rem)' }}
                 >
                   <Box
                     display="flex"
@@ -2109,7 +2120,7 @@ export default function CellsPage() {
                       </Text>
                     )}
                   </Box>
-                </AspectRatio>
+                </Box>
                 {contourPanelError && (
                   <Text fontSize="sm" color="violet.300">
                     {contourPanelError}
