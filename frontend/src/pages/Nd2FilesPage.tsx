@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
-  Badge,
   Box,
   BreadcrumbCurrentLink,
   BreadcrumbItem,
@@ -14,15 +13,15 @@ import {
   Checkbox,
   Container,
   Grid,
-  Heading,
-  HStack,
   Icon,
   Input,
   InputGroup,
+  HStack,
   Stack,
   Text,
 } from '@chakra-ui/react'
-import AppHeader from '../components/AppHeader'
+import PageBreadcrumb from '../components/PageBreadcrumb'
+import PageHeader from '../components/PageHeader'
 import ReloadButton from '../components/ReloadButton'
 import ThemeToggleButton from '../components/ThemeToggleButton'
 import { Search, Trash2, Upload } from 'lucide-react'
@@ -351,39 +350,17 @@ export default function Nd2FilesPage() {
 
   return (
     <Box minH="100vh" bg="sand.50" color="ink.900">
-      <AppHeader>
-        <HStack
-          as={RouterLink}
-          to="/"
-          spacing="3"
-          color="inherit"
-          _hover={{ textDecoration: 'none' }}
-        >
-          <Box
-            as="img"
-            src="/favicon.png"
-            alt="PhenoPixel logo"
-            w="1.25rem"
-            h="1.25rem"
-            objectFit="contain"
-          />
-          <Heading size="md" letterSpacing="0.08em">
-            PhenoPixel 6.0
-          </Heading>
-          <Badge
-            bg="sand.100"
-            color="ink.700"
-            borderRadius="full"
-            px="2"
-            py="1"
-            fontSize="0.6rem"
-            letterSpacing="0.2em"
-            textTransform="uppercase"
-          >
-            Extractor
-          </Badge>
-        </HStack>
-        <HStack spacing="4" align="center">
+      <PageHeader
+        actions={
+          <>
+            <ReloadButton />
+            <ThemeToggleButton />
+          </>
+        }
+      />
+
+      <Container maxW="72.5rem" py={{ base: 8, md: 12 }}>
+        <PageBreadcrumb>
           <BreadcrumbRoot fontSize="sm" color="ink.700">
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -397,12 +374,7 @@ export default function Nd2FilesPage() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </BreadcrumbRoot>
-          <ReloadButton />
-          <ThemeToggleButton />
-        </HStack>
-      </AppHeader>
-
-      <Container maxW="72.5rem" py={{ base: 8, md: 12 }}>
+        </PageBreadcrumb>
         <Stack spacing="6">
           <Stack
             direction={{ base: 'column', md: 'row' }}
