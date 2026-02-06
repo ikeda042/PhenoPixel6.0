@@ -92,17 +92,26 @@ const sortLabels = (labels: string[]) =>
     return a.localeCompare(b)
   })
 
+const BULK_PREVIEW_DOWNSCALE_DEFAULT = 1
+const BULK_PREVIEW_DOWNSCALE_OPTIONS = [
+  { value: 0.5, label: 'Balanced (0.5x)' },
+  { value: 0.75, label: 'High (0.75x)' },
+  { value: 1, label: 'Full (1.0x)' },
+]
+
 export default function BulkEnginePage() {
   const [searchParams] = useSearchParams()
   const dbName = searchParams.get('dbname') ?? ''
   const apiBase = useMemo(() => getApiBase(), [])
   const bulkZoom = 0.75
-  const previewDownscale = 0.5
   const scaledViewportHeight = `calc(100dvh / ${bulkZoom})`
   const fitcThreshold = 0.7414
 
   const [cells, setCells] = useState<BulkCell[]>([])
   const [previewCellId, setPreviewCellId] = useState<string | null>(null)
+  const [previewDownscale, setPreviewDownscale] = useState(
+    BULK_PREVIEW_DOWNSCALE_DEFAULT,
+  )
   const [selectedLabel, setSelectedLabel] = useState('1')
   const [selectedChannel, setSelectedChannel] = useState('ph')
   const [isLoading, setIsLoading] = useState(false)
@@ -254,7 +263,7 @@ export default function BulkEnginePage() {
       isActive = false
       controller.abort()
     }
-  }, [apiBase, dbName, selectedChannel])
+  }, [apiBase, dbName, selectedChannel, previewDownscale])
 
   useEffect(() => {
     const nextUrls = new Set(cells.map((cell) => cell.url))
@@ -1860,6 +1869,49 @@ export default function BulkEnginePage() {
                         </NativeSelect.Root>
                         <Text fontSize="xs" color="ink.700">
                           Channel: {selectedChannel}
+                        </Text>
+                      </Stack>
+                    </Box>
+                    <Box minW="11rem">
+                      <Text fontSize="xs" letterSpacing="0.18em" color="ink.700" mb="1">
+                        Quality (PH)
+                      </Text>
+                      <Stack spacing="1">
+                        <NativeSelect.Root>
+                          <NativeSelect.Field
+                            value={String(previewDownscale)}
+                            onChange={(event) => {
+                              const next = Number(event.target.value)
+                              setPreviewDownscale(
+                                Number.isFinite(next)
+                                  ? next
+                                  : BULK_PREVIEW_DOWNSCALE_DEFAULT,
+                              )
+                            }}
+                            isDisabled={selectedChannel !== 'ph'}
+                            bg="sand.50"
+                            border="1px solid"
+                            borderColor="sand.200"
+                            fontSize="sm"
+                            h="2.25rem"
+                            color="ink.900"
+                            _focusVisible={{
+                              borderColor: 'tide.400',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
+                            }}
+                          >
+                            {BULK_PREVIEW_DOWNSCALE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator color="ink.700" />
+                        </NativeSelect.Root>
+                        <Text fontSize="xs" color="ink.700">
+                          {selectedChannel === 'ph'
+                            ? `Scale: ${previewDownscale.toFixed(2)}x`
+                            : 'Applied only to PH'}
                         </Text>
                       </Stack>
                     </Box>
