@@ -23,7 +23,25 @@ const AppHeader = ({ children, bg = 'sand.50/85', ...rest }: AppHeaderProps) => 
     zIndex="sticky"
     {...rest}
   >
-    <Flex align="center" justify="space-between" flex="1" minW="0">
+    <Flex
+      align="center"
+      justify="space-between"
+      flex="1"
+      minW="0"
+      gap={{ base: 3, md: 4 }}
+      sx={{
+        '& > *': { minW: 0 },
+        '& > *:last-child': {
+          flexShrink: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+        },
+        '& button': {
+          flexShrink: 0,
+          alignSelf: 'center',
+        },
+      }}
+    >
       {children}
     </Flex>
     <IconButton
