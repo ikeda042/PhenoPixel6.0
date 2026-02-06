@@ -6,7 +6,7 @@ type PageBreadcrumbProps = {
 }
 
 const PageBreadcrumb = ({ children }: PageBreadcrumbProps) => (
-  <Box display="flex" justifyContent="flex-end" mb={{ base: 4, md: 6 }}>
+  <Box display="flex" justifyContent="flex-start" mb={{ base: 4, md: 6 }}>
     {children}
   </Box>
 )
