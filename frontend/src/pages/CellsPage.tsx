@@ -1613,6 +1613,36 @@ export default function CellsPage() {
                       >
                         <Download size={14} />
                       </IconButton>
+                      {channel.key !== 'ph' && (
+                        <NativeSelect.Root minW="6.25rem">
+                          <NativeSelect.Field
+                            value={fluoColors[channel.key]}
+                            onChange={(event) => {
+                              const next = event.target.value as FluoColor
+                              setFluoColors((prev) => ({ ...prev, [channel.key]: next }))
+                            }}
+                            bg="sand.50"
+                            border="1px solid"
+                            borderColor="sand.200"
+                            fontSize="xs"
+                            h="1.75rem"
+                            color="ink.900"
+                            px="2"
+                            isDisabled={!dbName || !currentCellId}
+                            _focusVisible={{
+                              borderColor: 'tide.400',
+                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
+                            }}
+                          >
+                            {fluoColorOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator color="ink.700" />
+                        </NativeSelect.Root>
+                      )}
                     </HStack>
                     <AspectRatio
                       ratio={1}
@@ -1649,41 +1679,6 @@ export default function CellsPage() {
                         </Box>
                       )}
                     </AspectRatio>
-                    {channel.key !== 'ph' && (
-                      <Box mt="2">
-                        <Text fontSize="xs" color="ink.700" mb="1">
-                          Color
-                        </Text>
-                        <NativeSelect.Root>
-                          <NativeSelect.Field
-                            value={fluoColors[channel.key]}
-                            onChange={(event) => {
-                              const next = event.target.value as FluoColor
-                              setFluoColors((prev) => ({ ...prev, [channel.key]: next }))
-                            }}
-                            bg="sand.50"
-                            border="1px solid"
-                            borderColor="sand.200"
-                            fontSize="sm"
-                            h={{ base: '2.25rem', lg: '2rem' }}
-                            color="ink.900"
-                            w="100%"
-                            isDisabled={!dbName || !currentCellId}
-                            _focusVisible={{
-                              borderColor: 'tide.400',
-                              boxShadow: '0 0 0 1px var(--app-accent-ring)',
-                            }}
-                          >
-                            {fluoColorOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </NativeSelect.Field>
-                          <NativeSelect.Indicator color="ink.700" />
-                        </NativeSelect.Root>
-                      </Box>
-                    )}
                   </Box>
                 ))}
               </Grid>
