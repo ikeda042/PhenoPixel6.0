@@ -21,7 +21,7 @@ import {
   Text,
   Button,
 } from '@chakra-ui/react'
-import { Download, Search, Trash2 } from 'lucide-react'
+import { Download, Pencil, Search, Trash2 } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import ReloadButton from '../components/ReloadButton'
 import ThemeToggleButton from '../components/ThemeToggleButton'
@@ -631,8 +631,11 @@ export default function DatabasesPage() {
                             _hover={{ bg: 'tide.400' }}
                             onClick={() => beginRename(name)}
                             disabled={disableActions}
+                            aria-label={`Rename ${name}`}
+                            minW="auto"
+                            px="2"
                           >
-                            Rename
+                            <Icon as={Pencil} boxSize={3.5} />
                           </Button>
                           <Button
                             size="xs"
