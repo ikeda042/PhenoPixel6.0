@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import {
+  AspectRatio,
   Badge,
   Box,
   BreadcrumbCurrentLink,
@@ -1613,15 +1614,17 @@ export default function CellsPage() {
                         <Download size={14} />
                       </IconButton>
                     </HStack>
-                    <Box
+                    <AspectRatio
+                      ratio={1}
                       bg="sand.200"
                       borderRadius="lg"
                       overflow="hidden"
-                      h={{ base: '8rem', md: 'clamp(6.5rem, 17vh, 11rem)' }}
+                      w="100%"
                       display="flex"
                       alignItems="center"
                       justifyContent="center"
                       minH="0"
+                      flexShrink={0}
                     >
                       {isLoadingImages ? (
                         <Box display="flex" alignItems="center" justifyContent="center">
@@ -1634,7 +1637,7 @@ export default function CellsPage() {
                           alt={`${currentCellId} ${channel.label}`}
                           width="100%"
                           height="100%"
-                          objectFit="contain"
+                          objectFit="cover"
                         />
                       ) : (
                         <Box display="flex" alignItems="center" justifyContent="center">
@@ -1645,7 +1648,7 @@ export default function CellsPage() {
                           </Text>
                         </Box>
                       )}
-                    </Box>
+                    </AspectRatio>
                     {channel.key !== 'ph' && (
                       <Box mt="2">
                         <Text fontSize="xs" color="ink.700" mb="1">
