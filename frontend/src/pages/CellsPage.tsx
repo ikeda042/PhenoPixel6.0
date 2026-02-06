@@ -1087,13 +1087,13 @@ export default function CellsPage() {
 
   return (
     <Box
-      minH="100vh"
-      h={{ base: 'auto', lg: '100vh' }}
+      minH="100dvh"
+      h="auto"
       bg="sand.50"
       color="ink.900"
       display="flex"
       flexDirection="column"
-      overflow={{ base: 'visible', lg: 'hidden' }}
+      overflow="visible"
     >
       <AppHeader>
         <HStack
@@ -1372,6 +1372,7 @@ export default function CellsPage() {
           >
             <Box
               overflowX={{ base: 'auto', lg: 'visible' }}
+              overflowY={{ base: 'visible', lg: 'auto' }}
               pb={{ base: 2, lg: 0 }}
               h="100%"
               display="flex"
@@ -1679,6 +1680,7 @@ export default function CellsPage() {
                 align="center"
                 order={2}
                 flexWrap="wrap"
+                flexShrink={0}
               >
                 <Button
                   size="sm"

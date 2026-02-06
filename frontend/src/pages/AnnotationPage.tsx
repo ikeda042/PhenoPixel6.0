@@ -361,13 +361,13 @@ export default function AnnotationPage() {
 
   return (
     <Box
-      minH="100vh"
-      h={{ base: 'auto', lg: '100vh' }}
+      minH="100dvh"
+      h="auto"
       bg="sand.50"
       color="ink.900"
       display="flex"
       flexDirection="column"
-      overflow={{ base: 'visible', lg: 'hidden' }}
+      overflow="visible"
     >
       <AppHeader>
         <HStack

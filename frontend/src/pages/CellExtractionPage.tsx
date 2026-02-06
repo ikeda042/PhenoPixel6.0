@@ -514,7 +514,7 @@ export default function CellExtractionPage() {
   const overlayTotal = overlayCellIds.length
 
   return (
-    <Box h="100vh" bg="sand.50" color="ink.900" display="flex" flexDirection="column">
+    <Box minH="100dvh" h="auto" bg="sand.50" color="ink.900" display="flex" flexDirection="column">
       <AppHeader>
         <HStack
           as={RouterLink}

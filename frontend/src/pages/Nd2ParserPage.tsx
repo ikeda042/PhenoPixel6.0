@@ -521,13 +521,13 @@ export default function Nd2ParserPage() {
 
   return (
     <Box
-      minH="100vh"
-      h="100vh"
+      minH="100dvh"
+      h="auto"
       bg="sand.50"
       color="ink.900"
       display="flex"
       flexDirection="column"
-      overflow="hidden"
+      overflow="visible"
     >
       <AppHeader>
         <HStack
