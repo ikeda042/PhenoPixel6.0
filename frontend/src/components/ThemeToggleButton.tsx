@@ -17,6 +17,10 @@ type ThemeToggleButtonProps = {
 
 const ThemeToggleButton = ({ compact = false }: ThemeToggleButtonProps) => {
   const [mode, setMode] = useState<ThemeMode>(() => getCurrentMode())
+  const buttonHeight = compact ? { base: '1.5rem', md: '1.5rem' } : { base: '1.75rem', md: '2rem' }
+  const buttonMinWidth = compact
+    ? { base: '1.75rem', md: '1.75rem' }
+    : { base: '2.25rem', md: '2.75rem' }
 
   const handleToggle = () => {
     const nextMode: ThemeMode = mode === 'dark' ? 'light' : 'dark'
@@ -35,11 +39,19 @@ const ThemeToggleButton = ({ compact = false }: ThemeToggleButtonProps) => {
     <Button
       type="button"
       size={compact ? 'xs' : { base: 'xs', md: 'sm' }}
-      h={compact ? { base: '1.5rem', md: '1.5rem' } : { base: '1.75rem', md: '2rem' }}
-      minH={compact ? { base: '1.5rem', md: '1.5rem' } : { base: '1.75rem', md: '2rem' }}
+      h={buttonHeight}
+      minH={buttonHeight}
+      maxH={buttonHeight}
+      minW={buttonMinWidth}
       px={compact ? 2 : { base: 3, md: 4 }}
       py="0"
       alignSelf="center"
+      lineHeight="1"
+      whiteSpace="nowrap"
+      display="inline-flex"
+      alignItems="center"
+      justifyContent="center"
+      flexShrink={0}
       border="1px solid"
       borderColor="tide.500"
       bg="tide.500"
@@ -48,7 +60,7 @@ const ThemeToggleButton = ({ compact = false }: ThemeToggleButtonProps) => {
       onClick={handleToggle}
       aria-label={`Switch to ${label} mode`}
     >
-      <HStack spacing="2">
+      <HStack spacing="2" align="center" justify="center">
         <Icon as={ModeIcon} boxSize={compact ? 3 : 4} />
         <Text
           fontSize={compact ? '0.55rem' : 'xs'}
