@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { strFromU8, unzipSync } from 'fflate'
 import {
   AspectRatio,
   Badge,
@@ -37,6 +38,23 @@ type OverlayOptions = {
   contour: boolean
   scale: boolean
 }
+type ChannelImageMap = Record<ChannelKey, string | null>
+type ChannelMissingMap = Record<ChannelKey, boolean>
+type FastBundleCell = {
+  images: ChannelImageMap
+  missingChannels: ChannelMissingMap
+  manualLabel: string | null
+}
+type FastBundleState = Record<string, FastBundleCell>
+type FastBundleManifestCell = {
+  cell_id?: unknown
+  manual_label?: unknown
+  files?: Record<string, unknown>
+  missing?: Record<string, unknown>
+}
+type FastBundleManifest = {
+  cells?: FastBundleManifestCell[]
+}
 
 const channels: { key: ChannelKey; label: string }[] = [
   { key: 'ph', label: 'PH' },
@@ -68,6 +86,22 @@ const replotChannelOptions: { value: ReplotChannel; label: string }[] = [
 
 const LABEL_FILTER_OPTIONS = ['N/A', '1', '2', '3'] as const
 const DEFAULT_LABEL_OPTIONS = ['All', ...LABEL_FILTER_OPTIONS]
+const FAST_MODE_QUERY_VALUES = new Set(['1', 'true', 'yes', 'on'])
+const EMPTY_IMAGES: ChannelImageMap = {
+  ph: null,
+  fluo1: null,
+  fluo2: null,
+}
+const EMPTY_MISSING_CHANNELS: ChannelMissingMap = {
+  ph: false,
+  fluo1: false,
+  fluo2: false,
+}
+
+const createEmptyImages = (): ChannelImageMap => ({ ...EMPTY_IMAGES })
+const createEmptyMissingChannels = (): ChannelMissingMap => ({
+  ...EMPTY_MISSING_CHANNELS,
+})
 
 const normalizeManualLabel = (label: string | null) => {
   const trimmed = (label ?? '').trim()
@@ -106,6 +140,8 @@ export default function CellsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const dbName = searchParams.get('db') ?? ''
   const requestedCellId = searchParams.get('cell_id') ?? searchParams.get('cell') ?? ''
+  const fastModeParam = (searchParams.get('fast') ?? '').trim().toLowerCase()
+  const fastModeRequested = FAST_MODE_QUERY_VALUES.has(fastModeParam)
   const apiBase = useMemo(() => getApiBase(), [])
 
   const [cellIds, setCellIds] = useState<string[]>([])
@@ -172,16 +208,13 @@ export default function CellsPage() {
     width: number
     height: number
   } | null>(null)
-  const [images, setImages] = useState<Record<ChannelKey, string | null>>({
-    ph: null,
-    fluo1: null,
-    fluo2: null,
-  })
-  const [missingChannels, setMissingChannels] = useState<Record<ChannelKey, boolean>>({
-    ph: false,
-    fluo1: false,
-    fluo2: false,
-  })
+  const [images, setImages] = useState<ChannelImageMap>(createEmptyImages)
+  const [missingChannels, setMissingChannels] = useState<ChannelMissingMap>(
+    createEmptyMissingChannels,
+  )
+  const [fastBundle, setFastBundle] = useState<FastBundleState | null>(null)
+  const [isLoadingFastBundle, setIsLoadingFastBundle] = useState(false)
+  const [fastBundleError, setFastBundleError] = useState<string | null>(null)
   const [isLoadingIds, setIsLoadingIds] = useState(false)
   const [isLoadingImages, setIsLoadingImages] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -189,6 +222,51 @@ export default function CellsPage() {
   const currentCellId = cellIds[currentIndex] ?? ''
   const cellCount = cellIds.length
   const restorePendingRef = useRef(false)
+  const fastCell = useMemo(() => {
+    if (!fastBundle || !currentCellId) return null
+    return fastBundle[currentCellId] ?? null
+  }, [currentCellId, fastBundle])
+  const canUseFastImages = useMemo(
+    () =>
+      fastModeRequested &&
+      selectedLabel === 'All' &&
+      overlayOptions.contour &&
+      overlayOptions.scale &&
+      fluoColors.fluo1 === defaultFluoColors.fluo1 &&
+      fluoColors.fluo2 === defaultFluoColors.fluo2 &&
+      modificationMode === 'elastic' &&
+      contourRefreshKey === 0 &&
+      Boolean(fastCell),
+    [
+      contourRefreshKey,
+      fastCell,
+      fastModeRequested,
+      fluoColors.fluo1,
+      fluoColors.fluo2,
+      modificationMode,
+      overlayOptions.contour,
+      overlayOptions.scale,
+      selectedLabel,
+    ],
+  )
+  const activeImages = canUseFastImages && fastCell ? fastCell.images : images
+  const activeMissingChannels =
+    canUseFastImages && fastCell ? fastCell.missingChannels : missingChannels
+  const canUseFastLabels =
+    fastModeRequested && selectedLabel === 'All' && Boolean(fastCell)
+  const fastCachedCellCount = useMemo(
+    () => (fastBundle ? Object.keys(fastBundle).length : 0),
+    [fastBundle],
+  )
+
+  const revokeFastBundleUrls = useCallback((bundle: FastBundleState | null) => {
+    if (!bundle) return
+    Object.values(bundle).forEach((cell) => {
+      Object.values(cell.images).forEach((url) => {
+        if (url) URL.revokeObjectURL(url)
+      })
+    })
+  }, [])
 
   useEffect(() => {
     restorePendingRef.current = Boolean(requestedCellId)
@@ -234,12 +312,155 @@ export default function CellsPage() {
     }
   }, [labelOptions, selectedLabel])
 
+  useEffect(() => {
+    if (!fastModeRequested || !dbName || selectedLabel !== 'All') {
+      setIsLoadingFastBundle(false)
+      return
+    }
+    let isActive = true
+    const controller = new AbortController()
+
+    const loadFastBundle = async () => {
+      setIsLoadingFastBundle(true)
+      setFastBundleError(null)
+      setError(null)
+      setCellIds([])
+      setCurrentIndex(0)
+      try {
+        const params = new URLSearchParams({
+          dbname: dbName,
+          draw_contour: 'true',
+          draw_scale_bar: 'true',
+          fluo1_color: defaultFluoColors.fluo1,
+          fluo2_color: defaultFluoColors.fluo2,
+          gain: '1',
+        })
+        const res = await fetch(`${apiBase}/get-cells-fast-bundle?${params.toString()}`, {
+          signal: controller.signal,
+          headers: { accept: 'application/zip' },
+        })
+        if (!res.ok) {
+          throw new Error(`Fast preload failed (${res.status})`)
+        }
+        const buffer = await res.arrayBuffer()
+        const zipEntries = unzipSync(new Uint8Array(buffer))
+        const manifestRaw = zipEntries['manifest.json']
+        if (!manifestRaw) {
+          throw new Error('Fast preload manifest is missing.')
+        }
+        const parsed = JSON.parse(strFromU8(manifestRaw)) as FastBundleManifest
+        const manifestCells = Array.isArray(parsed.cells) ? parsed.cells : []
+        const nextBundle: FastBundleState = {}
+        const nextCellIds: string[] = []
+
+        for (const entry of manifestCells) {
+          if (typeof entry.cell_id !== 'string' || !entry.cell_id) continue
+          const files = entry.files && typeof entry.files === 'object' ? entry.files : {}
+          const missing =
+            entry.missing && typeof entry.missing === 'object' ? entry.missing : {}
+          const nextImages = createEmptyImages()
+          const nextMissing = createEmptyMissingChannels()
+          for (const channel of channels) {
+            const filePath = files[channel.key]
+            if (typeof filePath === 'string' && filePath) {
+              const imageBytes = zipEntries[filePath]
+              if (imageBytes) {
+                nextImages[channel.key] = URL.createObjectURL(
+                  new Blob([imageBytes], { type: 'image/png' }),
+                )
+              }
+            }
+            const missingValue = missing[channel.key]
+            if (typeof missingValue === 'boolean') {
+              nextMissing[channel.key] = missingValue
+            } else if (!nextImages[channel.key]) {
+              nextMissing[channel.key] = channel.key !== 'ph'
+            }
+          }
+
+          nextBundle[entry.cell_id] = {
+            images: nextImages,
+            missingChannels: nextMissing,
+            manualLabel: normalizeManualLabel(
+              entry.manual_label == null ? null : String(entry.manual_label),
+            ),
+          }
+          nextCellIds.push(entry.cell_id)
+        }
+
+        if (!isActive) {
+          revokeFastBundleUrls(nextBundle)
+          return
+        }
+        setFastBundle((previous) => {
+          revokeFastBundleUrls(previous)
+          return nextBundle
+        })
+        setCellIds(sortCellIds(nextCellIds))
+        setCurrentIndex(0)
+        setError(null)
+      } catch (err) {
+        if (!isActive) return
+        setFastBundle((previous) => {
+          revokeFastBundleUrls(previous)
+          return null
+        })
+        setFastBundleError(
+          err instanceof Error ? err.message : 'Failed to preload fast bundle',
+        )
+      } finally {
+        if (isActive) {
+          setIsLoadingFastBundle(false)
+        }
+      }
+    }
+
+    void loadFastBundle()
+    return () => {
+      isActive = false
+      controller.abort()
+    }
+  }, [apiBase, dbName, fastModeRequested, revokeFastBundleUrls, selectedLabel])
+
+  useEffect(() => {
+    if (dbName) return
+    setFastBundle((previous) => {
+      revokeFastBundleUrls(previous)
+      return null
+    })
+    setFastBundleError(null)
+    setIsLoadingFastBundle(false)
+  }, [dbName, revokeFastBundleUrls])
+
   const fetchCellIds = useCallback(async () => {
     if (!dbName) {
       setError('Database is required.')
       setCellIds([])
       setCurrentIndex(0)
       return
+    }
+    if (fastModeRequested && selectedLabel === 'All') {
+      if (fastBundle) {
+        const sortedFastIds = sortCellIds(Object.keys(fastBundle))
+        setCellIds((prev) => {
+          if (
+            prev.length === sortedFastIds.length &&
+            prev.every((value, index) => value === sortedFastIds[index])
+          ) {
+            return prev
+          }
+          return sortedFastIds
+        })
+        setCurrentIndex((prev) =>
+          sortedFastIds.length === 0 ? 0 : Math.min(prev, sortedFastIds.length - 1),
+        )
+        setIsLoadingIds(false)
+        return
+      }
+      if (isLoadingFastBundle || !fastBundleError) {
+        setIsLoadingIds(false)
+        return
+      }
     }
     setIsLoadingIds(true)
     setError(null)
@@ -266,15 +487,28 @@ export default function CellsPage() {
     } finally {
       setIsLoadingIds(false)
     }
-  }, [apiBase, dbName, selectedLabel])
+  }, [
+    apiBase,
+    dbName,
+    fastBundle,
+    fastBundleError,
+    fastModeRequested,
+    isLoadingFastBundle,
+    selectedLabel,
+  ])
 
   useEffect(() => {
     void fetchCellIds()
   }, [fetchCellIds])
 
   useEffect(() => {
+    if (canUseFastImages && fastCell) {
+      setIsLoadingImages(false)
+      return
+    }
     if (!dbName || !currentCellId) {
-      setImages({ ph: null, fluo1: null, fluo2: null })
+      setImages(createEmptyImages())
+      setMissingChannels(createEmptyMissingChannels())
       return
     }
 
@@ -317,8 +551,8 @@ export default function CellsPage() {
     const loadImages = async () => {
       setIsLoadingImages(true)
       setError(null)
-      setImages({ ph: null, fluo1: null, fluo2: null })
-      setMissingChannels({ ph: false, fluo1: false, fluo2: false })
+      setImages(createEmptyImages())
+      setMissingChannels(createEmptyMissingChannels())
       try {
         const results = await Promise.all(
           channels.map((channel) => fetchChannel(channel.key)),
@@ -342,8 +576,8 @@ export default function CellsPage() {
       } catch (err) {
         if (isActive) {
           setError(err instanceof Error ? err.message : 'Failed to load images')
-          setImages({ ph: null, fluo1: null, fluo2: null })
-          setMissingChannels({ ph: false, fluo1: false, fluo2: false })
+          setImages(createEmptyImages())
+          setMissingChannels(createEmptyMissingChannels())
         }
       } finally {
         if (isActive) setIsLoadingImages(false)
@@ -363,9 +597,17 @@ export default function CellsPage() {
     modificationMode,
     contourRefreshKey,
     appliedGain,
+    canUseFastImages,
+    fastCell,
   ])
 
   useEffect(() => {
+    if (canUseFastLabels && fastCell) {
+      setIsLoadingLabel(false)
+      setManualLabelError(null)
+      setManualLabel(fastCell.manualLabel)
+      return
+    }
     if (!dbName || !currentCellId) {
       setManualLabel(null)
       setManualLabelError(null)
@@ -389,7 +631,7 @@ export default function CellsPage() {
         if (isActive) {
           setManualLabel(normalizeManualLabel(label))
         }
-      } catch (err) {
+      } catch {
         if (isActive) {
           setManualLabel(null)
         }
@@ -402,7 +644,7 @@ export default function CellsPage() {
     return () => {
       isActive = false
     }
-  }, [apiBase, currentCellId, dbName])
+  }, [apiBase, canUseFastLabels, currentCellId, dbName, fastCell])
 
   const manualLabelOptions = useMemo(() => {
     const baseOptions = labelOptions.filter((option) => option !== 'All')
@@ -435,6 +677,20 @@ export default function CellsPage() {
         if (!res.ok) {
           throw new Error(`Label update failed (${res.status})`)
         }
+        if (fastModeRequested && selectedLabel === 'All') {
+          setFastBundle((previous) => {
+            if (!previous) return previous
+            const target = previous[currentCellId]
+            if (!target) return previous
+            return {
+              ...previous,
+              [currentCellId]: {
+                ...target,
+                manualLabel: normalizeManualLabel(trimmed),
+              },
+            }
+          })
+        }
         await fetchLabelOptions()
       } catch (err) {
         setManualLabel(previousLabel)
@@ -443,7 +699,15 @@ export default function CellsPage() {
         setIsUpdatingLabel(false)
       }
     },
-    [apiBase, currentCellId, dbName, fetchLabelOptions, manualLabel],
+    [
+      apiBase,
+      currentCellId,
+      dbName,
+      fastModeRequested,
+      fetchLabelOptions,
+      manualLabel,
+      selectedLabel,
+    ],
   )
 
   useEffect(() => {
@@ -654,7 +918,7 @@ export default function CellsPage() {
     return () => {
       isActive = false
     }
-  }, [apiBase, contourMode, currentCellId, dbName, contourRefreshKey])
+  }, [apiBase, contourMode, currentCellId, dbName, contourRefreshKey, heatmapChannel])
 
   useEffect(() => {
     if (!dbName || !currentCellId || contourMode !== 'map256') {
@@ -931,7 +1195,7 @@ export default function CellsPage() {
   }, [distributionUrl])
 
   useEffect(() => {
-    if (!images.ph) {
+    if (!activeImages.ph) {
       setImageDimensions(null)
       return
     }
@@ -951,11 +1215,11 @@ export default function CellsPage() {
         setImageDimensions(null)
       }
     }
-    img.src = images.ph
+    img.src = activeImages.ph
     return () => {
       isActive = false
     }
-  }, [images.ph])
+  }, [activeImages.ph])
 
   useEffect(() => {
     return () => {
@@ -964,6 +1228,12 @@ export default function CellsPage() {
       })
     }
   }, [images])
+
+  useEffect(() => {
+    return () => {
+      revokeFastBundleUrls(fastBundle)
+    }
+  }, [fastBundle, revokeFastBundleUrls])
 
   const handlePrevious = () => {
     setCurrentIndex((prev) => Math.max(prev - 1, 0))
@@ -975,7 +1245,7 @@ export default function CellsPage() {
 
   const handleDownloadImage = useCallback(
     (channel: ChannelKey) => {
-      const url = images[channel]
+      const url = activeImages[channel]
       if (!url) return
       const safeDb = toSafeFilenamePart(dbName, 'db')
       const safeCell = toSafeFilenamePart(currentCellId, 'cell')
@@ -987,14 +1257,17 @@ export default function CellsPage() {
       anchor.click()
       anchor.remove()
     },
-    [dbName, currentCellId, images],
+    [activeImages, dbName, currentCellId],
   )
 
   const isApplyingAnyModification = isApplyingModification || isApplyingBulkModification
   const parsedGain = Number(gainInput)
   const isGainValid =
     gainInput.trim() !== '' && Number.isFinite(parsedGain) && parsedGain > 0
-  const isNavigatorDisabled = cellCount === 0 || isLoadingIds
+  const isNavigatorDisabled =
+    cellCount === 0 ||
+    isLoadingIds ||
+    (fastModeRequested && selectedLabel === 'All' && isLoadingFastBundle && !fastBundle)
   const isOverlayMode =
     contourMode === 'overlay' ||
     contourMode === 'overlay-fluo' ||
@@ -1174,9 +1447,25 @@ export default function CellsPage() {
                 <Text fontSize="xs" letterSpacing="0.18em" color="ink.700">
                   Cell Control Panel
                 </Text>
-                <Text fontSize="xs" color="ink.700">
-                  Database: {dbName || 'Not selected'}
-                </Text>
+                <HStack spacing="2" align="center">
+                  {fastModeRequested && (
+                    <Badge
+                      bg={canUseFastImages ? 'teal.500' : 'sand.200'}
+                      color={canUseFastImages ? 'white' : 'ink.700'}
+                      borderRadius="full"
+                      px="2"
+                      py="1"
+                      fontSize="0.6rem"
+                      letterSpacing="0.18em"
+                      textTransform="uppercase"
+                    >
+                      Fast mode
+                    </Badge>
+                  )}
+                  <Text fontSize="xs" color="ink.700">
+                    Database: {dbName || 'Not selected'}
+                  </Text>
+                </HStack>
               </HStack>
               <Grid
                 templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(3, minmax(0, 1fr))' }}
@@ -1356,6 +1645,24 @@ export default function CellsPage() {
           {isLoadingIds && (
             <Text fontSize="sm" color="ink.700">
               Loading cell IDs...
+            </Text>
+          )}
+
+          {fastModeRequested && selectedLabel === 'All' && isLoadingFastBundle && (
+            <Text fontSize="sm" color="ink.700">
+              Fast preloading cells...
+            </Text>
+          )}
+
+          {fastModeRequested && selectedLabel === 'All' && fastBundleError && (
+            <Text fontSize="sm" color="violet.300">
+              Fast preload failed; using normal loading. {fastBundleError}
+            </Text>
+          )}
+
+          {fastModeRequested && selectedLabel === 'All' && !isLoadingFastBundle && fastBundle && (
+            <Text fontSize="sm" color="teal.500">
+              Fast cache ready ({fastCachedCellCount} cells).
             </Text>
           )}
 
@@ -1608,7 +1915,7 @@ export default function CellsPage() {
                         color="teal.500"
                         _hover={{ bg: 'sand.200', color: 'teal.600' }}
                         _active={{ bg: 'sand.300' }}
-                        isDisabled={isLoadingImages || !images[channel.key]}
+                        isDisabled={isLoadingImages || !activeImages[channel.key]}
                         onClick={() => handleDownloadImage(channel.key)}
                       >
                         <Download size={14} />
@@ -1662,10 +1969,10 @@ export default function CellsPage() {
                         <Box display="flex" alignItems="center" justifyContent="center">
                           <Spinner color="ink.700" />
                         </Box>
-                      ) : images[channel.key] ? (
+                      ) : activeImages[channel.key] ? (
                         <Box
                           as="img"
-                          src={images[channel.key] ?? undefined}
+                          src={activeImages[channel.key] ?? undefined}
                           alt={`${currentCellId} ${channel.label}`}
                           width="100%"
                           height="100%"
@@ -1674,7 +1981,7 @@ export default function CellsPage() {
                       ) : (
                         <Box display="flex" alignItems="center" justifyContent="center">
                           <Text fontSize="sm" color="ink.700">
-                            {missingChannels[channel.key]
+                            {activeMissingChannels[channel.key]
                               ? `${channel.key} does not exist.`
                               : 'Image not available.'}
                           </Text>

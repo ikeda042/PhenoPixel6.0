@@ -1,6 +1,7 @@
 import asyncio
 import io
 from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 from typing import Annotated, Literal
 
 import aiofiles
@@ -114,6 +115,44 @@ def get_cell_ids_by_label_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router_database_manager.get("/get-cells-fast-bundle")
+async def get_cells_fast_bundle_endpoint(
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    draw_contour: Annotated[bool, Query()] = True,
+    draw_scale_bar: Annotated[bool, Query()] = True,
+    fluo1_color: Annotated[
+        Literal["blue", "green", "red", "yellow", "magenta", "gray"] | None,
+        Query(description="blue | green | red | yellow | magenta | gray"),
+    ] = None,
+    fluo2_color: Annotated[
+        Literal["blue", "green", "red", "yellow", "magenta", "gray"] | None,
+        Query(description="blue | green | red | yellow | magenta | gray"),
+    ] = None,
+    gain: Annotated[float, Query(gt=0)] = 1.0,
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        task = partial(
+            DatabaseManagerCrud.get_cells_fast_bundle,
+            dbname,
+            label=label,
+            draw_contour=draw_contour,
+            draw_scale_bar=draw_scale_bar,
+            fluo1_color=fluo1_color,
+            fluo2_color=fluo2_color,
+            gain=gain,
+        )
+        zip_bytes = await loop.run_in_executor(annotation_executor, task)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(zip_bytes), media_type="application/zip")
 
 
 @router_database_manager.get("/get-manual-labels", response_model=list[str])

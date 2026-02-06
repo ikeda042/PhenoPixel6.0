@@ -712,6 +712,16 @@ def _normalize_annotation_label(label: object) -> str:
     return label_str
 
 
+def _normalize_fast_manual_label(label: object) -> str | None:
+    if label is None:
+        return None
+    if isinstance(label, (bytes, bytearray)):
+        label_str = label.decode(errors="ignore").strip()
+    else:
+        label_str = str(label).strip()
+    return label_str or None
+
+
 def _safe_cell_filename(cell_id: str) -> str:
     safe = "".join(ch if (ch.isalnum() or ch in ("-", "_")) else "_" for ch in cell_id)
     return safe or "cell"
@@ -1510,6 +1520,33 @@ def get_cell_image(
         session.close()
 
 
+def _render_cell_image_from_blob(
+    image_blob: bytes,
+    image_type: str,
+    contour_raw: bytes | None = None,
+    draw_contour: bool = False,
+    draw_scale_bar: bool = False,
+    gain: float = 1.0,
+    fluo_color: str | None = None,
+) -> bytes:
+    if not np.isfinite(gain) or gain <= 0:
+        raise ValueError("Gain must be greater than 0")
+    if image_type not in ("ph", "fluo1", "fluo2"):
+        raise ValueError("Invalid image_type")
+    image = _decode_image(image_blob)
+    if image_type in ("fluo1", "fluo2"):
+        if gain != 1:
+            gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            scaled = gray.astype(np.float32) * float(gain)
+            image = np.clip(scaled, 0, 255).astype(np.uint8)
+        image = _colorize_fluo_image(image, image_type, fluo_color=fluo_color)
+    if draw_contour and contour_raw is not None:
+        image = _draw_contour(image, contour_raw)
+    if draw_scale_bar:
+        image = _draw_scale_bar_with_centered_text(image)
+    return _encode_image(image)
+
+
 def get_cell_image_optical_boost(
     db_name: str,
     cell_id: str,
@@ -2041,6 +2078,130 @@ def get_annotation_zip(
         session.close()
 
 
+def get_cells_fast_bundle(
+    db_name: str,
+    label: str | None = None,
+    draw_contour: bool = True,
+    draw_scale_bar: bool = True,
+    fluo1_color: str | None = None,
+    fluo2_color: str | None = None,
+    gain: float = 1.0,
+) -> bytes:
+    if not np.isfinite(gain) or gain <= 0:
+        raise ValueError("Gain must be greater than 0")
+
+    resolved_fluo1 = _resolve_fluo_color(fluo1_color, "fluo1")
+    resolved_fluo2 = _resolve_fluo_color(fluo2_color, "fluo2")
+    label_value = label.strip() if label is not None else None
+    if label is not None and not label_value:
+        raise ValueError("Label is required")
+
+    session = get_database_session(db_name)
+    try:
+        bind = session.get_bind()
+        if bind is None:
+            raise RuntimeError("Database session is not bound")
+
+        metadata = MetaData()
+        cells = Table("cells", metadata, autoload_with=bind)
+        stmt = (
+            select(
+                cells.c.cell_id,
+                cells.c.manual_label,
+                cells.c.img_ph,
+                cells.c.img_fluo1,
+                cells.c.img_fluo2,
+                cells.c.contour,
+            )
+            .where(cells.c.cell_id.is_not(None))
+            .order_by(cells.c.cell_id)
+        )
+        if label_value is not None:
+            filters = [cells.c.manual_label == label_value]
+            if label_value.isdigit():
+                filters.append(cells.c.manual_label == int(label_value))
+            stmt = stmt.where(or_(*filters))
+
+        result = session.execute(stmt)
+        bundle = io.BytesIO()
+        manifest_cells: list[dict[str, object]] = []
+
+        with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for index, (
+                cell_id,
+                manual_label,
+                ph_blob,
+                fluo1_blob,
+                fluo2_blob,
+                contour_blob,
+            ) in enumerate(result):
+                if cell_id is None:
+                    continue
+
+                cell_id_str = str(cell_id)
+                contour_raw = bytes(contour_blob) if contour_blob is not None else None
+                safe_prefix = f"{index:06d}_{_safe_cell_filename(cell_id_str)}"
+
+                files: dict[str, str] = {}
+                missing = {
+                    "ph": ph_blob is None,
+                    "fluo1": fluo1_blob is None,
+                    "fluo2": fluo2_blob is None,
+                }
+
+                channel_specs: tuple[tuple[str, object, str | None], ...] = (
+                    ("ph", ph_blob, None),
+                    ("fluo1", fluo1_blob, resolved_fluo1),
+                    ("fluo2", fluo2_blob, resolved_fluo2),
+                )
+                for channel_name, blob_value, channel_color in channel_specs:
+                    if blob_value is None:
+                        continue
+                    rendered = _render_cell_image_from_blob(
+                        bytes(blob_value),
+                        channel_name,
+                        contour_raw=contour_raw,
+                        draw_contour=draw_contour,
+                        draw_scale_bar=draw_scale_bar,
+                        gain=gain if channel_name in ("fluo1", "fluo2") else 1.0,
+                        fluo_color=channel_color,
+                    )
+                    image_path = f"images/{safe_prefix}_{channel_name}.png"
+                    archive.writestr(image_path, rendered)
+                    files[channel_name] = image_path
+
+                manifest_cells.append(
+                    {
+                        "cell_id": cell_id_str,
+                        "manual_label": _normalize_fast_manual_label(manual_label),
+                        "files": files,
+                        "missing": missing,
+                    }
+                )
+
+            archive.writestr(
+                "manifest.json",
+                json.dumps(
+                    {
+                        "cells": manifest_cells,
+                        "settings": {
+                            "draw_contour": draw_contour,
+                            "draw_scale_bar": draw_scale_bar,
+                            "fluo1_color": resolved_fluo1,
+                            "fluo2_color": resolved_fluo2,
+                            "gain": gain,
+                        },
+                    },
+                    ensure_ascii=True,
+                ),
+            )
+
+        bundle.seek(0)
+        return bundle.getvalue()
+    finally:
+        session.close()
+
+
 class DatabaseManagerCrud:
     DATABASES_DIR = DATABASES_DIR
     DOWNLOAD_CHUNK_SIZE = DOWNLOAD_CHUNK_SIZE
@@ -2154,3 +2315,7 @@ class DatabaseManagerCrud:
     @classmethod
     def get_annotation_zip(cls, *args, **kwargs) -> bytes:
         return get_annotation_zip(*args, **kwargs)
+
+    @classmethod
+    def get_cells_fast_bundle(cls, *args, **kwargs) -> bytes:
+        return get_cells_fast_bundle(*args, **kwargs)
