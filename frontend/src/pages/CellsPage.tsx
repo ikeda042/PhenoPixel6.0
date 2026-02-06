@@ -254,10 +254,6 @@ export default function CellsPage() {
     canUseFastImages && fastCell ? fastCell.missingChannels : missingChannels
   const canUseFastLabels =
     fastModeRequested && selectedLabel === 'All' && Boolean(fastCell)
-  const fastCachedCellCount = useMemo(
-    () => (fastBundle ? Object.keys(fastBundle).length : 0),
-    [fastBundle],
-  )
 
   const revokeFastBundleUrls = useCallback((bundle: FastBundleState | null) => {
     if (!bundle) return
@@ -1669,12 +1665,6 @@ export default function CellsPage() {
           {fastModeRequested && selectedLabel === 'All' && fastBundleError && (
             <Text fontSize="sm" color="violet.300">
               Fast preload failed; using normal loading. {fastBundleError}
-            </Text>
-          )}
-
-          {fastModeRequested && selectedLabel === 'All' && !isLoadingFastBundle && fastBundle && (
-            <Text fontSize="sm" color="teal.500">
-              Fast cache ready ({fastCachedCellCount} cells).
             </Text>
           )}
 
