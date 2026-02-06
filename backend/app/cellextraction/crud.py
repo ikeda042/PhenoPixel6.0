@@ -16,7 +16,6 @@ from PIL import Image
 from sqlalchemy import BLOB, Column, FLOAT, Integer, String, create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeMeta, Session, declarative_base, sessionmaker
-from sqlalchemy.sql import select
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
@@ -612,6 +611,8 @@ class SyncChores:
 
 
 class ExtractionCrudBase:
+    BULK_INSERT_CHUNK_SIZE: int = 200
+
     def __init__(
         self,
         nd2_path: str,
@@ -674,11 +675,10 @@ class ExtractionCrudBase:
 
     def process_cell(
         self,
-        session_factory,
         i: int,
         j: int,
         user_id: str | None = None,
-    ) -> bool:
+    ) -> Cell | None:
         cell_id = f"F{i}C{j}"
         img_ph = self.load_image(
             f"{self.temp_dir}/frames/tiff_{i}/Cells/ph/{j}.png"
@@ -691,7 +691,7 @@ class ExtractionCrudBase:
 
         contour, img_ph_gray, img_fluo1_gray, _ = self.process_image(img_ph, img_fluo1)
         if contour is None:
-            return False
+            return None
 
         perimeter = cv2.arcLength(contour, True)
         area = cv2.contourArea(contour)
@@ -700,7 +700,7 @@ class ExtractionCrudBase:
             abs(center_x - img_ph.shape[1] // 2) >= 3
             or abs(center_y - img_ph.shape[0] // 2) >= 3
         ):
-            return False
+            return None
 
         img_ph_data = cv2.imencode(".png", img_ph_gray)[1].tobytes()
         img_fluo1_data = img_fluo2_data = None
@@ -731,14 +731,7 @@ class ExtractionCrudBase:
             center_y=center_y,
             user_id=user_id,
         )
-        with session_factory() as session:
-            existing_cell = session.execute(select(Cell).filter_by(cell_id=cell_id))
-            existing_cell = existing_cell.scalar()
-            if existing_cell is None:
-                session.add(cell)
-                session.commit()
-                return True
-        return False
+        return cell
 
     def _sanitize_db_basename(self, name: str) -> str:
         cleaned = name.strip()
@@ -849,22 +842,42 @@ class ExtractionCrudBase:
         )
         session_factory = sessionmaker(engine, expire_on_commit=False)
         inserted_count = 0
+        pending_cells: list[Cell] = []
+        seen_cell_ids: set[str] = set()
 
         try:
-            for frame_idx in range(frame_start, frame_end + 1):
-                cell_path = f"{self.temp_dir}/frames/tiff_{frame_idx}/Cells/ph/"
-                if not os.path.exists(cell_path):
-                    continue
-                cell_indices = sorted(
-                    int(path.stem)
-                    for path in Path(cell_path).iterdir()
-                    if path.is_file()
-                    and path.suffix.lower() == ".png"
-                    and path.stem.isdigit()
-                )
-                for j in cell_indices:
-                    if self.process_cell(session_factory, frame_idx, j, self.user_id):
-                        inserted_count += 1
+            with session_factory() as session:
+                for frame_idx in range(frame_start, frame_end + 1):
+                    cell_path = f"{self.temp_dir}/frames/tiff_{frame_idx}/Cells/ph/"
+                    if not os.path.exists(cell_path):
+                        continue
+                    cell_indices = sorted(
+                        int(path.stem)
+                        for path in Path(cell_path).iterdir()
+                        if path.is_file()
+                        and path.suffix.lower() == ".png"
+                        and path.stem.isdigit()
+                    )
+                    for j in cell_indices:
+                        cell = self.process_cell(frame_idx, j, self.user_id)
+                        if cell is None:
+                            continue
+                        cell_id_str = str(cell.cell_id)
+                        if cell_id_str in seen_cell_ids:
+                            continue
+                        pending_cells.append(cell)
+                        seen_cell_ids.add(cell_id_str)
+                        if len(pending_cells) >= self.BULK_INSERT_CHUNK_SIZE:
+                            session.add_all(pending_cells)
+                            session.commit()
+                            inserted_count += len(pending_cells)
+                            pending_cells.clear()
+
+                if pending_cells:
+                    session.add_all(pending_cells)
+                    session.commit()
+                    inserted_count += len(pending_cells)
+                    pending_cells.clear()
         finally:
             engine.dispose()
         return inserted_count
