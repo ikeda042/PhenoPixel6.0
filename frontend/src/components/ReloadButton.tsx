@@ -16,6 +16,10 @@ type ReloadButtonProps = {
 const ReloadButton = ({ compact = false }: ReloadButtonProps) => {
   const apiBase = useMemo(() => getApiBase(), [])
   const [isUpdating, setIsUpdating] = useState(false)
+  const buttonHeight = compact ? { base: '1.5rem', md: '1.5rem' } : { base: '1.75rem', md: '2rem' }
+  const buttonMinWidth = compact
+    ? { base: '1.75rem', md: '1.75rem' }
+    : { base: '2.25rem', md: '2.75rem' }
 
   const handleUpdate = async () => {
     if (isUpdating) return
@@ -47,11 +51,19 @@ const ReloadButton = ({ compact = false }: ReloadButtonProps) => {
     <Button
       type="button"
       size={compact ? 'xs' : { base: 'xs', md: 'sm' }}
-      h={compact ? { base: '1.5rem', md: '1.5rem' } : { base: '1.75rem', md: '2rem' }}
-      minH={compact ? { base: '1.5rem', md: '1.5rem' } : { base: '1.75rem', md: '2rem' }}
+      h={buttonHeight}
+      minH={buttonHeight}
+      maxH={buttonHeight}
+      minW={buttonMinWidth}
       px={compact ? 2 : { base: 3, md: 4 }}
       py="0"
       alignSelf="center"
+      lineHeight="1"
+      whiteSpace="nowrap"
+      display="inline-flex"
+      alignItems="center"
+      justifyContent="center"
+      flexShrink={0}
       border="1px solid"
       borderColor="tide.500"
       bg="tide.500"
@@ -62,7 +74,7 @@ const ReloadButton = ({ compact = false }: ReloadButtonProps) => {
       loadingText="Updating"
       aria-label="Update application"
     >
-      <HStack spacing="2">
+      <HStack spacing="2" align="center" justify="center">
         <Icon as={RotateCw} boxSize={compact ? 3 : 4} />
         <Text
           fontSize={compact ? '0.55rem' : 'xs'}
