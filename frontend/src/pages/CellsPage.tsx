@@ -1593,10 +1593,10 @@ export default function CellsPage() {
                     flexDirection="column"
                     minH="0"
                   >
-                    <HStack spacing="2" align="center" mb="2" pr="1">
+                    <HStack spacing="1.5" align="center" mb="2" pr="1">
                       <Text
-                        fontSize="xs"
-                        letterSpacing="0.18em"
+                        fontSize="0.7rem"
+                        letterSpacing="0.1em"
                         color="ink.700"
                       >
                         {channel.label}
@@ -1614,7 +1614,7 @@ export default function CellsPage() {
                         <Download size={14} />
                       </IconButton>
                       {channel.key !== 'ph' && (
-                        <NativeSelect.Root w={{ base: '3.25rem', lg: '3.5rem' }} flexShrink={0}>
+                        <NativeSelect.Root w={{ base: '4.25rem', lg: '4.75rem' }} flexShrink={0}>
                           <NativeSelect.Field
                             value={fluoColors[channel.key]}
                             onChange={(event) => {
@@ -1624,11 +1624,12 @@ export default function CellsPage() {
                             bg="sand.50"
                             border="1px solid"
                             borderColor="sand.200"
-                            fontSize="0.65rem"
+                            fontSize="0.68rem"
                             h="1.5rem"
                             color="ink.900"
-                            px="1.5"
-                            w={{ base: '3.25rem', lg: '3.5rem' }}
+                            pl="1.5"
+                            pr="1.75rem"
+                            w={{ base: '4.25rem', lg: '4.75rem' }}
                             isDisabled={!dbName || !currentCellId}
                             _focusVisible={{
                               borderColor: 'tide.400',
