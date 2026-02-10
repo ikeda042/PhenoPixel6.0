@@ -662,7 +662,7 @@ export default function TopPage() {
 
             <Stack spacing="4">
               <SimpleGrid
-                columns={{ base: 1, sm: 2, lg: 3 }}
+                columns={{ base: 1, sm: 2, lg: 4 }}
                 columnGap={{ base: 4, md: 6, lg: 8 }}
                 rowGap={{ base: 4, md: 6, lg: 8 }}
               >
