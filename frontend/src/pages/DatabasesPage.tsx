@@ -554,20 +554,6 @@ export default function DatabasesPage() {
                           </Button>
                           <Button
                             size="xs"
-                            variant="outline"
-                            borderColor="teal.500"
-                            bg="teal.500"
-                            color="white"
-                            _hover={{ bg: 'teal.400' }}
-                            onClick={() =>
-                              navigate(`/cells?db=${encodeURIComponent(name)}&fast=true`)
-                            }
-                            disabled={disableActions}
-                          >
-                            Access(fast)
-                          </Button>
-                          <Button
-                            size="xs"
                             bg="tide.500"
                             color="white"
                             _hover={{ bg: 'tide.400' }}
