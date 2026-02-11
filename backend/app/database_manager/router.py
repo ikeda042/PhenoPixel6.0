@@ -316,6 +316,48 @@ def get_cell_overlay_endpoint(
     return StreamingResponse(io.BytesIO(image_bytes), media_type=media_type)
 
 
+@router_database_manager.get("/get-cell-overlay-zip")
+async def get_cell_overlay_zip_endpoint(
+    dbname: Annotated[str, Query()] = ...,
+    draw_scale_bar: Annotated[bool, Query()] = False,
+    overlay_mode: Annotated[Literal["ph", "fluo", "raw"], Query()] = "ph",
+    scale: Annotated[float, Query(gt=0, le=1)] = 1.0,
+    fluo1_color: Annotated[
+        Literal["blue", "green", "red", "yellow", "magenta", "gray"] | None,
+        Query(description="blue | green | red | yellow | magenta | gray"),
+    ] = None,
+    fluo2_color: Annotated[
+        Literal["blue", "green", "red", "yellow", "magenta", "gray"] | None,
+        Query(description="blue | green | red | yellow | magenta | gray"),
+    ] = None,
+    image_format: Annotated[
+        Literal["png", "jpeg", "jpg"], Query(alias="format")
+    ] = "png",
+    jpeg_quality: Annotated[int, Query(ge=10, le=95)] = 80,
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        task = partial(
+            DatabaseManagerCrud.get_cell_overlay_zip,
+            dbname,
+            draw_scale_bar=draw_scale_bar,
+            overlay_mode=overlay_mode,
+            scale=scale,
+            fluo1_color=fluo1_color,
+            fluo2_color=fluo2_color,
+            image_format=image_format,
+            jpeg_quality=jpeg_quality,
+        )
+        zip_bytes = await loop.run_in_executor(annotation_executor, task)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(zip_bytes), media_type="application/zip")
+
+
 @router_database_manager.patch("/update-cell-label")
 def update_cell_label_endpoint(
     dbname: Annotated[str, Query()] = ...,

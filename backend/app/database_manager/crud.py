@@ -1598,6 +1598,112 @@ def get_cell_image_optical_boost(
         session.close()
 
 
+def _render_cell_overlay_from_blobs(
+    ph_raw: bytes | None,
+    fluo1_raw: bytes | None,
+    fluo2_raw: bytes | None,
+    contour_raw: bytes | None,
+    draw_scale_bar: bool = False,
+    overlay_mode: Literal["ph", "fluo", "raw"] = "ph",
+    scale: float = 1.0,
+    fluo1_color: str | None = None,
+    fluo2_color: str | None = None,
+    image_format: Literal["png", "jpeg", "jpg"] = "png",
+    jpeg_quality: int = 80,
+) -> bytes:
+    if overlay_mode not in ("ph", "fluo", "raw"):
+        raise ValueError("Invalid overlay_mode")
+    if fluo1_raw is None:
+        raise LookupError("Cell overlay data not found")
+    if overlay_mode == "ph" and contour_raw is None:
+        raise LookupError("Cell overlay data not found")
+
+    fluo1_image = _decode_image(bytes(fluo1_raw))
+    fluo2_image = _decode_image(bytes(fluo2_raw)) if fluo2_raw is not None else None
+    ph_image = None
+    if overlay_mode in ("ph", "raw"):
+        if ph_raw is None:
+            raise LookupError("Cell overlay data not found")
+        ph_image = _decode_image(bytes(ph_raw))
+        if ph_image.shape[:2] != fluo1_image.shape[:2]:
+            raise ValueError("Overlay image sizes do not match")
+        if fluo2_image is not None and ph_image.shape[:2] != fluo2_image.shape[:2]:
+            raise ValueError("Overlay image sizes do not match")
+        overlay = ph_image.copy()
+    else:
+        overlay = np.zeros_like(fluo1_image)
+        if fluo2_image is not None and fluo1_image.shape[:2] != fluo2_image.shape[:2]:
+            raise ValueError("Overlay image sizes do not match")
+
+    if overlay_mode == "ph":
+        contour = pickle.loads(bytes(contour_raw))
+        contour_array = np.asarray(contour)
+        if contour_array.ndim == 3 and contour_array.shape[1] == 1:
+            contour_np = contour_array.astype(np.int32)
+        elif contour_array.ndim == 2 and contour_array.shape[1] == 2:
+            contour_np = contour_array.reshape(-1, 1, 2).astype(np.int32)
+        else:
+            raise ValueError("Invalid contour format")
+
+        mask = np.zeros(overlay.shape[:2], dtype=np.uint8)
+        cv2.fillPoly(mask, [contour_np], 255)
+        mask_bool = mask > 0
+        if not np.any(mask_bool):
+            raise ValueError("No pixels inside contour")
+    else:
+        mask_bool = np.ones(overlay.shape[:2], dtype=bool)
+
+    fluo1_gray = cv2.cvtColor(fluo1_image, cv2.COLOR_BGR2GRAY)
+    fluo2_gray = (
+        cv2.cvtColor(fluo2_image, cv2.COLOR_BGR2GRAY) if fluo2_image is not None else None
+    )
+
+    min1 = float(fluo1_gray[mask_bool].min())
+    max1 = float(fluo1_gray[mask_bool].max())
+    min2 = float(fluo2_gray[mask_bool].min()) if fluo2_gray is not None else 0.0
+    max2 = float(fluo2_gray[mask_bool].max()) if fluo2_gray is not None else 0.0
+
+    range1 = max1 - min1
+    range2 = max2 - min2 if fluo2_gray is not None else 0.0
+    if range1 > 0:
+        norm1 = ((fluo1_gray.astype(np.float32) - min1) / range1) * 255.0
+    else:
+        norm1 = np.zeros_like(fluo1_gray, dtype=np.float32)
+    if fluo2_gray is not None:
+        if range2 > 0:
+            norm2 = ((fluo2_gray.astype(np.float32) - min2) / range2) * 255.0
+        else:
+            norm2 = np.zeros_like(fluo2_gray, dtype=np.float32)
+    else:
+        norm2 = None
+
+    norm1 = np.clip(norm1, 0, 255).astype(np.uint8)
+    if norm2 is not None:
+        norm2 = np.clip(norm2, 0, 255).astype(np.uint8)
+
+    color1 = _resolve_fluo_color(fluo1_color, "fluo1")
+    _apply_fluo_overlay(overlay, norm1, mask_bool, color1)
+    if norm2 is not None:
+        color2 = _resolve_fluo_color(fluo2_color, "fluo2")
+        _apply_fluo_overlay(overlay, norm2, mask_bool, color2)
+
+    if draw_scale_bar:
+        overlay = _draw_scale_bar_with_centered_text(overlay)
+
+    if scale <= 0 or scale > 1:
+        raise ValueError("Invalid scale")
+    if scale < 1:
+        width = max(1, int(overlay.shape[1] * scale))
+        height = max(1, int(overlay.shape[0] * scale))
+        overlay = cv2.resize(overlay, (width, height), interpolation=cv2.INTER_AREA)
+
+    return _encode_image_with_format(
+        overlay,
+        image_format=image_format,
+        jpeg_quality=jpeg_quality,
+    )
+
+
 def get_cell_overlay(
     db_name: str,
     cell_id: str,
@@ -1611,8 +1717,6 @@ def get_cell_overlay(
 ) -> bytes:
     session = get_database_session(db_name)
     try:
-        if overlay_mode not in ("ph", "fluo", "raw"):
-            raise ValueError("Invalid overlay_mode")
         bind = session.get_bind()
         if bind is None:
             raise RuntimeError("Database session is not bound")
@@ -1633,98 +1737,103 @@ def get_cell_overlay(
             raise LookupError("Cell overlay data not found")
 
         ph_raw, fluo1_raw, fluo2_raw, contour_raw = row
-        if fluo1_raw is None:
-            raise LookupError("Cell overlay data not found")
-        if overlay_mode == "ph" and contour_raw is None:
-            raise LookupError("Cell overlay data not found")
-
-        fluo1_image = _decode_image(bytes(fluo1_raw))
-        fluo2_image = _decode_image(bytes(fluo2_raw)) if fluo2_raw is not None else None
-        ph_image = None
-        if overlay_mode in ("ph", "raw"):
-            if ph_raw is None:
-                raise LookupError("Cell overlay data not found")
-            ph_image = _decode_image(bytes(ph_raw))
-            if ph_image.shape[:2] != fluo1_image.shape[:2]:
-                raise ValueError("Overlay image sizes do not match")
-            if fluo2_image is not None and ph_image.shape[:2] != fluo2_image.shape[:2]:
-                raise ValueError("Overlay image sizes do not match")
-            overlay = ph_image.copy()
-        else:
-            overlay = np.zeros_like(fluo1_image)
-            if fluo2_image is not None and fluo1_image.shape[:2] != fluo2_image.shape[:2]:
-                raise ValueError("Overlay image sizes do not match")
-
-        if overlay_mode == "ph":
-            contour_raw = bytes(contour_raw)
-            contour = pickle.loads(contour_raw)
-            contour_array = np.asarray(contour)
-            if contour_array.ndim == 3 and contour_array.shape[1] == 1:
-                contour_np = contour_array.astype(np.int32)
-            elif contour_array.ndim == 2 and contour_array.shape[1] == 2:
-                contour_np = contour_array.reshape(-1, 1, 2).astype(np.int32)
-            else:
-                raise ValueError("Invalid contour format")
-
-            mask = np.zeros(overlay.shape[:2], dtype=np.uint8)
-            cv2.fillPoly(mask, [contour_np], 255)
-            mask_bool = mask > 0
-            if not np.any(mask_bool):
-                raise ValueError("No pixels inside contour")
-        else:
-            mask_bool = np.ones(overlay.shape[:2], dtype=bool)
-
-        fluo1_gray = cv2.cvtColor(fluo1_image, cv2.COLOR_BGR2GRAY)
-        fluo2_gray = (
-            cv2.cvtColor(fluo2_image, cv2.COLOR_BGR2GRAY)
-            if fluo2_image is not None
-            else None
-        )
-
-        min1 = float(fluo1_gray[mask_bool].min())
-        max1 = float(fluo1_gray[mask_bool].max())
-        min2 = float(fluo2_gray[mask_bool].min()) if fluo2_gray is not None else 0.0
-        max2 = float(fluo2_gray[mask_bool].max()) if fluo2_gray is not None else 0.0
-
-        range1 = max1 - min1
-        range2 = max2 - min2 if fluo2_gray is not None else 0.0
-        if range1 > 0:
-            norm1 = ((fluo1_gray.astype(np.float32) - min1) / range1) * 255.0
-        else:
-            norm1 = np.zeros_like(fluo1_gray, dtype=np.float32)
-        if fluo2_gray is not None:
-            if range2 > 0:
-                norm2 = ((fluo2_gray.astype(np.float32) - min2) / range2) * 255.0
-            else:
-                norm2 = np.zeros_like(fluo2_gray, dtype=np.float32)
-        else:
-            norm2 = None
-
-        norm1 = np.clip(norm1, 0, 255).astype(np.uint8)
-        if norm2 is not None:
-            norm2 = np.clip(norm2, 0, 255).astype(np.uint8)
-
-        color1 = _resolve_fluo_color(fluo1_color, "fluo1")
-        _apply_fluo_overlay(overlay, norm1, mask_bool, color1)
-        if norm2 is not None:
-            color2 = _resolve_fluo_color(fluo2_color, "fluo2")
-            _apply_fluo_overlay(overlay, norm2, mask_bool, color2)
-
-        if draw_scale_bar:
-            overlay = _draw_scale_bar_with_centered_text(overlay)
-
-        if scale <= 0 or scale > 1:
-            raise ValueError("Invalid scale")
-        if scale < 1:
-            width = max(1, int(overlay.shape[1] * scale))
-            height = max(1, int(overlay.shape[0] * scale))
-            overlay = cv2.resize(overlay, (width, height), interpolation=cv2.INTER_AREA)
-
-        return _encode_image_with_format(
-            overlay,
+        return _render_cell_overlay_from_blobs(
+            bytes(ph_raw) if ph_raw is not None else None,
+            bytes(fluo1_raw) if fluo1_raw is not None else None,
+            bytes(fluo2_raw) if fluo2_raw is not None else None,
+            bytes(contour_raw) if contour_raw is not None else None,
+            draw_scale_bar=draw_scale_bar,
+            overlay_mode=overlay_mode,
+            scale=scale,
+            fluo1_color=fluo1_color,
+            fluo2_color=fluo2_color,
             image_format=image_format,
             jpeg_quality=jpeg_quality,
         )
+    finally:
+        session.close()
+
+
+def get_cell_overlay_zip(
+    db_name: str,
+    draw_scale_bar: bool = False,
+    overlay_mode: Literal["ph", "fluo", "raw"] = "ph",
+    scale: float = 1.0,
+    fluo1_color: str | None = None,
+    fluo2_color: str | None = None,
+    image_format: Literal["png", "jpeg", "jpg"] = "png",
+    jpeg_quality: int = 80,
+) -> bytes:
+    if overlay_mode not in ("ph", "fluo", "raw"):
+        raise ValueError("Invalid overlay_mode")
+    if image_format not in ("png", "jpeg", "jpg"):
+        raise ValueError("Invalid image format")
+    if scale <= 0 or scale > 1:
+        raise ValueError("Invalid scale")
+
+    session = get_database_session(db_name)
+    try:
+        bind = session.get_bind()
+        if bind is None:
+            raise RuntimeError("Database session is not bound")
+        metadata = MetaData()
+        cells = Table("cells", metadata, autoload_with=bind)
+        stmt = (
+            select(
+                cells.c.cell_id,
+                cells.c.img_ph,
+                cells.c.img_fluo1,
+                cells.c.img_fluo2,
+                cells.c.contour,
+            )
+            .where(cells.c.cell_id.is_not(None))
+            .order_by(cells.c.cell_id)
+        )
+        result = session.execute(stmt)
+
+        extension = "jpg" if image_format.lower() in ("jpeg", "jpg") else "png"
+        manifest_entries: list[dict[str, str]] = []
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for index, (cell_id, ph_raw, fluo1_raw, fluo2_raw, contour_raw) in enumerate(
+                result
+            ):
+                if cell_id is None:
+                    continue
+                cell_id_str = str(cell_id)
+                try:
+                    image_bytes = _render_cell_overlay_from_blobs(
+                        bytes(ph_raw) if ph_raw is not None else None,
+                        bytes(fluo1_raw) if fluo1_raw is not None else None,
+                        bytes(fluo2_raw) if fluo2_raw is not None else None,
+                        bytes(contour_raw) if contour_raw is not None else None,
+                        draw_scale_bar=draw_scale_bar,
+                        overlay_mode=overlay_mode,
+                        scale=scale,
+                        fluo1_color=fluo1_color,
+                        fluo2_color=fluo2_color,
+                        image_format=image_format,
+                        jpeg_quality=jpeg_quality,
+                    )
+                except Exception:
+                    continue
+
+                filename = (
+                    f"images/{index:06d}_{_safe_cell_filename(cell_id_str)}.{extension}"
+                )
+                archive.writestr(filename, image_bytes)
+                manifest_entries.append(
+                    {
+                        "cell_id": cell_id_str,
+                        "file": filename,
+                    }
+                )
+            archive.writestr(
+                "manifest.json",
+                json.dumps({"cells": manifest_entries}, ensure_ascii=True),
+            )
+        buffer.seek(0)
+        return buffer.getvalue()
     finally:
         session.close()
 
@@ -2291,6 +2400,10 @@ class DatabaseManagerCrud:
     @classmethod
     def get_cell_overlay(cls, *args, **kwargs) -> bytes:
         return get_cell_overlay(*args, **kwargs)
+
+    @classmethod
+    def get_cell_overlay_zip(cls, *args, **kwargs) -> bytes:
+        return get_cell_overlay_zip(*args, **kwargs)
 
     @classmethod
     def get_cell_replot(cls, *args, **kwargs) -> bytes:

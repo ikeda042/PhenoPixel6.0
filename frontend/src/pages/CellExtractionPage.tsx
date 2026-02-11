@@ -22,6 +22,7 @@ import {
   Separator,
   Slider,
 } from '@chakra-ui/react'
+import { strFromU8, unzipSync } from 'fflate'
 import PageBreadcrumb from '../components/PageBreadcrumb'
 import PageHeader from '../components/PageHeader'
 import ReloadButton from '../components/ReloadButton'
@@ -51,6 +52,16 @@ type Nd2FileMetadataResponse = {
   reader?: {
     sizes?: Record<string, number | string | null>
   }
+}
+
+type OverlayFrame = {
+  cellId: string
+  url: string
+}
+
+type OverlayManifestEntry = {
+  cell_id?: string
+  file?: string
 }
 
 const DEFAULT_PARAM1 = 130
@@ -97,6 +108,13 @@ const inferLayerModeFromMetadata = (metadata: Nd2FileMetadataResponse | null) =>
   return 'quad'
 }
 
+const parseOverlayManifestEntries = (payload: unknown): OverlayManifestEntry[] => {
+  if (!payload || typeof payload !== 'object') return []
+  const cells = (payload as { cells?: unknown }).cells
+  if (!Array.isArray(cells)) return []
+  return cells.filter((entry) => entry && typeof entry === 'object') as OverlayManifestEntry[]
+}
+
 export default function CellExtractionPage() {
   const [searchParams] = useSearchParams()
   const queryFilename = searchParams.get('filename') ?? ''
@@ -124,14 +142,14 @@ export default function CellExtractionPage() {
   const [overlayStatus, setOverlayStatus] = useState<
     'idle' | 'loading' | 'running' | 'done' | 'error'
   >('idle')
-  const [overlayCellIds, setOverlayCellIds] = useState<string[]>([])
+  const [overlayFrames, setOverlayFrames] = useState<OverlayFrame[]>([])
   const [overlayIndex, setOverlayIndex] = useState(0)
-  const [overlayImageUrl, setOverlayImageUrl] = useState<string | null>(null)
   const [overlayError, setOverlayError] = useState<string | null>(null)
   const [overlayDbName, setOverlayDbName] = useState<string | null>(null)
   const [finishedNoticeVisible, setFinishedNoticeVisible] = useState(false)
   const overlayRunRef = useRef(0)
   const overlayAbortRef = useRef<AbortController | null>(null)
+  const overlayFramesRef = useRef<OverlayFrame[]>([])
   const finishedNoticeTimeoutRef = useRef<number | null>(null)
   const layerModeRequestRef = useRef(0)
   const lastFilenameRef = useRef<string | null>(null)
@@ -191,6 +209,16 @@ export default function CellExtractionPage() {
     }, 2000)
   }, [])
 
+  const revokeOverlayFrameUrls = useCallback((frames: OverlayFrame[]) => {
+    frames.forEach((frame) => {
+      URL.revokeObjectURL(frame.url)
+    })
+  }, [])
+
+  useEffect(() => {
+    overlayFramesRef.current = overlayFrames
+  }, [overlayFrames])
+
   const closeOverlay = useCallback(
     (options?: { showFinished?: boolean }) => {
       overlayRunRef.current += 1
@@ -198,16 +226,18 @@ export default function CellExtractionPage() {
       overlayAbortRef.current = null
       setOverlayVisible(false)
       setOverlayStatus('idle')
-      setOverlayCellIds([])
+      setOverlayFrames((prev) => {
+        revokeOverlayFrameUrls(prev)
+        return []
+      })
       setOverlayIndex(0)
-      setOverlayImageUrl(null)
       setOverlayError(null)
       setOverlayDbName(null)
       if (options?.showFinished) {
         triggerFinishedNotice()
       }
     },
-    [triggerFinishedNotice],
+    [revokeOverlayFrameUrls, triggerFinishedNotice],
   )
 
   const startOverlayPreview = useCallback(
@@ -220,70 +250,73 @@ export default function CellExtractionPage() {
 
       setOverlayVisible(true)
       setOverlayStatus('loading')
-      setOverlayCellIds([])
+      setOverlayFrames((prev) => {
+        revokeOverlayFrameUrls(prev)
+        return []
+      })
       setOverlayIndex(0)
-      setOverlayImageUrl(null)
       setOverlayError(null)
       setOverlayDbName(dbName)
 
       try {
-        const listParams = new URLSearchParams({ dbname: dbName })
-        const listRes = await fetch(`${apiBase}/get-cell-ids?${listParams.toString()}`, {
-          signal: controller.signal,
-          headers: { accept: 'application/json' },
+        const overlayParams = new URLSearchParams({
+          dbname: dbName,
+          draw_scale_bar: 'false',
+          overlay_mode: 'raw',
+          scale: String(OVERLAY_PREVIEW_SCALE),
+          format: OVERLAY_PREVIEW_FORMAT,
+          jpeg_quality: String(OVERLAY_PREVIEW_QUALITY),
         })
-        if (!listRes.ok) {
-          throw new Error(`Cell list request failed (${listRes.status})`)
+        const overlayRes = await fetch(
+          `${apiBase}/get-cell-overlay-zip?${overlayParams.toString()}`,
+          {
+            signal: controller.signal,
+            headers: { accept: 'application/zip' },
+          },
+        )
+        if (!overlayRes.ok) {
+          throw new Error(`Overlay ZIP request failed (${overlayRes.status})`)
         }
-        const listData = (await listRes.json()) as string[]
-        if (overlayRunRef.current !== runId) return
-        const ids = Array.isArray(listData)
-          ? listData.filter((value) => typeof value === 'string' && value.trim() !== '')
-          : []
-        if (ids.length === 0) {
+        const buffer = await overlayRes.arrayBuffer()
+        const zipEntries = unzipSync(new Uint8Array(buffer))
+        const manifestBytes = zipEntries['manifest.json']
+        if (!manifestBytes) {
+          throw new Error('Overlay manifest is missing.')
+        }
+        const manifest = JSON.parse(strFromU8(manifestBytes)) as unknown
+        const entries = parseOverlayManifestEntries(manifest)
+        const frames: OverlayFrame[] = []
+        for (const entry of entries) {
+          const cellId = typeof entry.cell_id === 'string' ? entry.cell_id : ''
+          const file = typeof entry.file === 'string' ? entry.file : ''
+          if (!cellId || !file) continue
+          const imageBytes = zipEntries[file]
+          if (!imageBytes) continue
+          const mimeType = file.endsWith('.jpg') || file.endsWith('.jpeg')
+            ? 'image/jpeg'
+            : 'image/png'
+          const url = URL.createObjectURL(new Blob([imageBytes], { type: mimeType }))
+          frames.push({ cellId, url })
+        }
+        if (overlayRunRef.current !== runId) {
+          revokeOverlayFrameUrls(frames)
+          return
+        }
+        if (frames.length === 0) {
           setOverlayStatus('error')
           setOverlayError('No cells found in the extracted database.')
           return
         }
-        setOverlayCellIds(ids)
+        setOverlayFrames((prev) => {
+          revokeOverlayFrameUrls(prev)
+          return frames
+        })
         setOverlayStatus('running')
+        setOverlayError(null)
 
-        for (let index = 0; index < ids.length; index += 1) {
+        for (let index = 0; index < frames.length; index += 1) {
           if (overlayRunRef.current !== runId) return
-          const cellId = ids[index]
           setOverlayIndex(index)
-          try {
-            const overlayParams = new URLSearchParams({
-              dbname: dbName,
-              cell_id: cellId,
-              draw_scale_bar: 'false',
-              overlay_mode: 'raw',
-              scale: String(OVERLAY_PREVIEW_SCALE),
-              format: OVERLAY_PREVIEW_FORMAT,
-              jpeg_quality: String(OVERLAY_PREVIEW_QUALITY),
-            })
-            const overlayRes = await fetch(
-              `${apiBase}/get-cell-overlay?${overlayParams.toString()}`,
-              { signal: controller.signal, headers: { accept: 'image/jpeg' } },
-            )
-            if (!overlayRes.ok) {
-              throw new Error(`Overlay request failed (${overlayRes.status})`)
-            }
-            const blob = await overlayRes.blob()
-            if (overlayRunRef.current !== runId) return
-            const url = URL.createObjectURL(blob)
-            if (overlayRunRef.current !== runId) {
-              URL.revokeObjectURL(url)
-              return
-            }
-            setOverlayImageUrl(url)
-            setOverlayError(null)
-          } catch (err) {
-            if (overlayRunRef.current !== runId || controller.signal.aborted) return
-            setOverlayError(
-              err instanceof Error ? err.message : 'Failed to load overlay preview',
-            )
-          }
           await new Promise((resolve) => {
             window.setTimeout(resolve, OVERLAY_FRAME_INTERVAL_MS)
           })
@@ -304,7 +337,7 @@ export default function CellExtractionPage() {
         }
       }
     },
-    [apiBase],
+    [apiBase, revokeOverlayFrameUrls],
   )
 
   const handleSubmit = useCallback(async () => {
@@ -482,9 +515,9 @@ export default function CellExtractionPage() {
 
   useEffect(() => {
     return () => {
-      if (overlayImageUrl) URL.revokeObjectURL(overlayImageUrl)
+      revokeOverlayFrameUrls(overlayFramesRef.current)
     }
-  }, [overlayImageUrl])
+  }, [revokeOverlayFrameUrls])
 
   useEffect(() => {
     return () => {
@@ -510,8 +543,9 @@ export default function CellExtractionPage() {
     }
   }, [autoAnnotation, closeOverlay, overlayVisible])
 
-  const overlayCurrentCellId = overlayCellIds[overlayIndex] ?? ''
-  const overlayTotal = overlayCellIds.length
+  const overlayCurrentCellId = overlayFrames[overlayIndex]?.cellId ?? ''
+  const overlayImageUrl = overlayFrames[overlayIndex]?.url ?? null
+  const overlayTotal = overlayFrames.length
 
   return (
     <Box minH="100dvh" h="auto" bg="sand.50" color="ink.900" display="flex" flexDirection="column">
