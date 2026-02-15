@@ -70,6 +70,28 @@ def _normalize_payload(message: SlackMessage) -> dict[str, Any]:
     return payload
 
 
+def _button_element(label: str, url: str) -> dict[str, Any]:
+    return {
+        "type": "button",
+        "text": {"type": "plain_text", "text": label},
+        "url": url,
+    }
+
+
+def _build_message_with_buttons(
+    display_lines: list[str],
+    buttons: list[dict[str, Any]],
+) -> SlackMessage:
+    message_text = "\n".join(display_lines)
+    if not buttons:
+        return message_text
+    blocks: list[dict[str, Any]] = [
+        {"type": "section", "text": {"type": "mrkdwn", "text": message_text}},
+        {"type": "actions", "elements": buttons},
+    ]
+    return {"text": message_text, "blocks": blocks}
+
+
 async def _post_slack(
     webhook_url: str,
     payload: bytes,
@@ -155,11 +177,9 @@ def build_database_created_message(
         or f"nd2extract\u304c\u5b8c\u4e86\u3057\u307e\u3057\u305f\u3002"
         f"database `{db_name}` \u3092\u4f5c\u6210\u3057\u307e\u3057\u305f\u3002"
     )
-    text_lines = [base_text]
     display_lines = [base_text]
     if contour_count is not None:
         line = f"{contour_count}\u500b\u306e\u8f2a\u90ed\u3092\u53d6\u5f97\u3057\u307e\u3057\u305f\u3002"
-        text_lines.append(line)
         display_lines.append(line)
     param_parts = []
     if param1 is not None:
@@ -168,42 +188,13 @@ def build_database_created_message(
         param_parts.append(f"image_size = {image_size} x {image_size} px^2")
     if param_parts:
         line = ", ".join(param_parts)
-        text_lines.append(line)
         display_lines.append(line)
+    buttons: list[dict[str, Any]] = []
     if cells_url:
-        text_lines.append(f"URL : {cells_url}")
-    if text_lines:
-        slack_message = "\n".join(text_lines)
+        buttons.append(_button_element("Open Cells", cells_url))
     if db_url and cells_url is None:
-        slack_message = f"{slack_message}\n{db_url}"
-
-    if not (cells_url or db_url):
-        return slack_message
-
-    display_message = "\n".join(display_lines)
-    blocks: list[dict[str, Any]] = [
-        {"type": "section", "text": {"type": "mrkdwn", "text": display_message}}
-    ]
-    elements: list[dict[str, Any]] = []
-    if cells_url:
-        elements.append(
-            {
-                "type": "button",
-                "text": {"type": "plain_text", "text": "Open Cells"},
-                "url": cells_url,
-            }
-        )
-    if db_url and cells_url is None:
-        elements.append(
-            {
-                "type": "button",
-                "text": {"type": "plain_text", "text": "Open Databases"},
-                "url": db_url,
-            }
-        )
-    if elements:
-        blocks.append({"type": "actions", "elements": elements})
-    return {"text": slack_message, "blocks": blocks}
+        buttons.append(_button_element("Open Databases", db_url))
+    return _build_message_with_buttons(display_lines, buttons)
 
 
 def build_bulk_engine_completed_message(
@@ -216,7 +207,7 @@ def build_bulk_engine_completed_message(
     center_ratio: float | None = None,
     max_to_min_ratio: float | None = None,
     base_path: str | None = None,
-) -> str:
+) -> SlackMessage:
     if base_path is None:
         base_path = _get_base_path()
     bulk_url = None
@@ -225,7 +216,7 @@ def build_bulk_engine_completed_message(
         bulk_url = f"{base_path}/bulk-engine?{urlencode({'dbname': db_name})}"
 
     task_text = task_text.strip() if task_text else "bulkengine task"
-    slack_message = f"bulkengine\u306e{task_text}\u304c\u5b8c\u4e86\u3057\u307e\u3057\u305f\u3002database `{db_name}`"
+    display_lines = [f"bulkengine\u306e{task_text}\u304c\u5b8c\u4e86\u3057\u307e\u3057\u305f\u3002database `{db_name}`"]
     details: list[str] = []
     label_text = str(label).strip() if label is not None else ""
     if label_text:
@@ -238,9 +229,9 @@ def build_bulk_engine_completed_message(
         details.append(f"center_ratio = {center_ratio}")
     if max_to_min_ratio is not None:
         details.append(f"max_to_min_ratio = {max_to_min_ratio}")
-    if bulk_url:
-        details.append(f"URL : {bulk_url}")
     if details:
-        slack_message = f"{slack_message}\n" + "\n".join(details)
-
-    return slack_message
+        display_lines.extend(details)
+    buttons: list[dict[str, Any]] = []
+    if bulk_url:
+        buttons.append(_button_element("Open Bulk Engine", bulk_url))
+    return _build_message_with_buttons(display_lines, buttons)
