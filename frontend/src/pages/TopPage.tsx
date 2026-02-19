@@ -29,7 +29,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import PageBreadcrumb from '../components/PageBreadcrumb'
 import PageHeader from '../components/PageHeader'
-import ReloadButton from '../components/ReloadButton'
+import ReloadButton, { runGitPullUpdate } from '../components/ReloadButton'
 import ThemeToggleButton from '../components/ThemeToggleButton'
 import { getApiBase } from '../utils/apiBase'
 
@@ -217,6 +217,15 @@ export default function TopPage() {
   useEffect(() => {
     checkBackend()
   }, [checkBackend])
+
+  useEffect(() => {
+    if (!apiBase) {
+      return
+    }
+    void runGitPullUpdate(apiBase).catch((error) => {
+      console.error('Auto update failed:', error)
+    })
+  }, [apiBase])
 
   useEffect(() => {
     if (!apiBase || topPageTrackedRef.current) {
