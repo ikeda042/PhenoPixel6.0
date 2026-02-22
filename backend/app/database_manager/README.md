@@ -24,6 +24,7 @@ http://<host>:<port>/api/v1
 - `draw_contour` (optional): `true | false`
 - `draw_scale_bar` (optional): `true | false`
 - `degree` (optional): integer >= 1 (default: `4`)
+- `map_mode` (map256 endpoints only): `map256 | raw` (default: `map256`)
 
 ## Endpoints
 
@@ -125,12 +126,12 @@ Response: `image/png`
 
 **GET** `/get-cell-map256`  
 Map256 image (fluo-only or overlay).  
-Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2|overlay`, `degree`  
+Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2|overlay`, `degree`, `map_mode=map256|raw`  
 Response: `image/png`
 
 **GET** `/get-cell-map256-jet`  
 Map256 jet-colored image (fluo-only or overlay).  
-Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2|overlay`, `degree`  
+Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2|overlay`, `degree`, `map_mode=map256|raw`  
 Response: `image/png`
 
 **GET** `/get-cell-distribution`  

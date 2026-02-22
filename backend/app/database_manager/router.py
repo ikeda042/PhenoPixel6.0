@@ -496,6 +496,7 @@ async def get_cell_map256_endpoint(
     cell_id: Annotated[str, Query()] = ...,
     image_type: Annotated[str, Query(description="fluo1 | fluo2 | overlay")] = "fluo1",
     degree: Annotated[int, Query(ge=1)] = 4,
+    map_mode: Annotated[Literal["map256", "raw"], Query(description="map256 | raw")] = "map256",
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -506,6 +507,7 @@ async def get_cell_map256_endpoint(
             cell_id,
             image_type,
             degree,
+            map_mode,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -524,6 +526,7 @@ async def get_cell_map256_jet_endpoint(
     cell_id: Annotated[str, Query()] = ...,
     image_type: Annotated[str, Query(description="fluo1 | fluo2 | overlay")] = "fluo1",
     degree: Annotated[int, Query(ge=1)] = 4,
+    map_mode: Annotated[Literal["map256", "raw"], Query(description="map256 | raw")] = "map256",
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -534,6 +537,7 @@ async def get_cell_map256_jet_endpoint(
             cell_id,
             image_type,
             degree,
+            map_mode,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")

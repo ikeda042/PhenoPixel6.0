@@ -169,6 +169,7 @@ export default function CellsPage() {
     | 'heatmap'
     | 'distribution'
     | 'map256'
+    | 'map-raw'
   >('overlay-fluo')
   const [contourData, setContourData] = useState<number[][]>([])
   const [isLoadingContour, setIsLoadingContour] = useState(false)
@@ -920,7 +921,8 @@ export default function CellsPage() {
   }, [apiBase, contourMode, currentCellId, dbName, contourRefreshKey, heatmapChannel])
 
   useEffect(() => {
-    if (!dbName || !currentCellId || contourMode !== 'map256') {
+    const isMapMode = contourMode === 'map256' || contourMode === 'map-raw'
+    if (!dbName || !currentCellId || !isMapMode) {
       setMap256Url(null)
       setMap256JetUrl(null)
       setMap256Error(null)
@@ -928,6 +930,7 @@ export default function CellsPage() {
       setIsLoadingMap256(false)
       return
     }
+    const mapModeParam = contourMode === 'map-raw' ? 'raw' : 'map256'
     let isActive = true
     const loadMap256 = async () => {
       setIsLoadingMap256(true)
@@ -941,6 +944,7 @@ export default function CellsPage() {
           cell_id: currentCellId,
           image_type: map256Channel,
           degree: '4',
+          map_mode: mapModeParam,
         })
         const fetchMap = async (endpoint: string) => {
           const res = await fetch(`${apiBase}/${endpoint}?${params.toString()}`, {
@@ -1278,7 +1282,7 @@ export default function CellsPage() {
         ? overlayError
         : contourMode === 'heatmap'
           ? heatmapError
-          : contourMode === 'map256'
+          : contourMode === 'map256' || contourMode === 'map-raw'
             ? map256Error || map256JetError
           : contourMode === 'distribution'
             ? distributionError
@@ -1288,7 +1292,8 @@ export default function CellsPage() {
     (isLoadingContour || (contourData.length > 0 && !imageDimensions))
   const isOverlayPending = isOverlayMode && isLoadingOverlay
   const isHeatmapPending = contourMode === 'heatmap' && isLoadingHeatmap
-  const isMap256Pending = contourMode === 'map256' && isLoadingMap256
+  const isMap256Pending =
+    (contourMode === 'map256' || contourMode === 'map-raw') && isLoadingMap256
   const isDistributionPending =
     contourMode === 'distribution' && isLoadingDistribution
 
@@ -2059,6 +2064,7 @@ export default function CellsPage() {
                               | 'overlay-raw'
                               | 'heatmap'
                               | 'map256'
+                              | 'map-raw'
                               | 'distribution',
                           )
                         }
@@ -2080,6 +2086,7 @@ export default function CellsPage() {
                         <option value="overlay-fluo">Overlay Fluo</option>
                         <option value="heatmap">Heatmap</option>
                         <option value="map256">Map 256</option>
+                        <option value="map-raw">Map Raw</option>
                         <option value="distribution">Distribution</option>
                       </NativeSelect.Field>
                       <NativeSelect.Indicator color="ink.700" />
@@ -2116,7 +2123,7 @@ export default function CellsPage() {
                     </NativeSelect.Root>
                   </HStack>
                 )}
-                {contourMode === 'map256' && (
+                {(contourMode === 'map256' || contourMode === 'map-raw') && (
                   <HStack spacing="2" align="center" flexWrap="nowrap">
                     <Text fontSize="xs" color="ink.700" whiteSpace="nowrap">
                       Channel
@@ -2280,7 +2287,7 @@ export default function CellsPage() {
                           Heatmap not available.
                         </Text>
                       )
-                    ) : contourMode === 'map256' ? (
+                    ) : contourMode === 'map256' || contourMode === 'map-raw' ? (
                       <Box
                         width="100%"
                         height="100%"
@@ -2298,7 +2305,7 @@ export default function CellsPage() {
                           minW="0"
                         >
                           <Text fontSize="xs" color="ink.700">
-                            Map 256
+                            {contourMode === 'map-raw' ? 'Map Raw' : 'Map 256'}
                           </Text>
                           <Box
                             flex="1"
@@ -2311,7 +2318,7 @@ export default function CellsPage() {
                               <Box
                                 as="img"
                                 src={map256Url ?? undefined}
-                                alt={`${currentCellId} map256`}
+                                alt={`${currentCellId} ${contourMode === 'map-raw' ? 'mapraw' : 'map256'}`}
                                 width="100%"
                                 height="100%"
                                 objectFit="contain"
@@ -2320,7 +2327,9 @@ export default function CellsPage() {
                               <Spinner color="ink.700" />
                             ) : (
                               <Text fontSize="xs" color="ink.700">
-                                Map 256 not available.
+                                {contourMode === 'map-raw'
+                                  ? 'Map Raw not available.'
+                                  : 'Map 256 not available.'}
                               </Text>
                             )}
                           </Box>
@@ -2346,7 +2355,7 @@ export default function CellsPage() {
                               <Box
                                 as="img"
                                 src={map256JetUrl ?? undefined}
-                                alt={`${currentCellId} map256 jet`}
+                                alt={`${currentCellId} ${contourMode === 'map-raw' ? 'mapraw jet' : 'map256 jet'}`}
                                 width="100%"
                                 height="100%"
                                 objectFit="contain"

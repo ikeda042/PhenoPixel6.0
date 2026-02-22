@@ -1345,6 +1345,7 @@ def _build_map256_normalized(
     image_fluo_raw: bytes,
     contour_raw: bytes,
     degree: int,
+    map_mode: Literal["map256", "raw"] = "map256",
 ) -> np.ndarray:
     image_fluo = cv2.imdecode(np.frombuffer(image_fluo_raw, np.uint8), cv2.IMREAD_COLOR)
     if image_fluo is None:
@@ -1432,9 +1433,15 @@ def _build_map256_normalized(
         y = max(0, min(height - 1, y))
         cv2.circle(high_res_image, (x, y), 1, int(np.clip(g_val, 0, 255)), -1)
 
-    resized = cv2.resize(high_res_image, (1024, 256), interpolation=cv2.INTER_NEAREST)
-    resized = _flip_image_if_needed(resized)
-    normalized = _normalize_grayscale_to_uint8(resized)
+    if map_mode == "map256":
+        mapped_image = cv2.resize(high_res_image, (1024, 256), interpolation=cv2.INTER_NEAREST)
+    elif map_mode == "raw":
+        mapped_image = high_res_image
+    else:
+        raise ValueError("Invalid map_mode")
+
+    mapped_image = _flip_image_if_needed(mapped_image)
+    normalized = _normalize_grayscale_to_uint8(mapped_image)
     return normalized
 
 
@@ -1442,8 +1449,14 @@ def _generate_map256_image(
     image_fluo_raw: bytes,
     contour_raw: bytes,
     degree: int,
+    map_mode: Literal["map256", "raw"] = "map256",
 ) -> bytes:
-    normalized = _build_map256_normalized(image_fluo_raw, contour_raw, degree)
+    normalized = _build_map256_normalized(
+        image_fluo_raw,
+        contour_raw,
+        degree,
+        map_mode=map_mode,
+    )
     return _encode_image(normalized)
 
 
@@ -1451,8 +1464,14 @@ def _generate_map256_jet_image(
     image_fluo_raw: bytes,
     contour_raw: bytes,
     degree: int,
+    map_mode: Literal["map256", "raw"] = "map256",
 ) -> bytes:
-    normalized = _build_map256_normalized(image_fluo_raw, contour_raw, degree)
+    normalized = _build_map256_normalized(
+        image_fluo_raw,
+        contour_raw,
+        degree,
+        map_mode=map_mode,
+    )
     jet = cv2.applyColorMap(normalized, cv2.COLORMAP_JET)
     return _encode_image(jet)
 
@@ -1964,9 +1983,13 @@ def get_cell_map256(
     cell_id: str,
     image_type: Literal["fluo1", "fluo2", "overlay"] = "fluo1",
     degree: int = 4,
+    map_mode: Literal["map256", "raw"] = "map256",
 ) -> bytes:
     if degree < 1:
         raise ValueError("degree must be >= 1")
+    normalized_map_mode = map_mode.strip().lower()
+    if normalized_map_mode not in {"map256", "raw"}:
+        raise ValueError("Invalid map_mode")
     session = get_database_session(db_name)
     try:
         bind = session.get_bind()
@@ -1987,7 +2010,12 @@ def get_cell_map256(
                 raise LookupError("Cell contour not found")
             image_bytes = _build_map256_overlay_image(bytes(row[0]), bytes(row[1]))
             contour_raw = bytes(row[2])
-            return _generate_map256_image(image_bytes, contour_raw, degree)
+            return _generate_map256_image(
+                image_bytes,
+                contour_raw,
+                degree,
+                map_mode=normalized_map_mode,
+            )
         column_map = {
             "fluo1": "img_fluo1",
             "fluo2": "img_fluo2",
@@ -2007,7 +2035,12 @@ def get_cell_map256(
             raise LookupError("Cell contour not found")
         image_bytes = bytes(row[0])
         contour_raw = bytes(row[1])
-        return _generate_map256_image(image_bytes, contour_raw, degree)
+        return _generate_map256_image(
+            image_bytes,
+            contour_raw,
+            degree,
+            map_mode=normalized_map_mode,
+        )
     finally:
         session.close()
 
@@ -2017,9 +2050,13 @@ def get_cell_map256_jet(
     cell_id: str,
     image_type: Literal["fluo1", "fluo2", "overlay"] = "fluo1",
     degree: int = 4,
+    map_mode: Literal["map256", "raw"] = "map256",
 ) -> bytes:
     if degree < 1:
         raise ValueError("degree must be >= 1")
+    normalized_map_mode = map_mode.strip().lower()
+    if normalized_map_mode not in {"map256", "raw"}:
+        raise ValueError("Invalid map_mode")
     session = get_database_session(db_name)
     try:
         bind = session.get_bind()
@@ -2040,7 +2077,12 @@ def get_cell_map256_jet(
                 raise LookupError("Cell contour not found")
             image_bytes = _build_map256_overlay_image(bytes(row[0]), bytes(row[1]))
             contour_raw = bytes(row[2])
-            return _generate_map256_jet_image(image_bytes, contour_raw, degree)
+            return _generate_map256_jet_image(
+                image_bytes,
+                contour_raw,
+                degree,
+                map_mode=normalized_map_mode,
+            )
         column_map = {
             "fluo1": "img_fluo1",
             "fluo2": "img_fluo2",
@@ -2060,7 +2102,12 @@ def get_cell_map256_jet(
             raise LookupError("Cell contour not found")
         image_bytes = bytes(row[0])
         contour_raw = bytes(row[1])
-        return _generate_map256_jet_image(image_bytes, contour_raw, degree)
+        return _generate_map256_jet_image(
+            image_bytes,
+            contour_raw,
+            degree,
+            map_mode=normalized_map_mode,
+        )
     finally:
         session.close()
 
@@ -2430,9 +2477,18 @@ class DatabaseManagerCrud:
 
     @classmethod
     def build_map256_normalized(
-        cls, image_fluo_raw: bytes, contour_raw: bytes, degree: int
+        cls,
+        image_fluo_raw: bytes,
+        contour_raw: bytes,
+        degree: int,
+        map_mode: Literal["map256", "raw"] = "map256",
     ) -> np.ndarray:
-        return _build_map256_normalized(image_fluo_raw, contour_raw, degree)
+        return _build_map256_normalized(
+            image_fluo_raw,
+            contour_raw,
+            degree,
+            map_mode=map_mode,
+        )
 
     @classmethod
     def get_cell_image(cls, *args, **kwargs) -> bytes:

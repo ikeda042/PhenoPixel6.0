@@ -44,6 +44,7 @@ The function panel offers the following view modes:
 - `Overlay Fluo`: overlay contours on the fluorescence image.
 - `Heatmap`: visualize signal intensity as a heatmap.
 - `Map 256`: render a 256-level mapped view.
+- `Map Raw`: render the mapped view at native pixel resolution.
 - `Distribution`: show the value distribution for the selected cell or region.
 
 ![Function panel modes](docs/screenshots/database_manager3.png)
