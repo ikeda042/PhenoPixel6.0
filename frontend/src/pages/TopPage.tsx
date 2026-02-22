@@ -78,17 +78,17 @@ const formatLongDate = (value: string) => {
 
 const StatusChip = ({ label, value, tone, icon }: StatusChipProps) => {
   const palette = {
-    ok: { bg: 'green.50', color: 'green.600', dot: 'green.500' },
-    error: { bg: 'red.50', color: 'red.600', dot: 'red.500' },
-    unknown: { bg: 'gray.100', color: 'gray.600', dot: 'gray.400' },
+    ok: { bg: 'sand.100', color: 'tide.300', dot: 'tide.300' },
+    error: { bg: 'sand.100', color: 'violet.400', dot: 'violet.400' },
+    unknown: { bg: 'sand.100', color: 'ink.700', dot: 'sand.300' },
   } as const
   const style = palette[tone]
 
   return (
-    <HStack spacing="2" px="2.5" py="1" borderRadius="md" bg={style.bg}>
+    <HStack spacing="2" px="2.5" py="1" borderRadius="md" bg={style.bg} border="1px solid" borderColor="sand.200">
       <Box w="2px" h="12px" borderRadius="full" bg={style.dot} />
       <Icon as={icon} boxSize={3.5} color={style.color} />
-      <Text fontSize="xs" fontWeight="500" color="gray.600">
+      <Text fontSize="xs" fontWeight="500" color="ink.700">
         {label}:
       </Text>
       <Text fontSize="xs" fontWeight="700" color={style.color} textTransform="uppercase">
@@ -106,14 +106,14 @@ const MenuListItem = ({ item, onClick }: { item: MenuItem; onClick: () => void }
     align="center"
     justify="space-between"
     p="3"
-    bg="white"
+    bg="sand.100"
     border="1px solid"
-    borderColor="gray.200"
+    borderColor="sand.200"
     borderRadius="md"
     transition="all 0.2s"
     _hover={{
-      borderColor: 'blue.400',
-      bg: 'blue.50',
+      borderColor: 'tide.400',
+      bg: 'sand.200',
       transform: 'translateX(2px)',
     }}
     group
@@ -123,25 +123,25 @@ const MenuListItem = ({ item, onClick }: { item: MenuItem; onClick: () => void }
         w="8"
         h="8"
         borderRadius="md"
-        bg="gray.50"
+        bg="sand.50"
         align="center"
         justify="center"
-        color="gray.600"
+        color="ink.700"
         border="1px solid"
-        borderColor="gray.200"
+        borderColor="sand.200"
       >
         <Icon as={item.icon} boxSize={4} />
       </Flex>
       <Box textAlign="left">
-        <Text fontSize="sm" fontWeight="600" color="gray.800">
+        <Text fontSize="sm" fontWeight="600" color="ink.900">
           {item.title}
         </Text>
-        <Text fontSize="xs" color="gray.500" noOfLines={1}>
+        <Text fontSize="xs" color="ink.700" noOfLines={1}>
           {item.description}
         </Text>
       </Box>
     </HStack>
-    <Icon as={ChevronRight} boxSize={4} color="gray.400" />
+    <Icon as={ChevronRight} boxSize={4} color="ink.700" />
   </Flex>
 )
 
@@ -332,7 +332,7 @@ export default function TopPage() {
   }, [activityPoints])
 
   return (
-    <Box minH="100vh" bg="gray.50" color="gray.800">
+    <Box minH="100vh" bg="sand.50" color="ink.900">
       <PageHeader
         actions={
           <HStack spacing="2">
@@ -346,17 +346,17 @@ export default function TopPage() {
         <Flex justify="space-between" align="flex-end" mb="6">
           <Box>
             <PageBreadcrumb>
-              <BreadcrumbRoot fontSize="sm" color="gray.500">
+              <BreadcrumbRoot fontSize="sm" color="ink.700">
                 <BreadcrumbList>
                   <BreadcrumbItem>
-                    <BreadcrumbCurrentLink color="gray.800" fontWeight="500">
+                    <BreadcrumbCurrentLink color="ink.900" fontWeight="500">
                       System Dashboard
                     </BreadcrumbCurrentLink>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </BreadcrumbRoot>
             </PageBreadcrumb>
-            <Heading size="lg" mt="2" color="gray.900" fontWeight="600">
+            <Heading size="lg" mt="2" color="ink.900" fontWeight="600">
               Overview
             </Heading>
           </Box>
@@ -386,25 +386,25 @@ export default function TopPage() {
             <Stack spacing="6">
               <SimpleGrid columns={{ base: 1, md: 3 }} gap="4">
                 {[
-                  { label: 'Total Actions', value: activityTotal, borderTop: 'blue.500' },
-                  { label: 'Daily Average', value: activityAverage, borderTop: 'teal.500' },
+                  { label: 'Total Actions', value: activityTotal, borderTop: 'tide.500' },
+                  { label: 'Daily Average', value: activityAverage, borderTop: 'tide.300' },
                   {
                     label: 'Peak Usage',
                     value: activityPeak ? activityPeak.count : 0,
                     subtext: activityPeak ? formatLongDate(activityPeak.date) : '-',
-                    borderTop: 'purple.500',
+                    borderTop: 'violet.400',
                   },
                 ].map((stat, i) => (
-                  <Box key={i} bg="white" p="4" borderRadius="md" border="1px solid" borderColor="gray.200" borderTopWidth="3px" borderTopColor={stat.borderTop} shadow="sm">
-                    <Text fontSize="xs" color="gray.500" fontWeight="600" textTransform="uppercase" letterSpacing="wider" mb="1">
+                  <Box key={i} bg="sand.100" p="4" borderRadius="md" border="1px solid" borderColor="sand.200" borderTopWidth="3px" borderTopColor={stat.borderTop} shadow="sm">
+                    <Text fontSize="xs" color="ink.700" fontWeight="600" textTransform="uppercase" letterSpacing="wider" mb="1">
                       {stat.label}
                     </Text>
                     <HStack align="baseline" justify="space-between">
-                      <Text fontSize="2xl" fontWeight="700" color="gray.800" lineHeight="1">
+                      <Text fontSize="2xl" fontWeight="700" color="ink.900" lineHeight="1">
                         {stat.value}
                       </Text>
                       {stat.subtext && (
-                        <Text fontSize="xs" color="gray.400" fontWeight="500">
+                        <Text fontSize="xs" color="ink.700" fontWeight="500">
                           {stat.subtext}
                         </Text>
                       )}
@@ -413,15 +413,15 @@ export default function TopPage() {
                 ))}
               </SimpleGrid>
 
-              <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" shadow="sm" p="5">
+              <Box bg="sand.100" border="1px solid" borderColor="sand.200" borderRadius="md" shadow="sm" p="5">
                 <HStack justify="space-between" mb="6">
                   <HStack spacing="2">
-                    <Icon as={Activity} boxSize={5} color="blue.500" />
-                    <Heading size="sm" fontWeight="600" color="gray.800">
+                    <Icon as={Activity} boxSize={5} color="tide.400" />
+                    <Heading size="sm" fontWeight="600" color="ink.900">
                       Weekly Activity Trends
                     </Heading>
                   </HStack>
-                  <Badge variant="subtle" colorScheme="gray" fontSize="xs" px="2" py="1" borderRadius="md">
+                  <Badge bg="sand.200" color="ink.900" fontSize="xs" px="2" py="1" borderRadius="md">
                     {activityRangeLabel}
                   </Badge>
                 </HStack>
@@ -429,11 +429,11 @@ export default function TopPage() {
                 <Box h="240px" w="full" mt="4">
                   {activityStatus === 'loading' || activityStatus === 'idle' ? (
                     <Flex justify="center" align="center" h="full">
-                      <Text fontSize="sm" color="gray.500">Loading metrics...</Text>
+                      <Text fontSize="sm" color="ink.700">Loading metrics...</Text>
                     </Flex>
                   ) : activityStatus === 'error' ? (
                     <Flex justify="center" align="center" h="full">
-                      <Text fontSize="sm" color="red.500">Activity data unavailable.</Text>
+                      <Text fontSize="sm" color="violet.400">Activity data unavailable.</Text>
                     </Flex>
                   ) : activityChart ? (
                     <Box w="full" h="200px" position="relative">
@@ -446,8 +446,8 @@ export default function TopPage() {
                       >
                         <defs>
                           <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="var(--chakra-colors-blue-500)" stopOpacity={0.2} />
-                            <stop offset="100%" stopColor="var(--chakra-colors-blue-500)" stopOpacity={0} />
+                            <stop offset="0%" stopColor="var(--chakra-colors-tide-400)" stopOpacity={0.2} />
+                            <stop offset="100%" stopColor="var(--chakra-colors-tide-400)" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         {activityChart.gridLines.map((line, index) => (
@@ -457,7 +457,7 @@ export default function TopPage() {
                             x2={activityChart.width - activityChart.paddingX}
                             y1={line.y}
                             y2={line.y}
-                            stroke="var(--chakra-colors-gray-100)"
+                            stroke="var(--chakra-colors-sand-300)"
                             strokeWidth="1"
                           />
                         ))}
@@ -466,7 +466,7 @@ export default function TopPage() {
                           <path
                             d={activityChart.linePath}
                             fill="none"
-                            stroke="var(--chakra-colors-blue-500)"
+                            stroke="var(--chakra-colors-tide-400)"
                             strokeWidth="2.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -488,9 +488,9 @@ export default function TopPage() {
                               transform="translate(-50%, -50%)"
                               w="10px"
                               h="10px"
-                              bg="white"
+                              bg="sand.50"
                               border="2px solid"
-                              borderColor="blue.500"
+                              borderColor="tide.400"
                               borderRadius="full"
                               boxShadow="sm"
                               zIndex={2}
@@ -502,7 +502,7 @@ export default function TopPage() {
                               transform="translateX(-50%)"
                               fontSize="xs"
                               fontWeight="500"
-                              color="gray.500"
+                              color="ink.700"
                               whiteSpace="nowrap"
                             >
                               {activityLabels[index] ?? formatShortDate(point.date)}
@@ -513,7 +513,7 @@ export default function TopPage() {
                     </Box>
                   ) : (
                     <Flex justify="center" align="center" h="full">
-                      <Text fontSize="sm" color="gray.500">No activity data yet.</Text>
+                      <Text fontSize="sm" color="ink.700">No activity data yet.</Text>
                     </Flex>
                   )}
                 </Box>
@@ -522,8 +522,8 @@ export default function TopPage() {
           </GridItem>
 
           <GridItem>
-            <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" shadow="sm" p="5">
-              <Heading size="sm" fontWeight="600" color="gray.800" mb="4">
+            <Box bg="sand.100" border="1px solid" borderColor="sand.200" borderRadius="md" shadow="sm" p="5">
+              <Heading size="sm" fontWeight="600" color="ink.900" mb="4">
                 System Modules
               </Heading>
               <VStack spacing="2" align="stretch">
