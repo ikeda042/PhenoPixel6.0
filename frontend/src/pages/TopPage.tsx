@@ -3,10 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   Badge,
   Box,
-  BreadcrumbCurrentLink,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbRoot,
   Container,
   Flex,
   Grid,
@@ -31,7 +27,6 @@ import {
   WifiOff,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import PageBreadcrumb from '../components/PageBreadcrumb'
 import PageHeader from '../components/PageHeader'
 import ReloadButton, { runGitPullUpdate } from '../components/ReloadButton'
 import ThemeToggleButton from '../components/ThemeToggleButton'
@@ -345,18 +340,7 @@ export default function TopPage() {
       <Container maxW="container.xl" py={6}>
         <Flex justify="space-between" align="flex-end" mb="6">
           <Box>
-            <PageBreadcrumb>
-              <BreadcrumbRoot fontSize="sm" color="ink.700">
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbCurrentLink color="ink.900" fontWeight="500">
-                      System Dashboard
-                    </BreadcrumbCurrentLink>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </BreadcrumbRoot>
-            </PageBreadcrumb>
-            <Heading size="lg" mt="2" color="ink.900" fontWeight="600">
+            <Heading size="lg" color="ink.900" fontWeight="600">
               Overview
             </Heading>
           </Box>
