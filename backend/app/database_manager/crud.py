@@ -1457,6 +1457,23 @@ def _generate_map256_jet_image(
     return _encode_image(jet)
 
 
+def _build_map256_overlay_image(
+    image_fluo1_raw: bytes,
+    image_fluo2_raw: bytes,
+) -> bytes:
+    fluo1_image = _decode_image(image_fluo1_raw)
+    fluo2_image = _decode_image(image_fluo2_raw)
+    if fluo1_image.shape[:2] != fluo2_image.shape[:2]:
+        raise ValueError("Fluo image dimensions do not match")
+    fluo1_gray = cv2.cvtColor(fluo1_image, cv2.COLOR_BGR2GRAY)
+    fluo2_gray = cv2.cvtColor(fluo2_image, cv2.COLOR_BGR2GRAY)
+    fluo1_normalized = _normalize_grayscale_to_uint8(fluo1_gray)
+    fluo2_normalized = _normalize_grayscale_to_uint8(fluo2_gray)
+    overlay_gray = np.maximum(fluo1_normalized, fluo2_normalized)
+    overlay_bgr = cv2.cvtColor(overlay_gray, cv2.COLOR_GRAY2BGR)
+    return _encode_image(overlay_bgr)
+
+
 def get_cell_image(
     db_name: str,
     cell_id: str,
@@ -1945,7 +1962,7 @@ def get_cell_heatmap(
 def get_cell_map256(
     db_name: str,
     cell_id: str,
-    image_type: Literal["fluo1", "fluo2"] = "fluo1",
+    image_type: Literal["fluo1", "fluo2", "overlay"] = "fluo1",
     degree: int = 4,
 ) -> bytes:
     if degree < 1:
@@ -1957,6 +1974,20 @@ def get_cell_map256(
             raise RuntimeError("Database session is not bound")
         metadata = MetaData()
         cells = Table("cells", metadata, autoload_with=bind)
+        if image_type == "overlay":
+            stmt = (
+                select(cells.c.img_fluo1, cells.c.img_fluo2, cells.c.contour)
+                .where(cells.c.cell_id == cell_id)
+                .limit(1)
+            )
+            row = session.execute(stmt).first()
+            if row is None or row[0] is None or row[1] is None:
+                raise LookupError("Cell image not found")
+            if row[2] is None:
+                raise LookupError("Cell contour not found")
+            image_bytes = _build_map256_overlay_image(bytes(row[0]), bytes(row[1]))
+            contour_raw = bytes(row[2])
+            return _generate_map256_image(image_bytes, contour_raw, degree)
         column_map = {
             "fluo1": "img_fluo1",
             "fluo2": "img_fluo2",
@@ -1984,7 +2015,7 @@ def get_cell_map256(
 def get_cell_map256_jet(
     db_name: str,
     cell_id: str,
-    image_type: Literal["fluo1", "fluo2"] = "fluo1",
+    image_type: Literal["fluo1", "fluo2", "overlay"] = "fluo1",
     degree: int = 4,
 ) -> bytes:
     if degree < 1:
@@ -1996,6 +2027,20 @@ def get_cell_map256_jet(
             raise RuntimeError("Database session is not bound")
         metadata = MetaData()
         cells = Table("cells", metadata, autoload_with=bind)
+        if image_type == "overlay":
+            stmt = (
+                select(cells.c.img_fluo1, cells.c.img_fluo2, cells.c.contour)
+                .where(cells.c.cell_id == cell_id)
+                .limit(1)
+            )
+            row = session.execute(stmt).first()
+            if row is None or row[0] is None or row[1] is None:
+                raise LookupError("Cell image not found")
+            if row[2] is None:
+                raise LookupError("Cell contour not found")
+            image_bytes = _build_map256_overlay_image(bytes(row[0]), bytes(row[1]))
+            contour_raw = bytes(row[2])
+            return _generate_map256_jet_image(image_bytes, contour_raw, degree)
         column_map = {
             "fluo1": "img_fluo1",
             "fluo2": "img_fluo2",

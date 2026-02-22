@@ -124,13 +124,13 @@ Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2`, `degree`
 Response: `image/png`
 
 **GET** `/get-cell-map256`  
-Map256 image (fluo-only).  
-Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2`, `degree`  
+Map256 image (fluo-only or overlay).  
+Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2|overlay`, `degree`  
 Response: `image/png`
 
 **GET** `/get-cell-map256-jet`  
-Map256 jet-colored image (fluo-only).  
-Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2`, `degree`  
+Map256 jet-colored image (fluo-only or overlay).  
+Params: `dbname`, `cell_id`, `image_type=fluo1|fluo2|overlay`, `degree`  
 Response: `image/png`
 
 **GET** `/get-cell-distribution`  

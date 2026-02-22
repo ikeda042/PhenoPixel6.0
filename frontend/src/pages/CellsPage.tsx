@@ -186,7 +186,9 @@ export default function CellsPage() {
   const [map256Url, setMap256Url] = useState<string | null>(null)
   const [isLoadingMap256, setIsLoadingMap256] = useState(false)
   const [map256Error, setMap256Error] = useState<string | null>(null)
-  const [map256Channel, setMap256Channel] = useState<'fluo1' | 'fluo2'>('fluo1')
+  const [map256Channel, setMap256Channel] = useState<'fluo1' | 'fluo2' | 'overlay'>(
+    'fluo1',
+  )
   const [map256JetUrl, setMap256JetUrl] = useState<string | null>(null)
   const [map256JetError, setMap256JetError] = useState<string | null>(null)
   const [distributionUrl, setDistributionUrl] = useState<string | null>(null)
@@ -2123,7 +2125,9 @@ export default function CellsPage() {
                       <NativeSelect.Field
                         value={map256Channel}
                         onChange={(event) =>
-                          setMap256Channel(event.target.value as 'fluo1' | 'fluo2')
+                          setMap256Channel(
+                            event.target.value as 'fluo1' | 'fluo2' | 'overlay',
+                          )
                         }
                         bg="sand.50"
                         border="1px solid"
@@ -2139,6 +2143,7 @@ export default function CellsPage() {
                       >
                         <option value="fluo1">Fluo1</option>
                         <option value="fluo2">Fluo2</option>
+                        <option value="overlay">Overlay</option>
                       </NativeSelect.Field>
                       <NativeSelect.Indicator color="ink.700" />
                     </NativeSelect.Root>

@@ -1640,11 +1640,11 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "fluo1 | fluo2",
+              "description": "fluo1 | fluo2 | overlay",
               "default": "fluo1",
               "title": "Image Type"
             },
-            "description": "fluo1 | fluo2"
+            "description": "fluo1 | fluo2 | overlay"
           },
           {
             "name": "degree",
@@ -1712,11 +1712,11 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "fluo1 | fluo2",
+              "description": "fluo1 | fluo2 | overlay",
               "default": "fluo1",
               "title": "Image Type"
             },
-            "description": "fluo1 | fluo2"
+            "description": "fluo1 | fluo2 | overlay"
           },
           {
             "name": "degree",

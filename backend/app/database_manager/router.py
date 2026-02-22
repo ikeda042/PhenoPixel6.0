@@ -494,7 +494,7 @@ def get_cell_distribution_endpoint(
 async def get_cell_map256_endpoint(
     dbname: Annotated[str, Query()] = ...,
     cell_id: Annotated[str, Query()] = ...,
-    image_type: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    image_type: Annotated[str, Query(description="fluo1 | fluo2 | overlay")] = "fluo1",
     degree: Annotated[int, Query(ge=1)] = 4,
 ) -> StreamingResponse:
     try:
@@ -522,7 +522,7 @@ async def get_cell_map256_endpoint(
 async def get_cell_map256_jet_endpoint(
     dbname: Annotated[str, Query()] = ...,
     cell_id: Annotated[str, Query()] = ...,
-    image_type: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    image_type: Annotated[str, Query(description="fluo1 | fluo2 | overlay")] = "fluo1",
     degree: Annotated[int, Query(ge=1)] = 4,
 ) -> StreamingResponse:
     try:
