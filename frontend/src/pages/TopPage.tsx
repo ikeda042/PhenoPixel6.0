@@ -426,7 +426,7 @@ export default function TopPage() {
                   </Badge>
                 </HStack>
 
-                <Box h="220px" w="full">
+                <Box h="240px" w="full" mt="4">
                   {activityStatus === 'loading' || activityStatus === 'idle' ? (
                     <Flex justify="center" align="center" h="full">
                       <Text fontSize="sm" color="gray.500">Loading metrics...</Text>
@@ -436,7 +436,7 @@ export default function TopPage() {
                       <Text fontSize="sm" color="red.500">Activity data unavailable.</Text>
                     </Flex>
                   ) : activityChart ? (
-                    <Box w="full" h="full" position="relative">
+                    <Box w="full" h="200px" position="relative">
                       <svg
                         width="100%"
                         height="100%"
@@ -473,31 +473,43 @@ export default function TopPage() {
                             vectorEffect="non-scaling-stroke"
                           />
                         )}
-                        {activityChart.coordinates.map((point, index) => (
-                          <circle
-                            key={`point-${index}`}
-                            cx={point.x}
-                            cy={point.y}
-                            r="4"
-                            fill="white"
-                            stroke="var(--chakra-colors-blue-500)"
-                            strokeWidth="2"
-                          />
-                        ))}
-                        {activityChart.coordinates.map((point, index) => (
-                          <text
-                            key={`label-${index}`}
-                            x={point.x}
-                            y={activityChart.height - 2}
-                            textAnchor="middle"
-                            fontSize="10"
-                            fontWeight="500"
-                            fill="var(--chakra-colors-gray-400)"
-                          >
-                            {activityLabels[index] ?? formatShortDate(point.date)}
-                          </text>
-                        ))}
                       </svg>
+
+                      {activityChart.coordinates.map((point, index) => {
+                        const leftPercent = (point.x / activityChart.width) * 100
+                        const topPercent = (point.y / activityChart.height) * 100
+
+                        return (
+                          <Box key={`point-group-${index}`}>
+                            <Box
+                              position="absolute"
+                              left={`${leftPercent}%`}
+                              top={`${topPercent}%`}
+                              transform="translate(-50%, -50%)"
+                              w="10px"
+                              h="10px"
+                              bg="white"
+                              border="2px solid"
+                              borderColor="blue.500"
+                              borderRadius="full"
+                              boxShadow="sm"
+                              zIndex={2}
+                            />
+                            <Text
+                              position="absolute"
+                              left={`${leftPercent}%`}
+                              bottom="-24px"
+                              transform="translateX(-50%)"
+                              fontSize="xs"
+                              fontWeight="500"
+                              color="gray.500"
+                              whiteSpace="nowrap"
+                            >
+                              {activityLabels[index] ?? formatShortDate(point.date)}
+                            </Text>
+                          </Box>
+                        )
+                      })}
                     </Box>
                   ) : (
                     <Flex justify="center" align="center" h="full">
