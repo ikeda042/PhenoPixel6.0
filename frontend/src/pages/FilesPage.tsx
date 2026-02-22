@@ -13,12 +13,13 @@ import {
   Container,
   Grid,
   HStack,
+  Icon,
   Input,
   InputGroup,
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { Search } from 'lucide-react'
+import { Search, Trash2 } from 'lucide-react'
 import PageBreadcrumb from '../components/PageBreadcrumb'
 import PageHeader from '../components/PageHeader'
 import ReloadButton from '../components/ReloadButton'
@@ -409,8 +410,11 @@ export default function FilesPage() {
                       _hover={{ bg: 'violet.300' }}
                       onClick={() => handleDelete(file)}
                       loading={deletingFile === file.name}
+                      aria-label={`Delete ${file.name}`}
+                      minW="auto"
+                      px="2"
                     >
-                      Delete
+                      <Icon as={Trash2} boxSize={3.5} />
                     </Button>
                   </HStack>
                 </Grid>
