@@ -367,7 +367,7 @@ export default function TopPage() {
 
         <Grid templateColumns={{ base: '1fr', lg: '3fr 1fr' }} gap="6">
           <GridItem>
-            <Stack spacing="6">
+            <Flex direction="column" h="full" gap="6">
               <SimpleGrid columns={{ base: 1, md: 3 }} gap="4">
                 {[
                   { label: 'Total Actions', value: activityTotal, borderTop: 'tide.500' },
@@ -397,7 +397,17 @@ export default function TopPage() {
                 ))}
               </SimpleGrid>
 
-              <Box bg="sand.100" border="1px solid" borderColor="sand.200" borderRadius="md" shadow="sm" p="5">
+              <Box
+                flex="1"
+                display="flex"
+                flexDirection="column"
+                bg="sand.100"
+                border="1px solid"
+                borderColor="sand.200"
+                borderRadius="md"
+                shadow="sm"
+                p="5"
+              >
                 <HStack justify="space-between" mb="6">
                   <HStack spacing="2">
                     <Icon as={Activity} boxSize={5} color="tide.400" />
@@ -410,7 +420,7 @@ export default function TopPage() {
                   </Badge>
                 </HStack>
 
-                <Box h="240px" w="full" mt="4">
+                <Box flex="1" w="full" position="relative" minH="200px">
                   {activityStatus === 'loading' || activityStatus === 'idle' ? (
                     <Flex justify="center" align="center" h="full">
                       <Text fontSize="sm" color="ink.700">Loading metrics...</Text>
@@ -502,11 +512,11 @@ export default function TopPage() {
                   )}
                 </Box>
               </Box>
-            </Stack>
+            </Flex>
           </GridItem>
 
           <GridItem>
-            <Box bg="sand.100" border="1px solid" borderColor="sand.200" borderRadius="md" shadow="sm" p="5">
+            <Box h="full" bg="sand.100" border="1px solid" borderColor="sand.200" borderRadius="md" shadow="sm" p="5">
               <Heading size="sm" fontWeight="600" color="ink.900" mb="4">
                 System Modules
               </Heading>
