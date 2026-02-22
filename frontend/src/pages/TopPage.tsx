@@ -9,6 +9,8 @@ import {
   BreadcrumbRoot,
   Container,
   Flex,
+  Grid,
+  GridItem,
   Heading,
   HStack,
   Icon,
@@ -18,6 +20,8 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import {
+  Activity,
+  ChevronRight,
   Cpu,
   Database,
   Folder,
@@ -45,7 +49,6 @@ type MenuItem = {
   description: string
   path: string
   icon: LucideIcon
-  accent: string
   external?: boolean
 }
 
@@ -75,74 +78,71 @@ const formatLongDate = (value: string) => {
 
 const StatusChip = ({ label, value, tone, icon }: StatusChipProps) => {
   const palette = {
-    ok: { accent: 'tide.300', text: 'ink.900' },
-    error: { accent: 'violet.500', text: 'ink.900' },
-    unknown: { accent: 'sand.300', text: 'ink.700' },
+    ok: { bg: 'green.50', color: 'green.600', dot: 'green.500' },
+    error: { bg: 'red.50', color: 'red.600', dot: 'red.500' },
+    unknown: { bg: 'gray.100', color: 'gray.600', dot: 'gray.400' },
   } as const
   const style = palette[tone]
 
   return (
-    <HStack
-      spacing="3"
-      px="3"
-      py="2"
-      borderRadius="md"
-      bg="sand.100"
-      border="1px solid"
-      borderColor="sand.200"
-    >
-      <Box w="0.5rem" h="0.5rem" borderRadius="full" bg={style.accent} />
-      <Icon as={icon} boxSize={4} color={style.accent} />
-      <Text fontSize="sm" color="ink.700">
-        {label}
+    <HStack spacing="2" px="2.5" py="1" borderRadius="md" bg={style.bg}>
+      <Box w="2px" h="12px" borderRadius="full" bg={style.dot} />
+      <Icon as={icon} boxSize={3.5} color={style.color} />
+      <Text fontSize="xs" fontWeight="500" color="gray.600">
+        {label}:
       </Text>
-      <Text fontSize="sm" fontWeight="600" color={style.text}>
+      <Text fontSize="xs" fontWeight="700" color={style.color} textTransform="uppercase">
         {value}
       </Text>
     </HStack>
   )
 }
 
-const MenuCard = ({ item, onClick }: { item: MenuItem; onClick: () => void }) => (
-  <Box
-    role="button"
+const MenuListItem = ({ item, onClick }: { item: MenuItem; onClick: () => void }) => (
+  <Flex
+    as="button"
+    w="full"
     onClick={onClick}
-    bg="sand.100"
+    align="center"
+    justify="space-between"
+    p="3"
+    bg="white"
     border="1px solid"
-    borderColor="sand.200"
-    borderRadius="xl"
-    p="4"
-    minH="11.25rem"
-    transition="transform 0.2s ease, border-color 0.2s ease"
+    borderColor="gray.200"
+    borderRadius="md"
+    transition="all 0.2s"
     _hover={{
-      transform: 'translateY(-0.125rem)',
-      borderColor: item.accent,
+      borderColor: 'blue.400',
+      bg: 'blue.50',
+      transform: 'translateX(2px)',
     }}
+    group
   >
-    <VStack align="start" spacing="3">
+    <HStack spacing="3">
       <Flex
-        w="2.75rem"
-        h="2.75rem"
-        borderRadius="lg"
-        bg="sand.200"
+        w="8"
+        h="8"
+        borderRadius="md"
+        bg="gray.50"
         align="center"
         justify="center"
+        color="gray.600"
         border="1px solid"
-        borderColor="sand.300"
-        color={item.accent}
+        borderColor="gray.200"
       >
-        <Icon as={item.icon} boxSize={5} />
+        <Icon as={item.icon} boxSize={4} />
       </Flex>
-      <Box>
-        <Text fontWeight="600" mb="1">
+      <Box textAlign="left">
+        <Text fontSize="sm" fontWeight="600" color="gray.800">
           {item.title}
         </Text>
-        <Text fontSize="sm" color="ink.700">
+        <Text fontSize="xs" color="gray.500" noOfLines={1}>
           {item.description}
         </Text>
       </Box>
-    </VStack>
-  </Box>
+    </HStack>
+    <Icon as={ChevronRight} boxSize={4} color="gray.400" />
+  </Flex>
 )
 
 const menuItems: MenuItem[] = [
@@ -151,41 +151,33 @@ const menuItems: MenuItem[] = [
     description: 'Extract cells from ND2 microscopy files.',
     path: '/nd2files',
     icon: Cpu,
-    accent: 'tide.300',
   },
   {
     title: 'Database Console',
     description: 'Label cells and manage datasets.',
     path: '/databases',
     icon: Database,
-    accent: 'violet.400',
   },
   {
     title: 'File Manager',
     description: 'Manage files on the local server.',
     path: '/files',
     icon: Folder,
-    accent: 'violet.400',
   },
   {
     title: 'Graph Engine',
     description: 'Generate graph metrics and plots from CSV inputs.',
     path: '/graph-engine',
     icon: Share2,
-    accent: 'tide.300',
   },
 ]
 
 export default function TopPage() {
   const navigate = useNavigate()
   const apiBase = useMemo(() => getApiBase(), [])
-  const [backendStatus, setBackendStatus] = useState<'ready' | 'error' | null>(
-    null,
-  )
+  const [backendStatus, setBackendStatus] = useState<'ready' | 'error' | null>(null)
   const [internetStatus, setInternetStatus] = useState<boolean | null>(null)
-  const [activityStatus, setActivityStatus] = useState<
-    'idle' | 'loading' | 'error' | 'ready'
-  >('idle')
+  const [activityStatus, setActivityStatus] = useState<'idle' | 'loading' | 'error' | 'ready'>('idle')
   const [activityPoints, setActivityPoints] = useState<ActivityPoint[]>([])
   const topPageTrackedRef = useRef(false)
 
@@ -197,7 +189,7 @@ export default function TopPage() {
     try {
       const res = await fetch(`${apiBase}/health`)
       setBackendStatus(res.ok ? 'ready' : 'error')
-    } catch (error) {
+    } catch {
       setBackendStatus('error')
     }
   }, [apiBase])
@@ -219,18 +211,14 @@ export default function TopPage() {
   }, [checkBackend])
 
   useEffect(() => {
-    if (!apiBase) {
-      return
-    }
+    if (!apiBase) return
     void runGitPullUpdate(apiBase).catch((error) => {
       console.error('Auto update failed:', error)
     })
   }, [apiBase])
 
   useEffect(() => {
-    if (!apiBase || topPageTrackedRef.current) {
-      return
-    }
+    if (!apiBase || topPageTrackedRef.current) return
     topPageTrackedRef.current = true
     fetch(`${apiBase}/activity/track`, {
       method: 'POST',
@@ -240,9 +228,7 @@ export default function TopPage() {
   }, [apiBase])
 
   useEffect(() => {
-    if (!apiBase) {
-      return
-    }
+    if (!apiBase) return
     let isMounted = true
     const controller = new AbortController()
 
@@ -252,20 +238,14 @@ export default function TopPage() {
         const res = await fetch(`${apiBase}/activity/weekly?days=7`, {
           signal: controller.signal,
         })
-        if (!res.ok) {
-          throw new Error('Failed to load activity')
-        }
+        if (!res.ok) throw new Error('Failed to load activity')
         const data = await res.json()
-        if (!isMounted) {
-          return
-        }
+        if (!isMounted) return
         const points = Array.isArray(data?.points) ? data.points : []
         setActivityPoints(points)
         setActivityStatus('ready')
-      } catch (error) {
-        if (!isMounted || controller.signal.aborted) {
-          return
-        }
+      } catch {
+        if (!isMounted || controller.signal.aborted) return
         setActivityPoints([])
         setActivityStatus('error')
       }
@@ -291,72 +271,51 @@ export default function TopPage() {
     backendStatus === 'ready' ? 'ok' : backendStatus === 'error' ? 'error' : 'unknown'
   const internetTone: StatusChipProps['tone'] =
     internetStatus === null ? 'unknown' : internetStatus ? 'ok' : 'error'
-  const activityTotal = useMemo(
-    () => activityPoints.reduce((sum, point) => sum + point.count, 0),
-    [activityPoints],
-  )
+
+  const activityTotal = useMemo(() => activityPoints.reduce((sum, point) => sum + point.count, 0), [activityPoints])
   const activityAverage = useMemo(() => {
-    if (!activityPoints.length) {
-      return 0
-    }
-    const average = activityTotal / activityPoints.length
-    return Number(average.toFixed(1))
+    if (!activityPoints.length) return 0
+    return Number((activityTotal / activityPoints.length).toFixed(1))
   }, [activityPoints.length, activityTotal])
   const activityPeak = useMemo(() => {
-    if (!activityPoints.length) {
-      return null
-    }
-    return activityPoints.reduce((max, point) =>
-      point.count > max.count ? point : max,
-    )
+    if (!activityPoints.length) return null
+    return activityPoints.reduce((max, point) => (point.count > max.count ? point : max))
   }, [activityPoints])
+
   const activityRangeLabel = useMemo(() => {
-    if (!activityPoints.length) {
-      return 'Last 7 days'
-    }
-    const start = formatLongDate(activityPoints[0].date)
-    const end = formatLongDate(activityPoints[activityPoints.length - 1].date)
-    return `${start} - ${end}`
+    if (!activityPoints.length) return 'Last 7 days'
+    return `${formatLongDate(activityPoints[0].date)} - ${formatLongDate(activityPoints[activityPoints.length - 1].date)}`
   }, [activityPoints])
-  const activityLabels = useMemo(
-    () => activityPoints.map((point) => formatShortDate(point.date)),
-    [activityPoints],
-  )
+  const activityLabels = useMemo(() => activityPoints.map((point) => formatShortDate(point.date)), [activityPoints])
+
   const activityChart = useMemo(() => {
-    if (!activityPoints.length) {
-      return null
-    }
+    if (!activityPoints.length) return null
     const width = 640
-    const height = 240
-    const paddingX = 32
+    const height = 200
+    const paddingX = 24
     const paddingY = 24
     const innerWidth = width - paddingX * 2
     const innerHeight = height - paddingY * 2
-    const maxCount = Math.max(
-      ...activityPoints.map((point) => point.count),
-      1,
-    )
+    const maxCount = Math.max(...activityPoints.map((point) => point.count), 1)
     const slots = Math.max(activityPoints.length - 1, 1)
     const step = innerWidth / slots
     const offset = activityPoints.length === 1 ? innerWidth / 2 : 0
-    const coordinates = activityPoints.map((point, index) => {
-      const x = paddingX + offset + step * index
-      const y = paddingY + innerHeight - (point.count / maxCount) * innerHeight
-      return { x, y, count: point.count, date: point.date }
-    })
-    const lineSegment = coordinates
-      .map((point) => `${point.x} ${point.y}`)
-      .join(' L ')
+
+    const coordinates = activityPoints.map((point, index) => ({
+      x: paddingX + offset + step * index,
+      y: paddingY + innerHeight - (point.count / maxCount) * innerHeight,
+      count: point.count,
+      date: point.date,
+    }))
+
+    const lineSegment = coordinates.map((point) => `${point.x} ${point.y}`).join(' L ')
     const linePath = lineSegment ? `M ${lineSegment}` : ''
     const baselineY = paddingY + innerHeight
     const firstX = coordinates[0].x
     const lastX = coordinates[coordinates.length - 1].x
-    const areaPath = lineSegment
-      ? `M ${firstX} ${baselineY} L ${lineSegment} L ${lastX} ${baselineY} Z`
-      : ''
-    const gridLines = [0, 0.5, 1].map((ratio) => ({
-      y: paddingY + innerHeight - ratio * innerHeight,
-    }))
+    const areaPath = lineSegment ? `M ${firstX} ${baselineY} L ${lineSegment} L ${lastX} ${baselineY} Z` : ''
+    const gridLines = [0, 0.5, 1].map((ratio) => ({ y: paddingY + innerHeight - ratio * innerHeight }))
+
     return {
       width,
       height,
@@ -373,320 +332,201 @@ export default function TopPage() {
   }, [activityPoints])
 
   return (
-    <Box minH="100vh" bg="sand.50" color="ink.900" position="relative">
-      <Box position="relative">
-        <PageHeader
-          actions={
-            <>
-              <ReloadButton />
-              <ThemeToggleButton />
-            </>
-          }
-        />
+    <Box minH="100vh" bg="gray.50" color="gray.800">
+      <PageHeader
+        actions={
+          <HStack spacing="2">
+            <ReloadButton />
+            <ThemeToggleButton />
+          </HStack>
+        }
+      />
 
-        <Container maxW="72.5rem" py={{ base: 8, md: 12 }}>
-          <PageBreadcrumb>
-            <BreadcrumbRoot fontSize="sm" color="ink.700">
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbCurrentLink color="ink.900">Dashboard</BreadcrumbCurrentLink>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </BreadcrumbRoot>
-          </PageBreadcrumb>
-          <Stack spacing={{ base: 8, md: 10 }}>
-            <Box
-              bg="sand.100"
-              border="1px solid"
-              borderColor="sand.200"
-              borderRadius="xl"
-              p={{ base: 4, md: 5 }}
-            >
-              <HStack justify="space-between" flexWrap="wrap" gap="4">
-                <Text fontWeight="600">System Status</Text>
-                <HStack spacing="3" flexWrap="wrap">
-                  <StatusChip
-                    label="Backend"
-                    value={backendStatus ?? 'unknown'}
-                    tone={backendTone}
-                    icon={Server}
-                  />
-                  <StatusChip
-                    label="Internet"
-                    value={
-                      internetStatus === null
-                        ? 'unknown'
-                        : internetStatus
-                          ? 'connected'
-                          : 'offline'
-                    }
-                    tone={internetTone}
-                    icon={internetStatus ? Wifi : WifiOff}
-                  />
-                </HStack>
-              </HStack>
-            </Box>
+      <Container maxW="container.xl" py={6}>
+        <Flex justify="space-between" align="flex-end" mb="6">
+          <Box>
+            <PageBreadcrumb>
+              <BreadcrumbRoot fontSize="sm" color="gray.500">
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbCurrentLink color="gray.800" fontWeight="500">
+                      System Dashboard
+                    </BreadcrumbCurrentLink>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </BreadcrumbRoot>
+            </PageBreadcrumb>
+            <Heading size="lg" mt="2" color="gray.900" fontWeight="600">
+              Overview
+            </Heading>
+          </Box>
+          <HStack spacing="3" display={{ base: 'none', md: 'flex' }}>
+            <StatusChip label="Backend" value={backendStatus ?? 'Checking'} tone={backendTone} icon={Server} />
+            <StatusChip
+              label="Network"
+              value={internetStatus === null ? 'Checking' : internetStatus ? 'Online' : 'Offline'}
+              tone={internetTone}
+              icon={internetStatus ? Wifi : WifiOff}
+            />
+          </HStack>
+        </Flex>
 
-            <Box
-              bg="sand.100"
-              border="1px solid"
-              borderColor="sand.200"
-              borderRadius="xl"
-              p={{ base: 4, md: 6 }}
-            >
-              <Stack spacing="6">
-                <HStack justify="space-between" flexWrap="wrap" gap="4">
-                  <Box>
-                    <Text
-                      fontSize="xs"
-                      color="ink.700"
-                      textTransform="uppercase"
-                      letterSpacing="0.2em"
-                      mb="1"
-                    >
-                      Activity
+        <HStack spacing="3" display={{ base: 'flex', md: 'none' }} mb="6">
+          <StatusChip label="Backend" value={backendStatus ?? 'Checking'} tone={backendTone} icon={Server} />
+          <StatusChip
+            label="Network"
+            value={internetStatus === null ? 'Checking' : internetStatus ? 'Online' : 'Offline'}
+            tone={internetTone}
+            icon={internetStatus ? Wifi : WifiOff}
+          />
+        </HStack>
+
+        <Grid templateColumns={{ base: '1fr', lg: '3fr 1fr' }} gap="6">
+          <GridItem>
+            <Stack spacing="6">
+              <SimpleGrid columns={{ base: 1, md: 3 }} gap="4">
+                {[
+                  { label: 'Total Actions', value: activityTotal, borderTop: 'blue.500' },
+                  { label: 'Daily Average', value: activityAverage, borderTop: 'teal.500' },
+                  {
+                    label: 'Peak Usage',
+                    value: activityPeak ? activityPeak.count : 0,
+                    subtext: activityPeak ? formatLongDate(activityPeak.date) : '-',
+                    borderTop: 'purple.500',
+                  },
+                ].map((stat, i) => (
+                  <Box key={i} bg="white" p="4" borderRadius="md" border="1px solid" borderColor="gray.200" borderTopWidth="3px" borderTopColor={stat.borderTop} shadow="sm">
+                    <Text fontSize="xs" color="gray.500" fontWeight="600" textTransform="uppercase" letterSpacing="wider" mb="1">
+                      {stat.label}
                     </Text>
-                    <Heading size="md">Weekly usage</Heading>
+                    <HStack align="baseline" justify="space-between">
+                      <Text fontSize="2xl" fontWeight="700" color="gray.800" lineHeight="1">
+                        {stat.value}
+                      </Text>
+                      {stat.subtext && (
+                        <Text fontSize="xs" color="gray.400" fontWeight="500">
+                          {stat.subtext}
+                        </Text>
+                      )}
+                    </HStack>
                   </Box>
-                  <Badge
-                    bg="sand.200"
-                    color="ink.900"
-                    borderRadius="full"
-                    px="3"
-                    py="1"
-                    fontSize="0.65rem"
-                    letterSpacing="0.18em"
-                    textTransform="uppercase"
-                  >
+                ))}
+              </SimpleGrid>
+
+              <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" shadow="sm" p="5">
+                <HStack justify="space-between" mb="6">
+                  <HStack spacing="2">
+                    <Icon as={Activity} boxSize={5} color="blue.500" />
+                    <Heading size="sm" fontWeight="600" color="gray.800">
+                      Weekly Activity Trends
+                    </Heading>
+                  </HStack>
+                  <Badge variant="subtle" colorScheme="gray" fontSize="xs" px="2" py="1" borderRadius="md">
                     {activityRangeLabel}
                   </Badge>
                 </HStack>
 
-                {(activityStatus === 'loading' || activityStatus === 'idle') && (
-                  <Text fontSize="sm" color="ink.700">
-                    Loading activity…
-                  </Text>
-                )}
-
-                {activityStatus === 'error' && (
-                  <Text fontSize="sm" color="violet.500">
-                    Activity data is unavailable. Check the backend connection.
-                  </Text>
-                )}
-
-                {activityStatus === 'ready' && (
-                  <Flex direction={{ base: 'column', lg: 'row' }} gap="6">
-                    <Box w={{ base: 'full', lg: '16rem' }} flexShrink={0}>
-                      <SimpleGrid columns={{ base: 2, lg: 1 }} gap="3">
-                        <Box
-                          bg="sand.50"
-                          border="1px solid"
-                          borderColor="sand.200"
-                          borderRadius="lg"
-                          p="4"
-                        >
-                          <Text
-                            fontSize="xs"
-                            color="ink.700"
-                            textTransform="uppercase"
-                            letterSpacing="0.1em"
-                            mb="1"
+                <Box h="220px" w="full">
+                  {activityStatus === 'loading' || activityStatus === 'idle' ? (
+                    <Flex justify="center" align="center" h="full">
+                      <Text fontSize="sm" color="gray.500">Loading metrics...</Text>
+                    </Flex>
+                  ) : activityStatus === 'error' ? (
+                    <Flex justify="center" align="center" h="full">
+                      <Text fontSize="sm" color="red.500">Activity data unavailable.</Text>
+                    </Flex>
+                  ) : activityChart ? (
+                    <Box w="full" h="full" position="relative">
+                      <svg
+                        width="100%"
+                        height="100%"
+                        viewBox={`0 0 ${activityChart.width} ${activityChart.height}`}
+                        preserveAspectRatio="none"
+                        style={{ overflow: 'visible' }}
+                      >
+                        <defs>
+                          <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="var(--chakra-colors-blue-500)" stopOpacity={0.2} />
+                            <stop offset="100%" stopColor="var(--chakra-colors-blue-500)" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        {activityChart.gridLines.map((line, index) => (
+                          <line
+                            key={`grid-${index}`}
+                            x1={activityChart.paddingX}
+                            x2={activityChart.width - activityChart.paddingX}
+                            y1={line.y}
+                            y2={line.y}
+                            stroke="var(--chakra-colors-gray-100)"
+                            strokeWidth="1"
+                          />
+                        ))}
+                        {activityChart.areaPath && <path d={activityChart.areaPath} fill="url(#chartGradient)" />}
+                        {activityChart.linePath && (
+                          <path
+                            d={activityChart.linePath}
+                            fill="none"
+                            stroke="var(--chakra-colors-blue-500)"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        )}
+                        {activityChart.coordinates.map((point, index) => (
+                          <circle
+                            key={`point-${index}`}
+                            cx={point.x}
+                            cy={point.y}
+                            r="4"
+                            fill="white"
+                            stroke="var(--chakra-colors-blue-500)"
+                            strokeWidth="2"
+                          />
+                        ))}
+                        {activityChart.coordinates.map((point, index) => (
+                          <text
+                            key={`label-${index}`}
+                            x={point.x}
+                            y={activityChart.height - 2}
+                            textAnchor="middle"
+                            fontSize="10"
+                            fontWeight="500"
+                            fill="var(--chakra-colors-gray-400)"
                           >
-                            Total actions
-                          </Text>
-                          <Text fontSize="3xl" fontWeight="600" lineHeight="1">
-                            {activityTotal}
-                          </Text>
-                        </Box>
-
-                        <Box
-                          bg="sand.50"
-                          border="1px solid"
-                          borderColor="sand.200"
-                          borderRadius="lg"
-                          p="4"
-                        >
-                          <Text
-                            fontSize="xs"
-                            color="ink.700"
-                            textTransform="uppercase"
-                            letterSpacing="0.1em"
-                            mb="1"
-                          >
-                            Daily Avg
-                          </Text>
-                          <Text fontSize="3xl" fontWeight="600" lineHeight="1">
-                            {activityAverage}
-                          </Text>
-                        </Box>
-
-                        <Box
-                          bg="sand.50"
-                          border="1px solid"
-                          borderColor="sand.200"
-                          borderRadius="lg"
-                          p="4"
-                          gridColumn={{ base: 'span 2', lg: 'span 1' }}
-                        >
-                          <HStack justify="space-between" align="baseline">
-                            <Text
-                              fontSize="xs"
-                              color="ink.700"
-                              textTransform="uppercase"
-                              letterSpacing="0.1em"
-                              mb="1"
-                            >
-                              Peak Day
-                            </Text>
-                            <Text fontSize="xs" color="ink.500" fontWeight="500">
-                              {activityPeak ? formatLongDate(activityPeak.date) : '-'}
-                            </Text>
-                          </HStack>
-
-                          <Text fontSize="2xl" fontWeight="600" lineHeight="1">
-                            {activityPeak ? activityPeak.count : 0}
-                          </Text>
-                        </Box>
-                      </SimpleGrid>
+                            {activityLabels[index] ?? formatShortDate(point.date)}
+                          </text>
+                        ))}
+                      </svg>
                     </Box>
+                  ) : (
+                    <Flex justify="center" align="center" h="full">
+                      <Text fontSize="sm" color="gray.500">No activity data yet.</Text>
+                    </Flex>
+                  )}
+                </Box>
+              </Box>
+            </Stack>
+          </GridItem>
 
-                    <Box
-                      flex="1"
-                      bg="sand.50"
-                      border="1px solid"
-                      borderColor="sand.200"
-                      borderRadius="lg"
-                      p="4"
-                      minH={{ base: '200px', lg: 'auto' }}
-                      display="flex"
-                      flexDirection="column"
-                    >
-                      {activityChart ? (
-                        <Box flex="1" w="full" position="relative" minH="240px">
-                          <svg
-                            width="100%"
-                            height="100%"
-                            viewBox={`0 0 ${activityChart.width} ${activityChart.height}`}
-                            preserveAspectRatio="none"
-                            role="img"
-                            aria-label="Weekly activity line chart"
-                            style={{ overflow: 'visible' }}
-                          >
-                            <defs>
-                              <linearGradient
-                                id="activityGradient"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                              >
-                                <stop
-                                  offset="0%"
-                                  stopColor="rgba(45, 212, 191, 0.25)"
-                                />
-                                <stop
-                                  offset="100%"
-                                  stopColor="rgba(45, 212, 191, 0)"
-                                />
-                              </linearGradient>
-                            </defs>
-
-                            {activityChart.gridLines.map((line, index) => (
-                              <line
-                                key={`grid-${index}`}
-                                x1={activityChart.paddingX}
-                                x2={activityChart.width - activityChart.paddingX}
-                                y1={line.y}
-                                y2={line.y}
-                                stroke="var(--chakra-colors-sand-300)"
-                                strokeDasharray="4 6"
-                              />
-                            ))}
-
-                            {activityChart.areaPath && (
-                              <path
-                                d={activityChart.areaPath}
-                                fill="url(#activityGradient)"
-                              />
-                            )}
-
-                            {activityChart.linePath && (
-                              <path
-                                d={activityChart.linePath}
-                                fill="none"
-                                stroke="var(--chakra-colors-tide-400)"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                vectorEffect="non-scaling-stroke"
-                              />
-                            )}
-
-                            {activityChart.coordinates.map((point, index) => (
-                              <circle
-                                key={`point-${index}`}
-                                cx={point.x}
-                                cy={point.y}
-                                r="4"
-                                fill="var(--chakra-colors-tide-400)"
-                                stroke="var(--chakra-colors-sand-50)"
-                                strokeWidth="2"
-                              />
-                            ))}
-
-                            {activityChart.coordinates.map((point, index) => (
-                              <text
-                                key={`label-${index}`}
-                                x={point.x}
-                                y={activityChart.height - 5}
-                                textAnchor="middle"
-                                fontSize="9"
-                                fontWeight="500"
-                                fill="var(--chakra-colors-ink-500)"
-                              >
-                                {activityLabels[index] ?? formatShortDate(point.date)}
-                              </text>
-                            ))}
-                          </svg>
-                        </Box>
-                      ) : (
-                        <Flex justify="center" align="center" h="full">
-                          <Text fontSize="sm" color="ink.700">
-                            No activity data yet.
-                          </Text>
-                        </Flex>
-                      )}
-                    </Box>
-                  </Flex>
-                )}
-
-                {activityStatus === 'ready' && activityTotal === 0 && (
-                  <Text fontSize="sm" color="ink.700" mt="2">
-                    Start by extracting cells or running a bulk analysis to see
-                    usage trends here.
-                  </Text>
-                )}
-              </Stack>
-            </Box>
-
-            <Stack spacing="4">
-              <SimpleGrid
-                columns={{ base: 1, sm: 2, lg: 4 }}
-                columnGap={{ base: 4, md: 6, lg: 8 }}
-                rowGap={{ base: 4, md: 6, lg: 8 }}
-              >
+          <GridItem>
+            <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" shadow="sm" p="5">
+              <Heading size="sm" fontWeight="600" color="gray.800" mb="4">
+                System Modules
+              </Heading>
+              <VStack spacing="2" align="stretch">
                 {menuItems.map((item) => (
-                  <MenuCard
+                  <MenuListItem
                     key={item.title}
                     item={item}
                     onClick={() => handleNavigate(item.path, item.external)}
                   />
                 ))}
-              </SimpleGrid>
-            </Stack>
-          </Stack>
-        </Container>
-      </Box>
+              </VStack>
+            </Box>
+          </GridItem>
+        </Grid>
+      </Container>
     </Box>
   )
 }
