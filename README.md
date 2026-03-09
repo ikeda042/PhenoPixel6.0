@@ -90,7 +90,7 @@ For example, in `Heatmap` mode you can aggregate and visualize GFP localization 
 
 ## Methods
 
-The quantitative routines in PhenoPixel6.0 follow a common single-cell analysis pipeline: detect a contour from the phase-contrast image, re-parameterize the cell in its intrinsic coordinate system, and compute shape or fluorescence descriptors that are directly comparable across cells. Let \(C = \{(x_i, y_i)\}_{i=1}^n\) be the contour points of one cell and let \(\Omega_C\) be the set of pixels inside that contour.
+The quantitative routines in PhenoPixel6.0 follow a common single-cell analysis pipeline: detect a contour from the phase-contrast image, re-parameterize the cell in its intrinsic coordinate system, and compute shape or fluorescence descriptors that are directly comparable across cells. Let $C = \{(x_i, y_i)\}_{i=1}^n$ be the contour points of one cell and let $\Omega_C$ be the set of pixels inside that contour.
 
 ### 1. Contour Extraction, Principal Axis, and Basis Transform
 
@@ -112,7 +112,7 @@ $$
 \Sigma \mathbf{w} = \lambda \mathbf{w}.
 $$
 
-If \(Q = (\mathbf{v}_1\ \mathbf{v}_2)\) is the orthonormal eigenvector basis, coordinates are transformed to the cell-aligned frame by
+If $Q = (\mathbf{v}_1\ \mathbf{v}_2)$ is the orthonormal eigenvector basis, coordinates are transformed to the cell-aligned frame by
 
 $$
 \mathbf{u} = Q^{\mathsf{T}} \mathbf{x},
@@ -122,7 +122,7 @@ $$
 
 This removes arbitrary image rotation and makes bent or filamentous cells easier to model analytically.
 
-Because \(Q\) is orthonormal, this basis conversion also preserves Euclidean length. For any vector \(\mathbf{x}\) and its transformed coordinate \(\mathbf{u} = Q^{\mathsf{T}}\mathbf{x}\),
+Because $Q$ is orthonormal, this basis conversion also preserves Euclidean length. For any vector $\mathbf{x}$ and its transformed coordinate $\mathbf{u} = Q^{\mathsf{T}}\mathbf{x}$,
 
 $$
 \|\mathbf{u}\|^2
@@ -133,11 +133,11 @@ $$
 = \|\mathbf{x}\|^2,
 $$
 
-since \(Q^{\mathsf{T}}Q = QQ^{\mathsf{T}} = I\). Therefore distances measured before and after the basis transform are identical.
+since $Q^{\mathsf{T}}Q = QQ^{\mathsf{T}} = I$. Therefore distances measured before and after the basis transform are identical.
 
 ### 2. Centerline Fitting and Cell Length
 
-In the aligned frame, the cell centerline is approximated by a \(k\)-th order polynomial
+In the aligned frame, the cell centerline is approximated by a $k$-th order polynomial
 
 $$
 \hat{f}(u_1) = \theta^{\mathsf{T}} \phi(u_1),
@@ -154,7 +154,7 @@ $$
 
 ![Centerline fitting](docs/images/method-centerline-fit.png)
 
-In the current backend implementation, `Cell length` is returned as a robust PCA major-axis extent of pixels inside the contour and converted with a fixed pixel size of \(0.065\,\mu\mathrm{m}/\mathrm{px}\):
+In the current backend implementation, `Cell length` is returned as a robust PCA major-axis extent of pixels inside the contour and converted with a fixed pixel size of $0.065\,\mu\mathrm{m}/\mathrm{px}$:
 
 $$
 L_{\mathrm{API}} \approx \left(\max_i \pi_i - \min_i \pi_i\right) \times 0.065.
@@ -178,7 +178,7 @@ for the selected channel.
 
 ### 4. Fluorescence Vectorization Along the Centerline
 
-For each intracellular pixel \((p_i, q_i)\) with intensity \(G(p_i, q_i)\), the nearest point on the fitted centerline is found by
+For each intracellular pixel $(p_i, q_i)$ with intensity $G(p_i, q_i)$, the nearest point on the fitted centerline is found by
 
 $$
 u_{1,i}^* = \underset{u_1 \in [u_{1,a}, u_{1,b}]}{\mathrm{arg\,min}}
@@ -193,19 +193,19 @@ $$
 \ell_i^* = \ell(u_{1,i}^*).
 $$
 
-To obtain a fixed-dimensional descriptor, the arc-length interval \([0, L]\) is divided into \(n\) bins and max-pooled:
+To obtain a fixed-dimensional descriptor, the arc-length interval $[0, L]$ is divided into $n$ bins and max-pooled:
 
 $$
 g_j = \max \left\{ G(p_i, q_i) \mid \ell_i^* \in I_j \right\}.
 $$
 
-If no projected pixel falls into \(I_j\), we set \(g_j = 0\). The resulting fixed-length localization vector is
+If no projected pixel falls into $I_j$, we set $g_j = 0$. The resulting fixed-length localization vector is
 
 $$
 \mathbf{g} = (g_1, \dots, g_n)^{\mathsf{T}}.
 $$
 
-The current implementation uses \(n = 35\) and a default polynomial degree of \(k = 4\). `Heatmap` visualizes these peak vectors either in absolute-length coordinates or in relative-position coordinates.
+The current implementation uses $n = 35$ and a default polynomial degree of $k = 4$. `Heatmap` visualizes these peak vectors either in absolute-length coordinates or in relative-position coordinates.
 
 ![Peak-vector heatmap construction](docs/images/method-peak-vectorization.png)
 
@@ -225,7 +225,7 @@ $$
 R(\tau) = \frac{1}{N} \sum_{c=1}^{N} \mathbf{1}[m(C_c) < \tau].
 $$
 
-The current `FITC aggregation ratio` plot uses this form with a default cutoff \(\tau = 0.7414\). In the thesis experiments, the same normalized-median idea was also used for IbpA-GFP and TorA-GFP abnormal-localization calls, with an example threshold of \(m \le 0.6\) for those datasets.
+The current `FITC aggregation ratio` plot uses this form with a default cutoff $\tau = 0.7414$. In the thesis experiments, the same normalized-median idea was also used for IbpA-GFP and TorA-GFP abnormal-localization calls, with an example threshold of $m \le 0.6$ for those datasets.
 
 ### 6. Thesis-Specific Phenotype Calls
 
@@ -241,7 +241,7 @@ $$
 \tau_{\mathrm{HU}} = Q_{0.05}\left(\{ s(C_c^{\mathrm{ctrl}}) \}\right),
 $$
 
-and the HU aggregation ratio is the fraction of cells with \(s(C) < \tau_{\mathrm{HU}}\).
+and the HU aggregation ratio is the fraction of cells with $s(C) < \tau_{\mathrm{HU}}$.
 
 For PI permeability, the mean intracellular PI intensity is
 
@@ -255,7 +255,7 @@ $$
 \tau_{\mathrm{PI}} = Q_{0.95}\left(\{ \mu(C_c^{\mathrm{ctrl}}) \}\right).
 $$
 
-The PI-positive fraction is then the proportion of cells satisfying \(\mu(C) > \tau_{\mathrm{PI}}\).
+The PI-positive fraction is then the proportion of cells satisfying $\mu(C) > \tau_{\mathrm{PI}}$.
 
 ## Requirements
 
