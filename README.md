@@ -122,6 +122,19 @@ $$
 
 This removes arbitrary image rotation and makes bent or filamentous cells easier to model analytically.
 
+Because \(Q\) is orthonormal, this basis conversion also preserves Euclidean length. For any vector \(\mathbf{x}\) and its transformed coordinate \(\mathbf{u} = Q^{\mathsf{T}}\mathbf{x}\),
+
+$$
+\|\mathbf{u}\|^2
+= \mathbf{u}^{\mathsf{T}}\mathbf{u}
+= (Q^{\mathsf{T}}\mathbf{x})^{\mathsf{T}} (Q^{\mathsf{T}}\mathbf{x})
+= \mathbf{x}^{\mathsf{T}} Q Q^{\mathsf{T}} \mathbf{x}
+= \mathbf{x}^{\mathsf{T}} \mathbf{x}
+= \|\mathbf{x}\|^2,
+$$
+
+since \(Q^{\mathsf{T}}Q = QQ^{\mathsf{T}} = I\). Therefore distances measured before and after the basis transform are identical.
+
 ### 2. Centerline Fitting and Cell Length
 
 In the aligned frame, the cell centerline is approximated by a \(k\)-th order polynomial
