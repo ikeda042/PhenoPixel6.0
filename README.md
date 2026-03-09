@@ -149,7 +149,7 @@ For a curved cell, the thesis formulation defines cell length as the arc length 
 
 $$
 L = \int_{u_{1,a}}^{u_{1,b}}
-\sqrt{1 + \left(\frac{d\hat{f}}{du_1}\right)^2}\,du_1.
+\sqrt{1 + (\frac{d\hat{f}}{du_1})^2}\,du_1.
 $$
 
 ![Centerline fitting](docs/images/method-centerline-fit.png)
@@ -157,7 +157,7 @@ $$
 In the current backend implementation, `Cell length` is returned as a robust PCA major-axis extent of pixels inside the contour and converted with a fixed pixel size of $0.065\,\mu\mathrm{m}/\mathrm{px}$:
 
 $$
-L_{\mathrm{API}} \approx \left(\max_i \pi_i - \min_i \pi_i\right) \times 0.065.
+L_{\mathrm{API}} \approx (\max_i \pi_i - \min_i \pi_i) \times 0.065.
 $$
 
 ### 3. Cell Area and Raw Pixel Export
@@ -182,13 +182,13 @@ For each intracellular pixel $(p_i, q_i)$ with intensity $G(p_i, q_i)$, the near
 
 $$
 u_{1,i}^* = \underset{u_1 \in [u_{1,a}, u_{1,b}]}{\mathrm{arg\,min}}
-\left[(u_1 - p_i)^2 + (\hat{f}(u_1) - q_i)^2\right].
+[(u_1 - p_i)^2 + (\hat{f}(u_1) - q_i)^2].
 $$
 
 This position is converted to arc length,
 
 $$
-\ell(u_1) = \int_{u_{1,a}}^{u_1} \sqrt{1 + \left(\hat{f}'(t)\right)^2}\,dt,
+\ell(u_1) = \int_{u_{1,a}}^{u_1} \sqrt{1 + (\hat{f}'(t))^2}\,dt,
 \qquad
 \ell_i^* = \ell(u_{1,i}^*).
 $$
@@ -196,7 +196,7 @@ $$
 To obtain a fixed-dimensional descriptor, the arc-length interval $[0, L]$ is divided into $n$ bins and max-pooled:
 
 $$
-g_j = \max \left\{ G(p_i, q_i) \mid \ell_i^* \in I_j \right\}.
+g_j = \max \{ G(p_i, q_i) \mid \ell_i^* \in I_j \}.
 $$
 
 If no projected pixel falls into $I_j$, we set $g_j = 0$. The resulting fixed-length localization vector is
@@ -238,7 +238,7 @@ $$
 Using the control population, the abnormality threshold is defined by the 5th percentile,
 
 $$
-\tau_{\mathrm{HU}} = Q_{0.05}\left(\{ s(C_c^{\mathrm{ctrl}}) \}\right),
+\tau_{\mathrm{HU}} = Q_{0.05}(\{ s(C_c^{\mathrm{ctrl}}) \}),
 $$
 
 and the HU aggregation ratio is the fraction of cells with $s(C) < \tau_{\mathrm{HU}}$.
@@ -252,7 +252,7 @@ $$
 with a control-derived positivity threshold
 
 $$
-\tau_{\mathrm{PI}} = Q_{0.95}\left(\{ \mu(C_c^{\mathrm{ctrl}}) \}\right).
+\tau_{\mathrm{PI}} = Q_{0.95}(\{ \mu(C_c^{\mathrm{ctrl}}) \}).
 $$
 
 The PI-positive fraction is then the proportion of cells satisfying $\mu(C) > \tau_{\mathrm{PI}}$.
