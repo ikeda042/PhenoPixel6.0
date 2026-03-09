@@ -183,12 +183,12 @@ $$
 To obtain a fixed-dimensional descriptor, the arc-length interval \([0, L]\) is divided into \(n\) bins and max-pooled:
 
 $$
-g_j =
-\begin{cases}
-\max_{i:\ell_i^* \in I_j} G(p_i, q_i), & \text{if the bin is non-empty}, \\
-0, & \text{otherwise},
-\end{cases}
-\qquad
+g_j = \max \left\{ G(p_i, q_i) \mid \ell_i^* \in I_j \right\}.
+$$
+
+If no projected pixel falls into \(I_j\), we set \(g_j = 0\). The resulting fixed-length localization vector is
+
+$$
 \mathbf{g} = (g_1, \dots, g_n)^{\mathsf{T}}.
 $$
 
