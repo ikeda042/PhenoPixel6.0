@@ -99,15 +99,15 @@ Contours are extracted from phase-contrast images with a Canny-based pipeline. T
 $$
 \Sigma =
 \begin{pmatrix}
-\operatorname{Var}[X_1] & \operatorname{Cov}[X_1, X_2] \\
-\operatorname{Cov}[X_1, X_2] & \operatorname{Var}[X_2]
+\mathrm{Var}[X_1] & \mathrm{Cov}[X_1, X_2] \\
+\mathrm{Cov}[X_1, X_2] & \mathrm{Var}[X_2]
 \end{pmatrix},
 $$
 
 and the principal direction is the solution of
 
 $$
-\mathbf{w}^* = \underset{\|\mathbf{w}\| = 1}{\operatorname*{arg\,max}} \mathbf{w}^{\mathsf{T}} \Sigma \mathbf{w},
+\mathbf{w}^* = \underset{\|\mathbf{w}\| = 1}{\mathrm{arg\,max}} \mathbf{w}^{\mathsf{T}} \Sigma \mathbf{w},
 \qquad
 \Sigma \mathbf{w} = \lambda \mathbf{w}.
 $$
@@ -168,7 +168,7 @@ for the selected channel.
 For each intracellular pixel \((p_i, q_i)\) with intensity \(G(p_i, q_i)\), the nearest point on the fitted centerline is found by
 
 $$
-u_{1,i}^* = \operatorname*{arg\,min}_{u_1 \in [u_{1,a}, u_{1,b}]}
+u_{1,i}^* = \underset{u_1 \in [u_{1,a}, u_{1,b}]}{\mathrm{arg\,min}}
 \left[(u_1 - p_i)^2 + (\hat{f}(u_1) - q_i)^2\right].
 $$
 
@@ -203,7 +203,7 @@ For any selected channel, intensities inside a cell are normalized by the cellwi
 $$
 \tilde{I}_i = \frac{I_i}{\max_{p \in \Omega_C} I(p)},
 \qquad
-m(C) = \operatorname{median}(\tilde{I}_i).
+m(C) = \mathrm{median}(\tilde{I}_i).
 $$
 
 This scalar is reported by `Normalized median`. A population-level aggregation score can then be written as
