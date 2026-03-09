@@ -72,6 +72,23 @@ const parseManifestEntries = (payload: unknown): ManifestEntry[] => {
   return cells.filter((entry) => entry && typeof entry === 'object') as ManifestEntry[]
 }
 
+const parseCellLengthRows = (payload: unknown): CellLengthPair[] => {
+  if (!Array.isArray(payload)) return []
+  return payload
+    .filter(
+      (item): item is CellLengthPair =>
+        item &&
+        typeof item === 'object' &&
+        typeof (item as CellLengthPair).cell_id === 'string' &&
+        typeof (item as CellLengthPair).length === 'number' &&
+        Number.isFinite((item as CellLengthPair).length),
+    )
+    .map((item) => ({
+      cell_id: item.cell_id,
+      length: item.length,
+    }))
+}
+
 const normalizeLabel = (label: string) => {
   const trimmed = label.trim()
   if (!trimmed) return 'N/A'
@@ -127,10 +144,12 @@ export default function BulkEnginePage() {
   const [analysisChannel, setAnalysisChannel] = useState('ph')
   const [lengthPlotUrl, setLengthPlotUrl] = useState<string | null>(null)
   const [lengthError, setLengthError] = useState<string | null>(null)
+  const [lengthDensityError, setLengthDensityError] = useState<string | null>(null)
   const [isLengthLoading, setIsLengthLoading] = useState(false)
   const [isLengthExporting, setIsLengthExporting] = useState(false)
   const [lengthExportError, setLengthExportError] = useState<string | null>(null)
   const [hasCalculatedLength, setHasCalculatedLength] = useState(false)
+  const [lengthDensityValues, setLengthDensityValues] = useState<number[] | null>(null)
   const [areaPlotUrl, setAreaPlotUrl] = useState<string | null>(null)
   const [areaError, setAreaError] = useState<string | null>(null)
   const [isAreaLoading, setIsAreaLoading] = useState(false)
@@ -410,6 +429,91 @@ export default function BulkEnginePage() {
     return paired
   }
 
+  const lengthDensityPlot = useMemo(() => {
+    if (!lengthDensityValues || lengthDensityValues.length === 0) return null
+    const values = lengthDensityValues.filter((value) => Number.isFinite(value))
+    if (values.length === 0) return null
+
+    const count = values.length
+    const minValue = Math.min(...values)
+    const maxValue = Math.max(...values)
+    const mean = values.reduce((sum, value) => sum + value, 0) / count
+    const variance =
+      values.reduce((sum, value) => {
+        const diff = value - mean
+        return sum + diff * diff
+      }, 0) / count
+    const stdDev = Math.sqrt(Math.max(variance, 0))
+    const range = Math.max(maxValue - minValue, Number.EPSILON)
+    const fallbackBandwidth = Math.max(range / 20, Math.abs(mean) * 0.05, 0.05)
+    let bandwidth = 1.06 * stdDev * Math.pow(count, -0.2)
+    if (!Number.isFinite(bandwidth) || bandwidth <= 0) {
+      bandwidth = fallbackBandwidth
+    }
+
+    const domainMin = Math.max(0, minValue - 3 * bandwidth)
+    const domainMax = maxValue + 3 * bandwidth
+    const span = Math.max(domainMax - domainMin, Number.EPSILON)
+    const samples = 200
+    const step = span / (samples - 1)
+    const invSqrtTwoPi = 1 / Math.sqrt(2 * Math.PI)
+    const points = Array.from({ length: samples }, (_, index) => {
+      const x = domainMin + step * index
+      let sum = 0
+      for (const value of values) {
+        const u = (x - value) / bandwidth
+        sum += Math.exp(-0.5 * u * u)
+      }
+      const density = (sum * invSqrtTwoPi) / (count * bandwidth)
+      return { x, density }
+    })
+
+    const maxDensity = Math.max(...points.map((point) => point.density), 0)
+    if (!Number.isFinite(maxDensity) || maxDensity <= 0) return null
+
+    const width = 760
+    const height = 320
+    const padding = { top: 16, right: 16, bottom: 46, left: 58 }
+    const innerWidth = width - padding.left - padding.right
+    const innerHeight = height - padding.top - padding.bottom
+    const xToSvg = (value: number) =>
+      padding.left + ((value - domainMin) / span) * innerWidth
+    const yToSvg = (value: number) => padding.top + (1 - value / maxDensity) * innerHeight
+
+    const path = points
+      .map(
+        (point, index) =>
+          `${index === 0 ? 'M' : 'L'} ${xToSvg(point.x)} ${yToSvg(point.density)}`,
+      )
+      .join(' ')
+
+    const leftX = xToSvg(domainMin)
+    const rightX = xToSvg(domainMax)
+    const baselineY = yToSvg(0)
+    const areaPath = `${path} L ${rightX} ${baselineY} L ${leftX} ${baselineY} Z`
+
+    const xTicks = Array.from({ length: 6 }, (_, index) => {
+      const value = domainMin + (span * index) / 5
+      return { value, position: xToSvg(value) }
+    })
+    const yTicks = Array.from({ length: 5 }, (_, index) => {
+      const value = (maxDensity * (4 - index)) / 4
+      return { value, position: yToSvg(value) }
+    })
+
+    return {
+      width,
+      height,
+      padding,
+      path,
+      areaPath,
+      baselineY,
+      xTicks,
+      yTicks,
+      count,
+    }
+  }, [lengthDensityValues])
+
   const filteredCells = useMemo(() => {
     if (selectedLabel === 'All') return cells
     return cells.filter((cell) => cell.label === selectedLabel)
@@ -543,6 +647,8 @@ export default function BulkEnginePage() {
     }
     setLengthPlotUrl(null)
     setLengthError(null)
+    setLengthDensityError(null)
+    setLengthDensityValues(null)
     setLengthExportError(null)
     setAreaPlotUrl(null)
     setAreaError(null)
@@ -635,24 +741,46 @@ export default function BulkEnginePage() {
     if (!dbName || isLengthLoading) return
     setIsLengthLoading(true)
     setLengthError(null)
+    setLengthDensityError(null)
+    setLengthDensityValues(null)
     try {
       const params = new URLSearchParams({ dbname: dbName, label: analysisLabel })
-      const res = await fetch(`${apiBase}/get-cell-lengths-plot?${params.toString()}`, {
-        headers: { accept: 'image/png' },
-      })
-      if (!res.ok) {
-        throw new Error(`Request failed (${res.status})`)
+      const [plotRes, lengthsRes] = await Promise.all([
+        fetch(`${apiBase}/get-cell-lengths-plot?${params.toString()}`, {
+          headers: { accept: 'image/png' },
+        }),
+        fetch(`${apiBase}/get-cell-lengths?${params.toString()}`, {
+          headers: { accept: 'application/json' },
+        }),
+      ])
+      if (!plotRes.ok) {
+        throw new Error(`Request failed (${plotRes.status})`)
       }
-      const blob = await res.blob()
+      const blob = await plotRes.blob()
       if (lengthPlotUrlRef.current) {
         URL.revokeObjectURL(lengthPlotUrlRef.current)
       }
       const url = URL.createObjectURL(blob)
       lengthPlotUrlRef.current = url
       setLengthPlotUrl(url)
+
+      if (!lengthsRes.ok) {
+        setLengthDensityError(`Failed to load density data (${lengthsRes.status})`)
+      } else {
+        const payload = (await lengthsRes.json()) as unknown
+        const rows = parseCellLengthRows(payload)
+        const values = rows.map((row) => row.length)
+        if (values.length === 0) {
+          setLengthDensityError('No lengths found for PDF plot.')
+        } else {
+          setLengthDensityValues(values)
+        }
+      }
       setHasCalculatedLength(true)
     } catch (err) {
       setLengthError(err instanceof Error ? err.message : 'Failed to calculate lengths')
+      setLengthDensityError(null)
+      setLengthDensityValues(null)
       setLengthPlotUrl(null)
       setHasCalculatedLength(true)
     } finally {
@@ -673,21 +801,7 @@ export default function BulkEnginePage() {
         throw new Error(`Request failed (${res.status})`)
       }
       const payload = (await res.json()) as unknown
-      if (!Array.isArray(payload)) {
-        throw new Error('Invalid response format')
-      }
-      const rows = payload
-        .filter(
-          (item): item is CellLengthPair =>
-            item &&
-            typeof item === 'object' &&
-            typeof (item as CellLengthPair).cell_id === 'string' &&
-            typeof (item as CellLengthPair).length === 'number',
-        )
-        .map((item) => ({
-          cell_id: item.cell_id,
-          length: item.length,
-        }))
+      const rows = parseCellLengthRows(payload)
       if (rows.length === 0) {
         throw new Error('No lengths found for this label.')
       }
@@ -731,21 +845,7 @@ export default function BulkEnginePage() {
         throw new Error(`Request failed (${res.status})`)
       }
       const payload = (await res.json()) as unknown
-      if (!Array.isArray(payload)) {
-        throw new Error('Invalid response format')
-      }
-      const rows = payload
-        .filter(
-          (item): item is CellLengthPair =>
-            item &&
-            typeof item === 'object' &&
-            typeof (item as CellLengthPair).cell_id === 'string' &&
-            typeof (item as CellLengthPair).length === 'number',
-        )
-        .map((item) => ({
-          cell_id: item.cell_id,
-          length: item.length,
-        }))
+      const rows = parseCellLengthRows(payload)
       if (rows.length === 0) {
         throw new Error('No lengths found for this label.')
       }
@@ -2201,21 +2301,152 @@ export default function BulkEnginePage() {
                         </Text>
                       )}
                       {lengthPlotUrl && (
-                        <Box
-                          bg="sand.50"
-                          border="1px solid"
-                          borderColor="sand.200"
-                          borderRadius="md"
-                          p="2"
-                        >
+                        <Stack spacing="3">
                           <Box
-                            as="img"
-                            src={lengthPlotUrl}
-                            alt="Cell length boxplot"
-                            width="100%"
-                            height="auto"
-                          />
-                        </Box>
+                            bg="sand.50"
+                            border="1px solid"
+                            borderColor="sand.200"
+                            borderRadius="md"
+                            p="2"
+                          >
+                            <Box
+                              as="img"
+                              src={lengthPlotUrl}
+                              alt="Cell length boxplot"
+                              width="100%"
+                              height="auto"
+                            />
+                          </Box>
+                          {lengthDensityError && (
+                            <Text fontSize="xs" color="violet.300">
+                              {lengthDensityError}
+                            </Text>
+                          )}
+                          {lengthDensityPlot && (
+                            <Box
+                              bg="sand.50"
+                              border="1px solid"
+                              borderColor="sand.200"
+                              borderRadius="md"
+                              p="2"
+                            >
+                              <HStack justify="space-between" mb="1">
+                                <Text fontSize="xs" color="ink.700" fontWeight="600">
+                                  Probability density function
+                                </Text>
+                                <Text fontSize="xs" color="ink.700">
+                                  n = {lengthDensityPlot.count}
+                                </Text>
+                              </HStack>
+                              <AspectRatio ratio={16 / 7}>
+                                <svg
+                                  width="100%"
+                                  height="100%"
+                                  viewBox={`0 0 ${lengthDensityPlot.width} ${lengthDensityPlot.height}`}
+                                  preserveAspectRatio="none"
+                                >
+                                  {lengthDensityPlot.yTicks.map((tick) => (
+                                    <line
+                                      key={`y-grid-${tick.value}`}
+                                      x1={lengthDensityPlot.padding.left}
+                                      x2={
+                                        lengthDensityPlot.width - lengthDensityPlot.padding.right
+                                      }
+                                      y1={tick.position}
+                                      y2={tick.position}
+                                      stroke="var(--chakra-colors-sand-300)"
+                                      strokeWidth="1"
+                                    />
+                                  ))}
+                                  {lengthDensityPlot.xTicks.map((tick) => (
+                                    <line
+                                      key={`x-grid-${tick.value}`}
+                                      x1={tick.position}
+                                      x2={tick.position}
+                                      y1={lengthDensityPlot.padding.top}
+                                      y2={lengthDensityPlot.baselineY}
+                                      stroke="var(--chakra-colors-sand-200)"
+                                      strokeWidth="1"
+                                      strokeDasharray="2 4"
+                                    />
+                                  ))}
+                                  <path
+                                    d={lengthDensityPlot.areaPath}
+                                    fill="var(--chakra-colors-tide-400)"
+                                    fillOpacity="0.16"
+                                  />
+                                  <path
+                                    d={lengthDensityPlot.path}
+                                    fill="none"
+                                    stroke="var(--chakra-colors-tide-400)"
+                                    strokeWidth="3"
+                                  />
+                                  <line
+                                    x1={lengthDensityPlot.padding.left}
+                                    x2={lengthDensityPlot.width - lengthDensityPlot.padding.right}
+                                    y1={lengthDensityPlot.baselineY}
+                                    y2={lengthDensityPlot.baselineY}
+                                    stroke="var(--chakra-colors-ink-700)"
+                                    strokeWidth="1.5"
+                                  />
+                                  <line
+                                    x1={lengthDensityPlot.padding.left}
+                                    x2={lengthDensityPlot.padding.left}
+                                    y1={lengthDensityPlot.padding.top}
+                                    y2={lengthDensityPlot.baselineY}
+                                    stroke="var(--chakra-colors-ink-700)"
+                                    strokeWidth="1.5"
+                                  />
+                                  {lengthDensityPlot.xTicks.map((tick) => (
+                                    <text
+                                      key={`x-label-${tick.value}`}
+                                      x={tick.position}
+                                      y={lengthDensityPlot.height - 16}
+                                      textAnchor="middle"
+                                      fontSize="12"
+                                      fill="var(--chakra-colors-ink-700)"
+                                    >
+                                      {tick.value.toFixed(2)}
+                                    </text>
+                                  ))}
+                                  {lengthDensityPlot.yTicks.map((tick) => (
+                                    <text
+                                      key={`y-label-${tick.value}`}
+                                      x={lengthDensityPlot.padding.left - 6}
+                                      y={tick.position + 4}
+                                      textAnchor="end"
+                                      fontSize="12"
+                                      fill="var(--chakra-colors-ink-700)"
+                                    >
+                                      {tick.value >= 0.01
+                                        ? tick.value.toFixed(2)
+                                        : tick.value.toExponential(1)}
+                                    </text>
+                                  ))}
+                                  <text
+                                    x={lengthDensityPlot.width / 2}
+                                    y={lengthDensityPlot.height - 2}
+                                    textAnchor="middle"
+                                    fontSize="13"
+                                    fill="var(--chakra-colors-ink-700)"
+                                  >
+                                    Cell length (um)
+                                  </text>
+                                  <text
+                                    x={14}
+                                    y={lengthDensityPlot.height / 2}
+                                    textAnchor="middle"
+                                    fontSize="13"
+                                    fill="var(--chakra-colors-ink-700)"
+                                    transform={`rotate(-90 14 ${lengthDensityPlot.height / 2})`}
+                                  >
+                                    Probability density
+                                  </text>
+                                </svg>
+                              </AspectRatio>
+                            </Box>
+                          )}
+                        </Stack>
                       )}
                     </Stack>
                   )}
