@@ -88,6 +88,162 @@ For example, in `Heatmap` mode you can aggregate and visualize GFP localization 
 
 ![Bulk engine heatmap example](docs/screenshots/bulk4.png)
 
+## Methods
+
+The quantitative routines in PhenoPixel6.0 follow a common single-cell analysis pipeline: detect a contour from the phase-contrast image, re-parameterize the cell in its intrinsic coordinate system, and compute shape or fluorescence descriptors that are directly comparable across cells. Let \(C = \{(x_i, y_i)\}_{i=1}^n\) be the contour points of one cell and let \(\Omega_C\) be the set of pixels inside that contour.
+
+### 1. Contour Extraction, Principal Axis, and Basis Transform
+
+Contours are extracted from phase-contrast images with a Canny-based pipeline. The major elongation axis is estimated from the covariance of contour coordinates,
+
+$$
+\Sigma =
+\begin{pmatrix}
+\operatorname{Var}[X_1] & \operatorname{Cov}[X_1, X_2] \\
+\operatorname{Cov}[X_1, X_2] & \operatorname{Var}[X_2]
+\end{pmatrix},
+$$
+
+and the principal direction is the solution of
+
+$$
+\mathbf{w}^* = \underset{\|\mathbf{w}\| = 1}{\operatorname*{arg\,max}} \mathbf{w}^{\mathsf{T}} \Sigma \mathbf{w},
+\qquad
+\Sigma \mathbf{w} = \lambda \mathbf{w}.
+$$
+
+If \(Q = (\mathbf{v}_1\ \mathbf{v}_2)\) is the orthonormal eigenvector basis, coordinates are transformed to the cell-aligned frame by
+
+$$
+\mathbf{u} = Q^{\mathsf{T}} \mathbf{x},
+\qquad
+\mathbf{x} = Q \mathbf{u}.
+$$
+
+This removes arbitrary image rotation and makes bent or filamentous cells easier to model analytically.
+
+### 2. Centerline Fitting and Cell Length
+
+In the aligned frame, the cell centerline is approximated by a \(k\)-th order polynomial
+
+$$
+\hat{f}(u_1) = \theta^{\mathsf{T}} \phi(u_1),
+\qquad
+\theta = (W^{\mathsf{T}} W)^{-1} W^{\mathsf{T}} f.
+$$
+
+For a curved cell, the thesis formulation defines cell length as the arc length between the two contour-centerline intersection points:
+
+$$
+L = \int_{u_{1,a}}^{u_{1,b}}
+\sqrt{1 + \left(\frac{d\hat{f}}{du_1}\right)^2}\,du_1.
+$$
+
+![Centerline fitting](docs/images/method-centerline-fit.png)
+
+In the current backend implementation, `Cell length` is returned as a robust PCA major-axis extent of pixels inside the contour and converted with a fixed pixel size of \(0.065\,\mu\mathrm{m}/\mathrm{px}\):
+
+$$
+L_{\mathrm{API}} \approx \left(\max_i \pi_i - \min_i \pi_i\right) \times 0.065.
+$$
+
+### 3. Cell Area and Raw Pixel Export
+
+Cell area is the area enclosed by the contour,
+
+$$
+A(C) = \iint_{\Omega_C} 1\,dA,
+$$
+
+which is stored during extraction and reported by `Cell area`. `Raw data` exports the unaggregated intensity set
+
+$$
+\{ I(p) \mid p \in \Omega_C \}
+$$
+
+for the selected channel.
+
+### 4. Fluorescence Vectorization Along the Centerline
+
+For each intracellular pixel \((p_i, q_i)\) with intensity \(G(p_i, q_i)\), the nearest point on the fitted centerline is found by
+
+$$
+u_{1,i}^* = \operatorname*{arg\,min}_{u_1 \in [u_{1,a}, u_{1,b}]}
+\left[(u_1 - p_i)^2 + (\hat{f}(u_1) - q_i)^2\right].
+$$
+
+This position is converted to arc length,
+
+$$
+\ell(u_1) = \int_{u_{1,a}}^{u_1} \sqrt{1 + \left(\hat{f}'(t)\right)^2}\,dt,
+\qquad
+\ell_i^* = \ell(u_{1,i}^*).
+$$
+
+To obtain a fixed-dimensional descriptor, the arc-length interval \([0, L]\) is divided into \(n\) bins and max-pooled:
+
+$$
+g_j =
+\begin{cases}
+\max_{i:\ell_i^* \in I_j} G(p_i, q_i), & \text{if the bin is non-empty}, \\
+0, & \text{otherwise},
+\end{cases}
+\qquad
+\mathbf{g} = (g_1, \dots, g_n)^{\mathsf{T}}.
+$$
+
+The current implementation uses \(n = 35\) and a default polynomial degree of \(k = 4\). `Heatmap` visualizes these peak vectors either in absolute-length coordinates or in relative-position coordinates.
+
+![Peak-vector heatmap construction](docs/images/method-peak-vectorization.png)
+
+### 5. Normalized Median and Aggregation-Style Scores
+
+For any selected channel, intensities inside a cell are normalized by the cellwise maximum,
+
+$$
+\tilde{I}_i = \frac{I_i}{\max_{p \in \Omega_C} I(p)},
+\qquad
+m(C) = \operatorname{median}(\tilde{I}_i).
+$$
+
+This scalar is reported by `Normalized median`. A population-level aggregation score can then be written as
+
+$$
+R(\tau) = \frac{1}{N} \sum_{c=1}^{N} \mathbf{1}[m(C_c) < \tau].
+$$
+
+The current `FITC aggregation ratio` plot uses this form with a default cutoff \(\tau = 0.7414\). In the thesis experiments, the same normalized-median idea was also used for IbpA-GFP and TorA-GFP abnormal-localization calls, with an example threshold of \(m \le 0.6\) for those datasets.
+
+### 6. Thesis-Specific Phenotype Calls
+
+For HU-GFP compaction, a 35-bin peak vector is first computed and summarized as
+
+$$
+s(C) = \sum_{j=1}^{35} g_j.
+$$
+
+Using the control population, the abnormality threshold is defined by the 5th percentile,
+
+$$
+\tau_{\mathrm{HU}} = Q_{0.05}\left(\{ s(C_c^{\mathrm{ctrl}}) \}\right),
+$$
+
+and the HU aggregation ratio is the fraction of cells with \(s(C) < \tau_{\mathrm{HU}}\).
+
+For PI permeability, the mean intracellular PI intensity is
+
+$$
+\mu(C) = \frac{1}{|\Omega_C|} \sum_{p \in \Omega_C} I_{\mathrm{PI}}(p),
+$$
+
+with a control-derived positivity threshold
+
+$$
+\tau_{\mathrm{PI}} = Q_{0.95}\left(\{ \mu(C_c^{\mathrm{ctrl}}) \}\right).
+$$
+
+The PI-positive fraction is then the proportion of cells satisfying \(\mu(C) > \tau_{\mathrm{PI}}\).
+
 ## Requirements
 
 - Python 3.x (Launch uses `python3.14`)
