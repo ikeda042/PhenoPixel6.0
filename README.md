@@ -20,6 +20,46 @@ Manage ND2 files in this page: upload new datasets, delete existing ones, and se
 
 2. Auto annotation behavior. When Auto Annotation is `On`, an additional post-processing step runs after extraction to automatically separate cells from debris.
 
+The current implementation is a contour-only heuristic. After a contour $C = \{(x_i, y_i)\}_{i=1}^N$ is extracted, the backend computes two geometric scores and assigns `Label 1` only when both pass their thresholds.
+
+First, it measures how thick the contour is in the direction orthogonal to the major axis. Let
+
+$$
+\Sigma_C =
+\frac{1}{N-1}
+\sum_{i=1}^{N}
+(\mathbf{p}_i - \bar{\mathbf{p}})
+(\mathbf{p}_i - \bar{\mathbf{p}})^{\mathsf{T}},
+\qquad
+\mathbf{p}_i = (x_i, y_i)^{\mathsf{T}}.
+$$
+
+If the eigenvalues of $\Sigma_C$ are $\lambda_1 \ge \lambda_2$, Auto Annotation uses the smaller one, $\lambda_2$, as a width / lateral-spread proxy and accepts only contours satisfying
+
+$$
+\lambda_2 \le 120.
+$$
+
+Second, it measures contour convexity from perimeter ratios. If $P(C)$ is the contour perimeter and $P(\mathrm{Hull}(C))$ is the perimeter of its convex hull, the code defines
+
+$$
+\kappa(C) = \frac{P(\mathrm{Hull}(C))}{P(C)}.
+$$
+
+Because irregular debris or merged objects tend to have a perimeter much longer than their convex hull, they produce smaller $\kappa$. The contour is accepted only when
+
+$$
+\kappa(C) > 0.85.
+$$
+
+The final Auto Annotation score can be written as
+
+$$
+s(C) = \mathbf{1}[\lambda_2 \le 120] \, \mathbf{1}[\kappa(C) > 0.85].
+$$
+
+Auto Annotation assigns `Label 1` when $s(C) = 1$ and `N/A` otherwise. In other words, it keeps contours that are both laterally compact and close to convex, and it filters out broad, jagged, or debris-like shapes before manual review.
+
 ![Auto annotation processing](docs/screenshots/cell_extraction2.png)
 
 3. Review results and proceed. When extraction finishes, the right panel shows all extracted cell contours across every frame. From here you can open the generated cell database or go to the cell labeling (annotation) page. If contours are not extracted well (for example, due to mismatched Canny parameters), adjust settings in the parameter tuning section and click `Re-extract` to run extraction again.
