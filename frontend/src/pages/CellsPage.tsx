@@ -140,6 +140,9 @@ const toSafeFilenamePart = (value: string, fallback: string) => {
 export default function CellsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const dbName = searchParams.get('db') ?? ''
+  const databasesPagePath = dbName
+    ? `/databases?search_dbname=${encodeURIComponent(dbName)}`
+    : '/databases'
   const requestedCellId = searchParams.get('cell_id') ?? searchParams.get('cell') ?? ''
   const fastModeParam = (searchParams.get('fast') ?? '').trim().toLowerCase()
   const fastModeRequested = FAST_MODE_QUERY_VALUES.has(fastModeParam)
@@ -1399,7 +1402,7 @@ export default function CellsPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator>/</BreadcrumbSeparator>
               <BreadcrumbItem>
-                <BreadcrumbLink as={RouterLink} to="/databases">
+                <BreadcrumbLink as={RouterLink} to={databasesPagePath}>
                   Databases
                 </BreadcrumbLink>
               </BreadcrumbItem>
