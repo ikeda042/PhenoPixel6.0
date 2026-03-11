@@ -61,6 +61,15 @@ def _get_base_path() -> str | None:
     )
 
 
+def _get_landing_page_origin() -> str:
+    _load_env()
+    return (
+        os.getenv("LANDING_PAGE_ORIGIN")
+        or os.getenv("LP_ORIGIN")
+        or "https://lp.phenopixel.online"
+    )
+
+
 def _normalize_payload(message: SlackMessage) -> dict[str, Any]:
     if isinstance(message, str):
         return {"text": message}
@@ -166,11 +175,11 @@ def build_database_created_message(
     if base_path is None:
         base_path = _get_base_path()
     db_url = None
-    cells_url = None
+    landing_page_origin = _get_landing_page_origin().rstrip("/")
+    cells_url = f"{landing_page_origin}?{urlencode({'db': db_name})}"
     if base_path:
         base_path = base_path.rstrip("/")
         db_url = f"{base_path}/databases/?{urlencode({'db_name': db_name})}"
-        cells_url = f"{base_path}/cells?{urlencode({'db': db_name})}"
 
     base_text = (
         message
