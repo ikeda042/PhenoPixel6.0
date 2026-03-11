@@ -50,7 +50,11 @@ type ExtractCellsJobStatusResponse = {
 
 type Nd2FileMetadataResponse = {
   reader?: {
+    axes?: string | null
     sizes?: Record<string, number | string | null>
+  }
+  metadata?: {
+    channels?: unknown
   }
 }
 
@@ -97,11 +101,34 @@ const layerOptions = [
 
 const defaultLayerMode = layerOptions[1].value
 
+const parseChannelCount = (value: unknown): number | null => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
+  return Math.floor(parsed)
+}
+
 const inferLayerModeFromMetadata = (metadata: Nd2FileMetadataResponse | null) => {
-  if (!metadata?.reader?.sizes) return null
-  const rawChannels = metadata.reader.sizes.c
-  const channelCount = Number(rawChannels)
-  if (!Number.isFinite(channelCount) || channelCount <= 0) return null
+  if (!metadata) return null
+  const sizes = metadata.reader?.sizes
+
+  let channelCount = parseChannelCount(sizes?.c) ?? parseChannelCount(sizes?.C)
+
+  if (channelCount === null) {
+    const channels = metadata.metadata?.channels
+    if (Array.isArray(channels) && channels.length > 0) {
+      channelCount = channels.length
+    }
+  }
+
+  if (channelCount === null && sizes && Object.keys(sizes).length > 0) {
+    const axes = typeof metadata.reader?.axes === 'string' ? metadata.reader.axes : ''
+    const hasChannelAxis = axes.toLowerCase().includes('c')
+    if (!hasChannelAxis && !('c' in sizes) && !('C' in sizes)) {
+      channelCount = 1
+    }
+  }
+
+  if (channelCount === null) return null
   if (channelCount <= 1) return 'single'
   if (channelCount === 2) return 'dual'
   if (channelCount === 3) return 'triple'
