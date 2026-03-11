@@ -1649,6 +1649,24 @@ def _render_cell_overlay_from_blobs(
 ) -> bytes:
     if overlay_mode not in ("ph", "fluo", "raw"):
         raise ValueError("Invalid overlay_mode")
+
+    # Single-layer extractions only store PH. For raw overlay previews, return PH as-is.
+    if overlay_mode == "raw" and ph_raw is not None and fluo1_raw is None and fluo2_raw is None:
+        overlay = _decode_image(bytes(ph_raw))
+        if draw_scale_bar:
+            overlay = _draw_scale_bar_with_centered_text(overlay)
+        if scale <= 0 or scale > 1:
+            raise ValueError("Invalid scale")
+        if scale < 1:
+            width = max(1, int(overlay.shape[1] * scale))
+            height = max(1, int(overlay.shape[0] * scale))
+            overlay = cv2.resize(overlay, (width, height), interpolation=cv2.INTER_AREA)
+        return _encode_image_with_format(
+            overlay,
+            image_format=image_format,
+            jpeg_quality=jpeg_quality,
+        )
+
     if fluo1_raw is None:
         raise LookupError("Cell overlay data not found")
     if overlay_mode == "ph" and contour_raw is None:
