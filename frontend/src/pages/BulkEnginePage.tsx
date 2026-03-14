@@ -188,6 +188,7 @@ export default function BulkEnginePage() {
   const [isMap256Loading, setIsMap256Loading] = useState(false)
   const [map256Error, setMap256Error] = useState<string | null>(null)
   const [map256PlotUrl, setMap256PlotUrl] = useState<string | null>(null)
+  const [map256PlotType, setMap256PlotType] = useState<'strip' | 'contour'>('strip')
   const [hasCalculatedMap256, setHasCalculatedMap256] = useState(false)
   const [contoursPlotUrl, setContoursPlotUrl] = useState<string | null>(null)
   const [contoursError, setContoursError] = useState<string | null>(null)
@@ -680,6 +681,7 @@ export default function BulkEnginePage() {
     setMap256PlotUrl(null)
     setMap256Error(null)
     setIsMap256Loading(false)
+    setMap256PlotType('strip')
     setHasCalculatedMap256(false)
     setContoursPlotUrl(null)
     setContoursError(null)
@@ -1575,8 +1577,11 @@ export default function BulkEnginePage() {
     }
   }
 
-  const handleGenerateMap256 = async () => {
-    if (!dbName || isMap256Loading) return
+  const generateMap256Plot = async (
+    endpoint: 'get-map256-strip' | 'get-map256-contour',
+    plotType: 'strip' | 'contour',
+  ) => {
+    if (!dbName) return
     setIsMap256Loading(true)
     setMap256Error(null)
     try {
@@ -1586,7 +1591,7 @@ export default function BulkEnginePage() {
         label: analysisLabel,
         channel: mapChannel,
       })
-      const res = await fetch(`${apiBase}/get-map256-strip?${params.toString()}`, {
+      const res = await fetch(`${apiBase}/${endpoint}?${params.toString()}`, {
         headers: { accept: 'image/png' },
       })
       if (!res.ok) {
@@ -1602,6 +1607,7 @@ export default function BulkEnginePage() {
       const url = URL.createObjectURL(blob)
       map256PlotUrlRef.current = url
       setMap256PlotUrl(url)
+      setMap256PlotType(plotType)
       setHasCalculatedMap256(true)
     } catch (err) {
       setMap256Error(err instanceof Error ? err.message : 'Failed to generate map256')
@@ -1610,6 +1616,16 @@ export default function BulkEnginePage() {
     } finally {
       setIsMap256Loading(false)
     }
+  }
+
+  const handleGenerateMap256 = async () => {
+    if (!dbName || isMap256Loading) return
+    await generateMap256Plot('get-map256-strip', 'strip')
+  }
+
+  const handleGenerateMap256Contour = async () => {
+    if (!dbName || isMap256Loading) return
+    await generateMap256Plot('get-map256-contour', 'contour')
   }
 
   const handleExportAreaCsv = async () => {
@@ -3312,6 +3328,16 @@ export default function BulkEnginePage() {
                         >
                           {isMap256Loading ? 'Generating...' : 'Generate map256'}
                         </Button>
+                        <Button
+                          size="sm"
+                          bg="tide.500"
+                          color="white"
+                          _hover={{ bg: 'tide.400' }}
+                          onClick={handleGenerateMap256Contour}
+                          isDisabled={!dbName || isMap256Loading}
+                        >
+                          {isMap256Loading ? 'Generating...' : 'Map256 (contour)'}
+                        </Button>
                       </HStack>
                       <Text fontSize="xs" color="ink.700" mt="3">
                         Output
@@ -3339,7 +3365,7 @@ export default function BulkEnginePage() {
                           <Box
                             as="img"
                             src={map256PlotUrl}
-                            alt="Map256 strip"
+                            alt={map256PlotType === 'contour' ? 'Map256 contour' : 'Map256 strip'}
                             display="block"
                             maxW="none"
                             height="auto"
