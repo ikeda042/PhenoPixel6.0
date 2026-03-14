@@ -258,6 +258,10 @@ async def get_map256_contour_endpoint(
     label: Annotated[str | None, Query()] = None,
     channel: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
     degree: Annotated[int, Query(ge=1)] = 4,
+    intensity_mode: Annotated[
+        str,
+        Query(description="absolute | relative"),
+    ] = "absolute",
 ) -> StreamingResponse:
     try:
         loop = asyncio.get_running_loop()
@@ -268,6 +272,7 @@ async def get_map256_contour_endpoint(
             label,
             channel,
             degree,
+            intensity_mode,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Database not found")
