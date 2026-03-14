@@ -1346,6 +1346,7 @@ def _build_map256_normalized(
     contour_raw: bytes,
     degree: int,
     map_mode: Literal["map256", "raw"] = "map256",
+    normalize_intensity: bool = True,
 ) -> np.ndarray:
     image_fluo = cv2.imdecode(np.frombuffer(image_fluo_raw, np.uint8), cv2.IMREAD_COLOR)
     if image_fluo is None:
@@ -1441,8 +1442,10 @@ def _build_map256_normalized(
         raise ValueError("Invalid map_mode")
 
     mapped_image = _flip_image_if_needed(mapped_image)
-    normalized = _normalize_grayscale_to_uint8(mapped_image)
-    return normalized
+    if normalize_intensity:
+        normalized = _normalize_grayscale_to_uint8(mapped_image)
+        return normalized
+    return np.clip(mapped_image, 0, 255).astype(np.uint8)
 
 
 def _generate_map256_image(
@@ -2500,12 +2503,14 @@ class DatabaseManagerCrud:
         contour_raw: bytes,
         degree: int,
         map_mode: Literal["map256", "raw"] = "map256",
+        normalize_intensity: bool = True,
     ) -> np.ndarray:
         return _build_map256_normalized(
             image_fluo_raw,
             contour_raw,
             degree,
             map_mode=map_mode,
+            normalize_intensity=normalize_intensity,
         )
 
     @classmethod
