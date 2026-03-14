@@ -252,6 +252,34 @@ async def get_map256_strip_endpoint(
     return StreamingResponse(io.BytesIO(image_bytes), media_type="image/png")
 
 
+@router_bulk_engine.get("/get-map256-contour")
+async def get_map256_contour_endpoint(
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
+) -> StreamingResponse:
+    try:
+        loop = asyncio.get_running_loop()
+        image_bytes = await loop.run_in_executor(
+            heatmap_bulk_executor,
+            BulkEngineCrud.create_map256_contour,
+            dbname,
+            label,
+            channel,
+            degree,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return StreamingResponse(io.BytesIO(image_bytes), media_type="image/png")
+
+
 @router_bulk_engine.get("/get-contours-grid-plot")
 async def get_contours_grid_plot(
     dbname: Annotated[str, Query()] = ...,
