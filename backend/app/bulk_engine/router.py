@@ -79,6 +79,12 @@ class RawIntensity(BaseModel):
     intensities: list[int]
 
 
+class HeatmapVector(BaseModel):
+    cell_id: str
+    u1: list[float]
+    g: list[float]
+
+
 @router_bulk_engine.get("/get-heatmap-vectors-csv")
 async def get_heatmap_vectors_csv_endpoint(
     dbname: Annotated[str, Query()] = ...,
@@ -105,6 +111,42 @@ async def get_heatmap_vectors_csv_endpoint(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     return StreamingResponse(io.BytesIO(csv_bytes), media_type="text/csv")
+
+
+@router_bulk_engine.get("/get-heatmap-vectors", response_model=list[HeatmapVector])
+async def get_heatmap_vectors_endpoint(
+    dbname: Annotated[str, Query()] = ...,
+    label: Annotated[str | None, Query()] = None,
+    channel: Annotated[str, Query(description="fluo1 | fluo2")] = "fluo1",
+    degree: Annotated[int, Query(ge=1)] = 4,
+) -> list[HeatmapVector]:
+    try:
+        loop = asyncio.get_running_loop()
+        vectors = await loop.run_in_executor(
+            heatmap_bulk_executor,
+            BulkEngineCrud.get_heatmap_vectors,
+            dbname,
+            label,
+            channel,
+            degree,
+        )
+        return [
+            HeatmapVector(
+                cell_id=cell_id,
+                u1=[float(pair[0]) for pair in path],
+                g=[float(pair[1]) for pair in path],
+            )
+            for cell_id, path in vectors
+            if path
+        ]
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Database not found")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router_bulk_engine.get("/get-heatmap-abs-plot")
