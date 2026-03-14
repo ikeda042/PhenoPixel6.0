@@ -1,7 +1,7 @@
 import io
 import json
 import pickle
-from typing import Sequence
+from typing import Literal, Sequence
 
 import cv2
 import matplotlib
@@ -873,6 +873,7 @@ def _collect_map256_images(
     label: str | None = None,
     channel: str = "fluo1",
     degree: int = 4,
+    normalize_per_cell: bool = True,
 ) -> list[np.ndarray]:
     if degree < 1:
         raise ValueError("degree must be >= 1")
@@ -921,6 +922,7 @@ def _collect_map256_images(
                     bytes(image_raw),
                     bytes(contour_raw),
                     degree,
+                    normalize_intensity=normalize_per_cell,
                 )
             except Exception:
                 continue
@@ -960,12 +962,19 @@ def create_map256_contour(
     label: str | None = None,
     channel: str = "fluo1",
     degree: int = 4,
+    intensity_mode: Literal["absolute", "relative"] = "absolute",
 ) -> bytes:
+    normalized_intensity_mode = intensity_mode.strip().lower()
+    if normalized_intensity_mode not in {"absolute", "relative"}:
+        raise ValueError("Invalid intensity_mode")
+    relative_mode = normalized_intensity_mode == "relative"
+
     map256_images = _collect_map256_images(
         db_name,
         label=label,
         channel=channel,
         degree=degree,
+        normalize_per_cell=relative_mode,
     )
 
     summed: np.ndarray | None = None
@@ -991,29 +1000,54 @@ def create_map256_contour(
         raise LookupError("No map256 images found for the specified label.")
 
     mean_map = summed / float(sample_count)
-    min_val = float(np.min(mean_map))
-    max_val = float(np.max(mean_map))
-    if max_val > min_val:
-        normalized = (mean_map - min_val) / (max_val - min_val)
-    else:
-        normalized = np.zeros_like(mean_map, dtype=np.float64)
 
     fig, ax = plt.subplots(figsize=(11, 3.5))
-    if np.allclose(normalized, normalized.flat[0]):
-        plot_ref = ax.imshow(
-            normalized,
-            cmap="inferno",
-            interpolation="nearest",
-            aspect="auto",
-            origin="lower",
-            vmin=0.0,
-            vmax=1.0,
-        )
+    if relative_mode:
+        rel_min = float(np.min(mean_map))
+        rel_max = float(np.max(mean_map))
+        if rel_max > rel_min:
+            plot_data = (mean_map - rel_min) / (rel_max - rel_min)
+        else:
+            plot_data = np.zeros_like(mean_map, dtype=np.float64)
+        if np.allclose(plot_data, plot_data.flat[0]):
+            plot_ref = ax.imshow(
+                plot_data,
+                cmap="inferno",
+                interpolation="nearest",
+                aspect="auto",
+                origin="lower",
+                vmin=0.0,
+                vmax=1.0,
+            )
+        else:
+            levels = np.linspace(0.0, 1.0, 33)
+            plot_ref = ax.contourf(plot_data, levels=levels, cmap="inferno")
+        colorbar_label = "Symmetry-augmented mean intensity (relative)"
     else:
-        levels = np.linspace(0.0, 1.0, 33)
-        plot_ref = ax.contourf(normalized, levels=levels, cmap="inferno")
+        abs_min = float(np.min(mean_map))
+        abs_max = float(np.max(mean_map))
+        if np.allclose(mean_map, mean_map.flat[0]):
+            if abs_max > abs_min:
+                vmin = abs_min
+                vmax = abs_max
+            else:
+                vmin = abs_min - 0.5
+                vmax = abs_max + 0.5
+            plot_ref = ax.imshow(
+                mean_map,
+                cmap="inferno",
+                interpolation="nearest",
+                aspect="auto",
+                origin="lower",
+                vmin=vmin,
+                vmax=vmax,
+            )
+        else:
+            levels = np.linspace(abs_min, abs_max, 33)
+            plot_ref = ax.contourf(mean_map, levels=levels, cmap="inferno")
+        colorbar_label = "Symmetry-augmented mean intensity (absolute 8-bit)"
     color_bar = fig.colorbar(plot_ref, ax=ax)
-    color_bar.set_label("Symmetry-augmented mean intensity")
+    color_bar.set_label(colorbar_label)
     ax.set_xlabel("Long-axis position (px)")
     ax.set_ylabel("Lateral position (px)")
     ax.set_title("Map256 contour")
@@ -1156,8 +1190,15 @@ class BulkEngineCrud:
         label: str | None = None,
         channel: str = "fluo1",
         degree: int = 4,
+        intensity_mode: Literal["absolute", "relative"] = "absolute",
     ) -> bytes:
-        return create_map256_contour(db_name, label=label, channel=channel, degree=degree)
+        return create_map256_contour(
+            db_name,
+            label=label,
+            channel=channel,
+            degree=degree,
+            intensity_mode=intensity_mode,
+        )
 
     @classmethod
     def create_contours_grid_plot(
