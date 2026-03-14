@@ -581,12 +581,12 @@ def _build_contours_grid_image(
     return buf.getvalue()
 
 
-def _collect_heatmap_paths(
+def _collect_heatmap_paths_with_ids(
     db_name: str,
     label: str | None = None,
     channel: str = "fluo1",
     degree: int = 4,
-) -> list[list[tuple[float, float]]]:
+) -> list[tuple[str, list[tuple[float, float]]]]:
     if degree < 1:
         raise ValueError("degree must be >= 1")
     label_str = str(label).strip() if label is not None else ""
@@ -625,9 +625,9 @@ def _collect_heatmap_paths(
             stmt = stmt.where(or_(*filters))
 
         result = session.execute(stmt)
-        paths: list[list[tuple[float, float]]] = []
-        for _cell_id, image_raw, contour_raw, _ in result.fetchall():
-            if image_raw is None or contour_raw is None:
+        paths_with_ids: list[tuple[str, list[tuple[float, float]]]] = []
+        for cell_id, image_raw, contour_raw, _ in result.fetchall():
+            if cell_id is None or image_raw is None or contour_raw is None:
                 continue
             try:
                 path = calculate_heatmap_path_vector(
@@ -638,13 +638,44 @@ def _collect_heatmap_paths(
             except Exception:
                 continue
             if path:
-                paths.append(path)
+                paths_with_ids.append((str(cell_id), path))
 
-        if not paths:
+        if not paths_with_ids:
             raise LookupError("No heatmap vectors found for the specified label.")
-        return paths
+        return paths_with_ids
     finally:
         session.close()
+
+
+def _collect_heatmap_paths(
+    db_name: str,
+    label: str | None = None,
+    channel: str = "fluo1",
+    degree: int = 4,
+) -> list[list[tuple[float, float]]]:
+    return [
+        path
+        for _, path in _collect_heatmap_paths_with_ids(
+            db_name,
+            label=label,
+            channel=channel,
+            degree=degree,
+        )
+    ]
+
+
+def get_heatmap_vectors(
+    db_name: str,
+    label: str | None = None,
+    channel: str = "fluo1",
+    degree: int = 4,
+) -> list[tuple[str, list[tuple[float, float]]]]:
+    return _collect_heatmap_paths_with_ids(
+        db_name,
+        label=label,
+        channel=channel,
+        degree=degree,
+    )
 
 
 def _build_heatmap_abs_plot(
@@ -1133,6 +1164,16 @@ class BulkEngineCrud:
         degree: int = 4,
     ) -> bytes:
         return get_heatmap_vectors_csv(db_name, label=label, channel=channel, degree=degree)
+
+    @classmethod
+    def get_heatmap_vectors(
+        cls,
+        db_name: str,
+        label: str | None = None,
+        channel: str = "fluo1",
+        degree: int = 4,
+    ) -> list[tuple[str, list[tuple[float, float]]]]:
+        return get_heatmap_vectors(db_name, label=label, channel=channel, degree=degree)
 
     @classmethod
     def create_heatmap_abs_plot(
