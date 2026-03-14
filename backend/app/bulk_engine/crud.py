@@ -868,12 +868,12 @@ def create_hu_separation_overlay(
     return buf.getvalue()
 
 
-def create_map256_strip(
+def _collect_map256_images(
     db_name: str,
     label: str | None = None,
     channel: str = "fluo1",
     degree: int = 4,
-) -> bytes:
+) -> list[np.ndarray]:
     if degree < 1:
         raise ValueError("degree must be >= 1")
     label_str = str(label).strip() if label is not None else ""
@@ -912,7 +912,7 @@ def create_map256_strip(
             stmt = stmt.where(or_(*filters))
 
         result = session.execute(stmt)
-        rotated_images: list[np.ndarray] = []
+        map256_images: list[np.ndarray] = []
         for _cell_id, image_raw, contour_raw, _ in result.fetchall():
             if image_raw is None or contour_raw is None:
                 continue
@@ -924,23 +924,106 @@ def create_map256_strip(
                 )
             except Exception:
                 continue
-            rotated = cv2.rotate(normalized, cv2.ROTATE_90_CLOCKWISE)
-            rotated_images.append(rotated)
+            if normalized.ndim != 2:
+                continue
+            map256_images.append(normalized)
 
-        if not rotated_images:
+        if not map256_images:
             raise LookupError("No map256 images found for the specified label.")
-
-        combined = (
-            cv2.hconcat(rotated_images)
-            if len(rotated_images) > 1
-            else rotated_images[0]
-        )
-        success, buffer = cv2.imencode(".png", combined)
-        if not success:
-            raise ValueError("Failed to encode image")
-        return buffer.tobytes()
+        return map256_images
     finally:
         session.close()
+
+
+def create_map256_strip(
+    db_name: str,
+    label: str | None = None,
+    channel: str = "fluo1",
+    degree: int = 4,
+) -> bytes:
+    map256_images = _collect_map256_images(
+        db_name,
+        label=label,
+        channel=channel,
+        degree=degree,
+    )
+    rotated_images = [cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE) for image in map256_images]
+    combined = cv2.hconcat(rotated_images) if len(rotated_images) > 1 else rotated_images[0]
+    success, buffer = cv2.imencode(".png", combined)
+    if not success:
+        raise ValueError("Failed to encode image")
+    return buffer.tobytes()
+
+
+def create_map256_contour(
+    db_name: str,
+    label: str | None = None,
+    channel: str = "fluo1",
+    degree: int = 4,
+) -> bytes:
+    map256_images = _collect_map256_images(
+        db_name,
+        label=label,
+        channel=channel,
+        degree=degree,
+    )
+
+    summed: np.ndarray | None = None
+    sample_count = 0
+    for image in map256_images:
+        image_float = image.astype(np.float64)
+        # Treat each cell with symmetry augmentation (original + flips).
+        variants = (
+            image_float,
+            np.fliplr(image_float),
+            np.flipud(image_float),
+            np.flipud(np.fliplr(image_float)),
+        )
+        for variant in variants:
+            if summed is None:
+                summed = np.zeros_like(variant, dtype=np.float64)
+            if variant.shape != summed.shape:
+                continue
+            summed += variant
+            sample_count += 1
+
+    if summed is None or sample_count == 0:
+        raise LookupError("No map256 images found for the specified label.")
+
+    mean_map = summed / float(sample_count)
+    min_val = float(np.min(mean_map))
+    max_val = float(np.max(mean_map))
+    if max_val > min_val:
+        normalized = (mean_map - min_val) / (max_val - min_val)
+    else:
+        normalized = np.zeros_like(mean_map, dtype=np.float64)
+
+    fig, ax = plt.subplots(figsize=(11, 3.5))
+    if np.allclose(normalized, normalized.flat[0]):
+        plot_ref = ax.imshow(
+            normalized,
+            cmap="inferno",
+            interpolation="nearest",
+            aspect="auto",
+            origin="lower",
+            vmin=0.0,
+            vmax=1.0,
+        )
+    else:
+        levels = np.linspace(0.0, 1.0, 33)
+        plot_ref = ax.contourf(normalized, levels=levels, cmap="inferno")
+    color_bar = fig.colorbar(plot_ref, ax=ax)
+    color_bar.set_label("Symmetry-augmented mean intensity")
+    ax.set_xlabel("Long-axis position (px)")
+    ax.set_ylabel("Lateral position (px)")
+    ax.set_title("Map256 contour")
+    fig.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=100)
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
 
 
 def create_contours_grid_plot(
@@ -1065,6 +1148,16 @@ class BulkEngineCrud:
         degree: int = 4,
     ) -> bytes:
         return create_map256_strip(db_name, label=label, channel=channel, degree=degree)
+
+    @classmethod
+    def create_map256_contour(
+        cls,
+        db_name: str,
+        label: str | None = None,
+        channel: str = "fluo1",
+        degree: int = 4,
+    ) -> bytes:
+        return create_map256_contour(db_name, label=label, channel=channel, degree=degree)
 
     @classmethod
     def create_contours_grid_plot(
