@@ -59,6 +59,12 @@ type RawIntensityPair = {
   intensities: number[]
 }
 
+type HeatmapVectorPair = {
+  cell_id: string
+  u1: number[]
+  g: number[]
+}
+
 type EntropyMetricsPair = {
   cell_id: string
   entropy_norm: number
@@ -411,26 +417,28 @@ export default function BulkEnginePage() {
     }
   }
 
-  const parseHeatmapCsv = (csvText: string) => {
-    const trimmed = csvText.trim()
-    if (!trimmed) return []
-    const lines = trimmed.split(/\r?\n/).filter((line) => line.length > 0)
-    const rows = lines.map((line) =>
-      line.split(',').map((value) => {
-        const trimmedValue = value.trim()
-        if (!trimmedValue) return null
-        const parsed = Number(trimmedValue)
-        return Number.isFinite(parsed) ? parsed : trimmedValue
-      }),
-    )
-    const paired: { u1: Array<number | string | null>; g: Array<number | string | null> }[] = []
-    for (let i = 0; i < rows.length; i += 2) {
-      const u1 = rows[i] ?? []
-      const g = rows[i + 1] ?? []
-      if (u1.length === 0 && g.length === 0) continue
-      paired.push({ u1, g })
-    }
-    return paired
+  const parseHeatmapVectorRows = (payload: unknown): HeatmapVectorPair[] => {
+    if (!Array.isArray(payload)) return []
+    return payload
+      .filter(
+        (item): item is HeatmapVectorPair =>
+          item &&
+          typeof item === 'object' &&
+          typeof (item as HeatmapVectorPair).cell_id === 'string' &&
+          Array.isArray((item as HeatmapVectorPair).u1) &&
+          Array.isArray((item as HeatmapVectorPair).g) &&
+          (item as HeatmapVectorPair).u1.every(
+            (value) => typeof value === 'number' && Number.isFinite(value),
+          ) &&
+          (item as HeatmapVectorPair).g.every(
+            (value) => typeof value === 'number' && Number.isFinite(value),
+          ),
+      )
+      .map((item) => ({
+        cell_id: item.cell_id,
+        u1: item.u1,
+        g: item.g,
+      }))
   }
 
   const lengthDensityPlot = useMemo(() => {
@@ -1377,17 +1385,14 @@ export default function BulkEnginePage() {
         label: analysisLabel,
         channel: heatmapChannel,
       })
-      const res = await fetch(`${apiBase}/get-heatmap-vectors-csv?${params.toString()}`, {
-        headers: { accept: 'text/csv' },
+      const res = await fetch(`${apiBase}/get-heatmap-vectors?${params.toString()}`, {
+        headers: { accept: 'application/json' },
       })
       if (!res.ok) {
         throw new Error(`Request failed (${res.status})`)
       }
-      const csvText = await res.text()
-      if (!csvText.trim()) {
-        throw new Error('No heatmap vectors found for this label.')
-      }
-      const vectors = parseHeatmapCsv(csvText)
+      const payload = (await res.json().catch(() => null)) as unknown
+      const vectors = parseHeatmapVectorRows(payload)
       if (vectors.length === 0) {
         throw new Error('No heatmap vectors found for this label.')
       }
