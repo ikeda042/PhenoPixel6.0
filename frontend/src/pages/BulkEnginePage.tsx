@@ -189,6 +189,9 @@ export default function BulkEnginePage() {
   const [map256Error, setMap256Error] = useState<string | null>(null)
   const [map256PlotUrl, setMap256PlotUrl] = useState<string | null>(null)
   const [map256PlotType, setMap256PlotType] = useState<'strip' | 'contour'>('strip')
+  const [map256IntensityMode, setMap256IntensityMode] = useState<'absolute' | 'relative'>(
+    'absolute',
+  )
   const [hasCalculatedMap256, setHasCalculatedMap256] = useState(false)
   const [contoursPlotUrl, setContoursPlotUrl] = useState<string | null>(null)
   const [contoursError, setContoursError] = useState<string | null>(null)
@@ -682,6 +685,7 @@ export default function BulkEnginePage() {
     setMap256Error(null)
     setIsMap256Loading(false)
     setMap256PlotType('strip')
+    setMap256IntensityMode('absolute')
     setHasCalculatedMap256(false)
     setContoursPlotUrl(null)
     setContoursError(null)
@@ -1591,6 +1595,9 @@ export default function BulkEnginePage() {
         label: analysisLabel,
         channel: mapChannel,
       })
+      if (endpoint === 'get-map256-contour') {
+        params.set('intensity_mode', map256IntensityMode)
+      }
       const res = await fetch(`${apiBase}/${endpoint}?${params.toString()}`, {
         headers: { accept: 'image/png' },
       })
@@ -2629,6 +2636,35 @@ export default function BulkEnginePage() {
                                   {option.label}
                                 </option>
                               ))}
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator color="ink.700" />
+                          </NativeSelect.Root>
+                        </Box>
+                        <Box maxW="12rem">
+                          <Text fontSize="xs" letterSpacing="0.18em" color="ink.700" mb="1">
+                            Contour intensity
+                          </Text>
+                          <NativeSelect.Root>
+                            <NativeSelect.Field
+                              value={map256IntensityMode}
+                              onChange={(event) =>
+                                setMap256IntensityMode(
+                                  event.target.value as 'absolute' | 'relative',
+                                )
+                              }
+                              bg="sand.50"
+                              border="1px solid"
+                              borderColor="sand.200"
+                              fontSize="sm"
+                              h="2.25rem"
+                              color="ink.900"
+                              _focusVisible={{
+                                borderColor: 'tide.400',
+                                boxShadow: '0 0 0 1px var(--app-accent-ring)',
+                              }}
+                            >
+                              <option value="absolute">absolute</option>
+                              <option value="relative">relative</option>
                             </NativeSelect.Field>
                             <NativeSelect.Indicator color="ink.700" />
                           </NativeSelect.Root>
