@@ -8,6 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from threading import Lock
 from typing import Annotated, Any
+from urllib.parse import quote
 
 import nd2reader
 import numpy as np
@@ -44,6 +45,17 @@ def _sanitize_nd2_filename(filename: str) -> str:
         raise HTTPException(status_code=400, detail="Only .nd2 files are supported")
     base = base.replace(".", "p")
     return f"{base}.nd2"
+
+
+def _attachment_headers(filename: str) -> dict[str, str]:
+    content_disposition_filename = quote(filename)
+    if content_disposition_filename != filename:
+        return {
+            "Content-Disposition": (
+                f"attachment; filename*=utf-8''{content_disposition_filename}"
+            )
+        }
+    return {"Content-Disposition": f'attachment; filename="{filename}"'}
 
 
 def _ensure_parsed_dir() -> Path:
@@ -615,5 +627,5 @@ async def export_nd2_region(
         logger.exception("ND2 export failed: %s", exc)
         raise HTTPException(status_code=500, detail="Export failed") from exc
     filename = f"{Path(sanitized).stem}_frame{frame}_crop.png"
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    headers = _attachment_headers(filename)
     return StreamingResponse(io.BytesIO(png_bytes), media_type="image/png", headers=headers)
