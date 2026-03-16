@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 import aiofiles
 from fastapi import APIRouter, File, HTTPException, Path, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from app.database_manager.crud import DatabaseManagerCrud
 
@@ -44,18 +44,17 @@ async def upload_database(file: Annotated[UploadFile, File()] = ...) -> dict:
 
 
 @router_database_manager.get("/database_files/{dbname}")
-async def download_database_endpoint(dbname: Annotated[str, Path()]) -> StreamingResponse:
+async def download_database_endpoint(dbname: Annotated[str, Path()]) -> FileResponse:
     try:
         db_path = DatabaseManagerCrud.resolve_database_path(dbname)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     if not db_path.is_file():
         raise HTTPException(status_code=404, detail="Database not found")
-    headers = {"Content-Disposition": f'attachment; filename="{db_path.name}"'}
-    return StreamingResponse(
-        DatabaseManagerCrud.read_database_chunks(db_path),
+    return FileResponse(
+        db_path,
         media_type="application/octet-stream",
-        headers=headers,
+        filename=db_path.name,
     )
 
 
