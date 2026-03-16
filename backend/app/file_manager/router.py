@@ -1,7 +1,7 @@
 from typing import Annotated, AsyncIterator
 
 from fastapi import APIRouter, File, HTTPException, Path, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.file_manager.crud import FileManagerCrud
 
@@ -41,18 +41,17 @@ async def upload_file_endpoint(file: Annotated[UploadFile, File()] = ...) -> JSO
 @router_file_manager.get("/filemanager/files/{filename}")
 async def download_file_endpoint(
     filename: Annotated[str, Path()]
-) -> StreamingResponse:
+) -> FileResponse:
     try:
         file_path = FileManagerCrud.resolve_file_path(filename)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
-    headers = {"Content-Disposition": f'attachment; filename="{file_path.name}"'}
-    return StreamingResponse(
-        FileManagerCrud.read_file_chunks(file_path),
+    return FileResponse(
+        file_path,
         media_type="application/octet-stream",
-        headers=headers,
+        filename=file_path.name,
     )
 
 
