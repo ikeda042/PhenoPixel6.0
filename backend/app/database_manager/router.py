@@ -2,9 +2,8 @@ import asyncio
 import io
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
-from typing import Annotated, Literal
+from typing import Annotated, AsyncIterator, Literal
 
-import aiofiles
 from fastapi import APIRouter, File, HTTPException, Path, Query, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
@@ -17,6 +16,14 @@ heatmap_executor: ProcessPoolExecutor = ProcessPoolExecutor(max_workers=1)
 UPLOAD_CHUNK_SIZE: int = 1024 * 1024 * 100
 
 
+async def _iter_upload(file: UploadFile) -> AsyncIterator[bytes]:
+    while True:
+        chunk = await file.read(UPLOAD_CHUNK_SIZE)
+        if not chunk:
+            break
+        yield chunk
+
+
 @router_database_manager.get("/get-databases", response_model=list[str])
 async def get_databases() -> list[str]:
     return await DatabaseManagerCrud.list_databases()
@@ -25,22 +32,18 @@ async def get_databases() -> list[str]:
 @router_database_manager.post("/database_files")
 async def upload_database(file: Annotated[UploadFile, File()] = ...) -> dict:
     try:
-        sanitized = DatabaseManagerCrud.sanitize_db_name(file.filename or "")
+        payload = await DatabaseManagerCrud.save_upload(
+            file.filename or "",
+            _iter_upload(file),
+        )
+        DatabaseManagerCrud.migrate_database(str(payload["filename"]))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    DatabaseManagerCrud.DATABASES_DIR.mkdir(parents=True, exist_ok=True)
-    file_path = DatabaseManagerCrud.DATABASES_DIR / sanitized
-    try:
-        async with aiofiles.open(file_path, "wb") as out_file:
-            while content := await file.read(UPLOAD_CHUNK_SIZE):
-                await out_file.write(content)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-    try:
-        DatabaseManagerCrud.migrate_database(sanitized)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-    return {"filename": sanitized}
+    finally:
+        await file.close()
+    return payload
 
 
 @router_database_manager.get("/database_files/{dbname}")
