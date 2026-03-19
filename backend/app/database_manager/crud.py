@@ -5,16 +5,17 @@ import pickle
 from typing import AsyncIterator, Literal, Sequence
 import zipfile
 
-import aiofiles
-from aiofiles import os as aioos
 import cv2
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from aiofiles import os as aioos
 from sqlalchemy import BLOB, FLOAT, Column, Integer, MetaData, String, Table, create_engine, or_, select, text, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeMeta, Session, declarative_base, sessionmaker
+
+from app.shared.storage import DirectoryStorageCrud
 
 DATABASES_DIR: Path = Path(__file__).resolve().parents[1] / "databases"
 DOWNLOAD_CHUNK_SIZE: int = 1024 * 1024
@@ -79,64 +80,109 @@ class Cell(Base):
     user_id = Column(String, nullable=True)
 
 
+class _DatabaseFileCrud(DirectoryStorageCrud):
+    STORAGE_DIR: Path = DATABASES_DIR
+    READ_CHUNK_SIZE: int = DOWNLOAD_CHUNK_SIZE
+    SIDE_CAR_SUFFIXES: tuple[str, ...] = ("-wal", "-shm", "-journal")
+
+    @classmethod
+    def sanitize_name(cls, db_name: str) -> str:
+        cleaned = Path(db_name or "").name.strip()
+        if not cleaned:
+            raise ValueError("Database name is required")
+        if not cleaned.endswith(".db"):
+            raise ValueError("Database name must end with .db")
+        return cleaned
+
+    @classmethod
+    def should_include_path(cls, path: Path) -> bool:
+        return path.is_file() and path.name.endswith(".db")
+
+    @classmethod
+    def serialize_upload_result(cls, filename: str, size: int) -> dict[str, object]:
+        return {"filename": filename}
+
+    @classmethod
+    def sanitize_db_name(cls, db_name: str) -> str:
+        return cls.sanitize_name(db_name)
+
+    @classmethod
+    def resolve_database_path(cls, db_name: str) -> Path:
+        return cls.resolve_path(db_name)
+
+    @classmethod
+    def read_database_chunks(
+        cls,
+        path: Path,
+        chunk_size: int = DOWNLOAD_CHUNK_SIZE,
+    ) -> AsyncIterator[bytes]:
+        return cls.read_chunks(path, chunk_size)
+
+    @classmethod
+    async def delete_database(cls, db_name: str) -> str:
+        return await cls.delete(db_name, missing_message="Database not found")
+
+    @classmethod
+    def ensure_rename_target_available(
+        cls,
+        new_name: str,
+        *,
+        exists_message: str,
+    ) -> None:
+        super().ensure_rename_target_available(
+            new_name,
+            exists_message=exists_message,
+        )
+        for suffix in cls.SIDE_CAR_SUFFIXES:
+            if (cls.STORAGE_DIR / f"{new_name}{suffix}").exists():
+                raise FileExistsError(exists_message)
+
+    @classmethod
+    async def rename_related_files(cls, old_name: str, new_name: str) -> None:
+        for suffix in cls.SIDE_CAR_SUFFIXES:
+            sidecar_old = cls.STORAGE_DIR / f"{old_name}{suffix}"
+            if sidecar_old.is_file():
+                await aioos.rename(sidecar_old, cls.STORAGE_DIR / f"{new_name}{suffix}")
+
+    @classmethod
+    async def rename_database(cls, old_name: str, new_name: str) -> tuple[str, str]:
+        return await cls.rename(
+            old_name,
+            new_name,
+            missing_message="Database not found",
+            exists_message="Database name already exists",
+        )
+
+    @classmethod
+    async def list_databases(cls) -> list[str]:
+        return await cls.list_items()
+
+
 def _sanitize_db_name(db_name: str) -> str:
-    cleaned = Path(db_name or "").name.strip()
-    if not cleaned:
-        raise ValueError("Database name is required")
-    if not cleaned.endswith(".db"):
-        raise ValueError("Database name must end with .db")
-    return cleaned
+    return _DatabaseFileCrud.sanitize_db_name(db_name)
 
 
 def sanitize_db_name(db_name: str) -> str:
-    return _sanitize_db_name(db_name)
+    return _DatabaseFileCrud.sanitize_db_name(db_name)
 
 
 def resolve_database_path(db_name: str) -> Path:
-    sanitized = _sanitize_db_name(db_name)
-    return DATABASES_DIR / sanitized
+    return _DatabaseFileCrud.resolve_database_path(db_name)
 
 
 async def read_database_chunks(
     path: Path, chunk_size: int = DOWNLOAD_CHUNK_SIZE
 ) -> AsyncIterator[bytes]:
-    async with aiofiles.open(path, "rb") as file_handle:
-        while True:
-            chunk = await file_handle.read(chunk_size)
-            if not chunk:
-                break
-            yield chunk
+    async for chunk in _DatabaseFileCrud.read_database_chunks(path, chunk_size):
+        yield chunk
 
 
 async def delete_database(db_name: str) -> str:
-    db_path = resolve_database_path(db_name)
-    if not db_path.is_file():
-        raise FileNotFoundError("Database not found")
-    await aioos.remove(db_path)
-    return db_path.name
+    return await _DatabaseFileCrud.delete_database(db_name)
 
 
 async def rename_database(old_name: str, new_name: str) -> tuple[str, str]:
-    old_cleaned = _sanitize_db_name(old_name)
-    new_cleaned = _sanitize_db_name(new_name)
-    if old_cleaned == new_cleaned:
-        return old_cleaned, new_cleaned
-    old_path = DATABASES_DIR / old_cleaned
-    if not old_path.is_file():
-        raise FileNotFoundError("Database not found")
-    new_path = DATABASES_DIR / new_cleaned
-    if new_path.exists():
-        raise FileExistsError("Database name already exists")
-    for suffix in ("-wal", "-shm", "-journal"):
-        sidecar_new = DATABASES_DIR / f"{new_cleaned}{suffix}"
-        if sidecar_new.exists():
-            raise FileExistsError("Database name already exists")
-    await aioos.rename(old_path, new_path)
-    for suffix in ("-wal", "-shm", "-journal"):
-        sidecar_old = DATABASES_DIR / f"{old_cleaned}{suffix}"
-        if sidecar_old.is_file():
-            await aioos.rename(sidecar_old, DATABASES_DIR / f"{new_cleaned}{suffix}")
-    return old_cleaned, new_cleaned
+    return await _DatabaseFileCrud.rename_database(old_name, new_name)
 
 
 def get_database_session(db_name: str) -> Session:
@@ -211,16 +257,7 @@ def migrate_database(db_name: str) -> None:
 
 
 async def list_databases() -> list[str]:
-    if not DATABASES_DIR.is_dir():
-        return []
-    entries = await aioos.listdir(DATABASES_DIR)
-    return sorted(
-        [
-            name
-            for name in entries
-            if (DATABASES_DIR / name).is_file() and name.endswith(".db")
-        ]
-    )
+    return await _DatabaseFileCrud.list_databases()
 
 
 def get_cell_ids(db_name: str) -> list[str]:
@@ -2424,29 +2461,11 @@ def get_cells_fast_bundle(
         session.close()
 
 
-class DatabaseManagerCrud:
+class DatabaseManagerCrud(_DatabaseFileCrud):
     DATABASES_DIR = DATABASES_DIR
     DOWNLOAD_CHUNK_SIZE = DOWNLOAD_CHUNK_SIZE
     ANNOTATION_DOWNSCALE = ANNOTATION_DOWNSCALE
     ANNOTATION_CONTOUR_THICKNESS = ANNOTATION_CONTOUR_THICKNESS
-
-    @classmethod
-    def sanitize_db_name(cls, db_name: str) -> str:
-        return sanitize_db_name(db_name)
-
-    @classmethod
-    def resolve_database_path(cls, db_name: str) -> Path:
-        return resolve_database_path(db_name)
-
-    @classmethod
-    def read_database_chunks(
-        cls, path: Path, chunk_size: int = DOWNLOAD_CHUNK_SIZE
-    ) -> AsyncIterator[bytes]:
-        return read_database_chunks(path, chunk_size)
-
-    @classmethod
-    async def delete_database(cls, db_name: str) -> str:
-        return await delete_database(db_name)
 
     @classmethod
     def get_database_session(cls, db_name: str) -> Session:
@@ -2455,10 +2474,6 @@ class DatabaseManagerCrud:
     @classmethod
     def migrate_database(cls, db_name: str) -> None:
         migrate_database(db_name)
-
-    @classmethod
-    async def list_databases(cls) -> list[str]:
-        return await list_databases()
 
     @classmethod
     def get_cell_ids(cls, db_name: str) -> list[str]:
