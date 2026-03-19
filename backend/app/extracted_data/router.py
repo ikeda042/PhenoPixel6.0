@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import Annotated, AsyncIterator
+from typing import Annotated
 
-import aiofiles
 from aiofiles import os as aioos
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
+from app.shared.storage import stream_file_chunks
 
 router_extracted_data: APIRouter = APIRouter(tags=["extracted_data"])
 EXTRACTED_DATA_DIR: Path = Path(__file__).resolve().parent
@@ -39,17 +39,6 @@ async def get_folder_names() -> list[str]:
     return await _list_extracted_folders()
 
 
-async def _read_file_chunks(
-    path: Path, chunk_size: int = 1024 * 1024
-) -> AsyncIterator[bytes]:
-    async with aiofiles.open(path, "rb") as file_handle:
-        while True:
-            chunk = await file_handle.read(chunk_size)
-            if not chunk:
-                break
-            yield chunk
-
-
 @router_extracted_data.get("/get-extracted-image")
 async def get_extracted_image(
     folder: Annotated[str, Query()] = ...,
@@ -62,7 +51,7 @@ async def get_extracted_image(
     file_path = folder_path / f"{n}.png"
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
-    return StreamingResponse(_read_file_chunks(file_path), media_type="image/png")
+    return StreamingResponse(stream_file_chunks(file_path), media_type="image/png")
 
 
 @router_extracted_data.get("/get-extracted-image-count")
